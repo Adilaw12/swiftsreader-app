@@ -1,0 +1,13 @@
+.vercel
+.env*.local
+node_modules/
+package-lock.json
+migrate.cjs
+run-migration.mjs
+# old root-level api copies (moved to api/ subfolders)
+api-auth-forgot.js
+api-auth-reset.js
+api-stripe-checkout.js
+# duplicate html files
+swiftreader-app.html
+index.html

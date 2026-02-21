@@ -10,4 +10,3 @@ api-auth-reset.js
 api-stripe-checkout.js
 # duplicate html files
 swiftreader-app.html
-index.html

@@ -1,8 +1,9 @@
 {
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/login", "destination": "/login.html" },
-    { "source": "/app",   "destination": "/app.html" },
-    { "source": "/reset-password", "destination": "/login.html" }
+    { "source": "/",              "destination": "/app.html" },
+    { "source": "/login",         "destination": "/login.html" },
+    { "source": "/app",           "destination": "/app.html" },
+    { "source": "/reset-password","destination": "/login.html" }
   ]
 }

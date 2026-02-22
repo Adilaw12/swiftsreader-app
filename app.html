@@ -1817,6 +1817,111 @@
         .toggle-summary:hover {
             background: var(--primary-pale);
         }
+
+        /* ── Contact Us Modal ───────────────────────────── */
+        .contact-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .contact-modal-overlay.open {
+            display: flex;
+        }
+        .contact-modal {
+            background: #fff;
+            border-radius: 20px;
+            padding: 40px 36px 32px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+            position: relative;
+            animation: contactFadeIn .2s ease;
+        }
+        @keyframes contactFadeIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .contact-modal-close-btn {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            line-height: 1;
+            padding: 4px;
+        }
+        .contact-modal-close-btn:hover { color: var(--text-primary); }
+        .contact-modal h2 {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .contact-modal p.contact-sub {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+        .contact-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+        .contact-field label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .contact-field input,
+        .contact-field textarea {
+            border: 1.5px solid var(--border-light);
+            border-radius: 10px;
+            padding: 11px 14px;
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            transition: border-color .15s;
+            resize: vertical;
+            outline: none;
+        }
+        .contact-field input:focus,
+        .contact-field textarea:focus {
+            border-color: var(--primary);
+            background: #fff;
+        }
+        .contact-field textarea { min-height: 110px; }
+        .contact-submit-btn {
+            width: 100%;
+            padding: 13px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, var(--primary) 0%, #26C6DA 100%);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 4px;
+            transition: opacity .15s;
+        }
+        .contact-submit-btn:hover { opacity: .88; }
+        .contact-modal-success {
+            display: none;
+            text-align: center;
+            padding: 20px 0 8px;
+        }
+        .contact-modal-success .success-icon { font-size: 48px; margin-bottom: 12px; }
+        .contact-modal-success h3 { font-size: 20px; font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
+        .contact-modal-success p  { font-size: 14px; color: var(--text-secondary); }
     </style>
   <!-- Vercel Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
@@ -1854,6 +1959,7 @@
                     <button class="button button-primary" id="addPaperBtn">
                         <span>+ Add Paper</span>
                     </button>
+                    <button class="button" onclick="openContactModal()" aria-label="Contact Us" style="background:transparent;border:1.5px solid var(--border-light);color:var(--text-secondary);border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border-light)';this.style.color='var(--text-secondary)'">Contact Us</button>
                     <!-- User account info -->
                     <div id="userInfoBar" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);">
                         <span id="userTierBadge" style="padding:3px 10px;border-radius:20px;font-weight:700;font-size:11px;background:var(--primary-pale);color:var(--primary-dark);">FREE</span>
@@ -5803,6 +5909,80 @@
 
         console.log('🎤 Audio reader v3 loaded — smart human voice selection active');
         console.log('💡 Best voices: Google UK English Female (Chrome), Microsoft Neural (Edge), Karen/Moira (Safari)');
+
+        /* ── Contact Us Modal ─────────────────────────── */
+        function openContactModal() {
+            document.getElementById('contactModalOverlay').classList.add('open');
+            document.getElementById('appContactEmail').focus();
+        }
+        function closeContactModal() {
+            document.getElementById('contactModalOverlay').classList.remove('open');
+            document.getElementById('appContactFormEl').reset();
+            document.getElementById('appContactForm').style.display = '';
+            document.getElementById('appContactSuccess').style.display = 'none';
+            const btn = document.getElementById('appContactSubmitBtn');
+            if (btn) { btn.disabled = false; btn.textContent = 'Send Message'; }
+        }
+        document.getElementById('contactModalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeContactModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('contactModalOverlay').classList.contains('open')) {
+                closeContactModal();
+            }
+        });
+        document.getElementById('appContactFormEl').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('appContactSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Sending…';
+            try {
+                const resp = await fetch('https://formspree.io/f/xaqdyvjn', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: new FormData(this)
+                });
+                if (resp.ok) {
+                    document.getElementById('appContactForm').style.display = 'none';
+                    document.getElementById('appContactSuccess').style.display = 'block';
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = 'Send Message';
+                    alert('Something went wrong. Please try again.');
+                }
+            } catch {
+                btn.disabled = false;
+                btn.textContent = 'Send Message';
+                alert('Network error. Please try again.');
+            }
+        });
     </script>
+
+    <!-- Contact Us Modal -->
+    <div id="contactModalOverlay" class="contact-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="appContactModalTitle">
+        <div class="contact-modal">
+            <button class="contact-modal-close-btn" onclick="closeContactModal()" aria-label="Close contact form">✕</button>
+            <div id="appContactForm">
+                <h2 id="appContactModalTitle">Contact Us</h2>
+                <p class="contact-sub">Have a question or feedback? We'd love to hear from you.</p>
+                <form id="appContactFormEl">
+                    <div class="contact-field">
+                        <label for="appContactEmail">Your Email</label>
+                        <input type="email" id="appContactEmail" name="email" placeholder="you@example.com" required>
+                    </div>
+                    <div class="contact-field">
+                        <label for="appContactMessage">Message</label>
+                        <textarea id="appContactMessage" name="message" placeholder="Tell us how we can help…" required></textarea>
+                    </div>
+                    <button type="submit" id="appContactSubmitBtn" class="contact-submit-btn">Send Message</button>
+                </form>
+            </div>
+            <div id="appContactSuccess" class="contact-modal-success">
+                <div class="success-icon">✅</div>
+                <h3>Message Sent!</h3>
+                <p>Thanks for reaching out. We'll get back to you as soon as possible.</p>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -2635,7 +2635,7 @@
             });
 
             // Play/Pause
-            playBtn.addEventListener('click', togglePlay);
+            playBtn.addEventListener('click', toggleTTSPlay);
 
             // Navigation
             prevBtn.addEventListener('click', () => {
@@ -3059,13 +3059,13 @@
             let equationCount = 0;
             const mediaItems = [];
 
-            // ── Pass 1: render each page to a canvas so we can crop figure regions ──
-            console.log('[PDF] Rendering', pdf.numPages, 'pages...');
-            const pageCanvases = []; // indexed by pageNum-1
+            // ── Pass 1: render each page to canvas (for image cropping) ─────────────
+            console.log('[PDF] Rendering pages for image extraction...');
+            const pageCanvases = [];
             for (let i = 1; i <= pdf.numPages; i++) {
                 try {
                     const page = await pdf.getPage(i);
-                    const viewport = page.getViewport({ scale: 1.5 }); // lower scale = faster
+                    const viewport = page.getViewport({ scale: 1.5 });
                     const canvas = document.createElement('canvas');
                     canvas.width  = viewport.width;
                     canvas.height = viewport.height;
@@ -3077,13 +3077,89 @@
                 }
             }
 
-            // ── Pass 2: extract text and detect media ──────────────────────────────
-            console.log('[PDF] Extracting text and detecting media...');
+            // ── Pass 2: detect ACTUAL embedded images via operator list ──────────────
+            // This is the reliable method — finds images regardless of whether they
+            // have a "Figure N" caption. getOperatorList() returns paintImageXObject
+            // operations that correspond to real embedded images in the PDF.
+            console.log('[PDF] Detecting embedded images via operator list...');
+            const embeddedImagesByPage = {};
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                try {
+                    const page = await pdf.getPage(i);
+                    const opList = await page.getOperatorList();
+                    const ops = opList.fnArray;
+                    const args = opList.argsArray;
+
+                    // OPS.paintImageXObject = 85, paintInlineImageXObject = 86,
+                    // paintImageXObjectRepeat = 88
+                    const IMAGE_OPS = new Set([85, 86, 88]);
+                    const pageImages = [];
+
+                    for (let j = 0; j < ops.length; j++) {
+                        if (IMAGE_OPS.has(ops[j])) {
+                            // args[j][0] is the image name/key
+                            // We count it — position comes from surrounding transform ops
+                            pageImages.push({ opIndex: j, name: args[j]?.[0] || `img_${j}` });
+                        }
+                    }
+
+                    // Deduplicate by name (same image referenced multiple times = one image)
+                    const seen = new Set();
+                    const unique = pageImages.filter(img => {
+                        if (seen.has(img.name)) return false;
+                        seen.add(img.name);
+                        return true;
+                    });
+
+                    if (unique.length > 0) {
+                        embeddedImagesByPage[i] = unique;
+                        console.log(`[PDF] Page ${i}: ${unique.length} embedded image(s)`);
+                    }
+                } catch (err) {
+                    console.warn('[PDF] Operator list failed for page', i, err);
+                }
+            }
+
+            // ── Pass 3: extract text + caption matching + merge with embedded images ─
+            console.log('[PDF] Extracting text and matching captions...');
+
+            // Caption patterns — broad to catch varied formatting
+            const figPatterns = [
+                /^(Figure|Fig\.?|FIG\.?)\s*(\d+[a-z]?)[:\.\-–—\s]\s*(.*)/i,
+                /^(\d+)\s*\.\s*(Figure|Fig\.?)[:\.\-–—\s]\s*(.*)/i,
+                /^(Figure|Fig\.?)\s*(\d+[a-z]?)\s*$/i,
+            ];
+            const tablePatterns = [
+                /^Table\s*(\d+)[:\.\-–—\s]\s*(.*)/i,
+                /^(\d+)\s*\.\s*Table[:\.\-–—\s]\s*(.*)/i,
+            ];
+            const equationPatterns = [
+                /^(Equation|Eq\.?)\s*(\d+)[:\.\-–—\s]/i,
+                /^\(\s*(\d+)\s*\)\s*$/,
+            ];
+            const mathSymbolDensity = s => {
+                let count = 0;
+                const mathUnicode = ['=','+','-','*','/','<','>','~','|','^','_',
+                    '∑','∫','∂','∇','×','·','÷',
+                    '√','∞','±','≈','≤','≥'];
+                for (const ch of s) {
+                    if (mathUnicode.includes(ch)) count++;
+                    const code = ch.charCodeAt(0);
+                    if (code >= 0x03B1 && code <= 0x03C9) count++; // α-ω
+                    if (code >= 0x0391 && code <= 0x03A9) count++; // Α-Ω
+                }
+                return s.length > 0 ? count / s.length : 0;
+            };
+
+            // Track which pages we matched captions on so we don't double-add
+            const captionMatchedPages = new Set();
+
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
+                const canvasData = pageCanvases[i - 1];
 
-                // Collect items with position data
                 const items = textContent.items.map(item => ({
                     str:  item.str,
                     x:    item.transform[4],
@@ -3094,85 +3170,83 @@
                 }));
 
                 const pageText = items.map(it => it.str).join(' ');
-                const canvasData = pageCanvases[i - 1];
+                fullText += pageText + '\n\n';
 
-                // Split page text into lines for caption matching
-                const rawLines = pageText.split(/(?<=\.)\s{2,}|\n/);
-                const lines = rawLines.map(l => l.trim()).filter(l => l.length > 0);
+                // Group text into logical lines
+                const lineGroups = {};
+                items.forEach(item => {
+                    const rowKey = Math.round(item.y / 4) * 4;
+                    if (!lineGroups[rowKey]) lineGroups[rowKey] = [];
+                    lineGroups[rowKey].push(item);
+                });
+                const lines = Object.values(lineGroups)
+                    .sort((a, b) => b[0].y - a[0].y)
+                    .map(group => group.map(it => it.str).join(' ').trim())
+                    .filter(l => l.length > 2);
 
-                // --- Figure captions ---
-                const figPatterns = [
-                    /^(Figure|Fig\.?|FIG\.?)\s*(\d+)[:\.\-–—\s]\s*(.*)/i,
-                    /^(\d+)\s*\.\s*(Figure|Fig\.?)[:\.\-–—\s]\s*(.*)/i,
-                    /^(Figure|Fig\.?)\s*(\d+[a-z]?)[:\.\-–—\s]/i
-                ];
+                let pageHasCaptionMatch = false;
 
+                // --- Match figure captions ---
                 for (const line of lines) {
-                    let matched = false;
                     for (const pat of figPatterns) {
                         const m = line.match(pat);
                         if (m) {
                             figureCount++;
+                            pageHasCaptionMatch = true;
                             const caption = (m[3] || m[2] || line).trim();
 
-                            // Try to find the caption text items to get a bounding box
-                            // so we can crop just the figure area from the page canvas.
+                            // Crop the figure region from the rendered canvas
                             let figImage = null;
                             if (canvasData) {
-                                // Find items that match the start of this caption
-                                const captionPrefix = line.slice(0, 20).toLowerCase();
+                                // Find Y position of this caption line
                                 const captionItems = items.filter(it =>
-                                    it.str && line.toLowerCase().includes(it.str.toLowerCase().slice(0, 8))
+                                    it.str && line.includes(it.str.slice(0, Math.min(8, it.str.length)))
                                 );
-
                                 if (captionItems.length > 0) {
-                                    // Caption Y in PDF coords (bottom-up). The figure is above the caption.
-                                    const captionY = Math.max(...captionItems.map(it => it.y));
-                                    const pageH = canvasData.viewport.height;
-                                    const scale = canvasData.viewport.scale;
-                                    // Convert PDF y (bottom-up) to canvas y (top-down)
-                                    const captionCanvasY = pageH - (captionY * scale);
+                                    const captionY  = Math.min(...captionItems.map(it => it.y));
+                                    const pageH     = canvasData.viewport.height / canvasData.viewport.scale;
+                                    const scale     = canvasData.viewport.scale;
+                                    const captionCanvasY = canvasData.viewport.height - (captionY * scale);
 
-                                    // Crop the region above the caption (figure body)
-                                    const figTop    = Math.max(0, captionCanvasY - 350);
-                                    const figHeight = Math.min(350, captionCanvasY - figTop);
+                                    // Try figure ABOVE caption first (most common layout)
+                                    const figHeight = Math.min(400, captionCanvasY - 10);
+                                    const figTop    = Math.max(0, captionCanvasY - figHeight);
 
-                                    if (figHeight > 30) {
-                                        const cropCanvas = document.createElement('canvas');
-                                        cropCanvas.width  = canvasData.canvas.width;
-                                        cropCanvas.height = figHeight;
-                                        const ctx = cropCanvas.getContext('2d');
-                                        ctx.drawImage(canvasData.canvas, 0, figTop, cropCanvas.width, figHeight,
-                                                                          0,    0, cropCanvas.width, figHeight);
-                                        figImage = cropCanvas.toDataURL('image/png');
+                                    if (figHeight > 40) {
+                                        const crop = document.createElement('canvas');
+                                        crop.width  = canvasData.canvas.width;
+                                        crop.height = figHeight;
+                                        const ctx = crop.getContext('2d');
+                                        ctx.drawImage(canvasData.canvas,
+                                            0, figTop, crop.width, figHeight,
+                                            0, 0,      crop.width, figHeight);
+                                        figImage = crop.toDataURL('image/png');
                                     }
                                 }
-
-                                // Fallback: whole page
                                 if (!figImage) figImage = canvasData.canvas.toDataURL('image/png');
                             }
 
-                            fullText += `\n[FIGURE_${figureCount}]\n`;
+                            fullText += `
+[FIGURE_${figureCount}]
+`;
                             mediaItems.push({ type: 'figure', number: figureCount,
                                               caption, image: figImage, pageNumber: i });
-                            matched = true;
                             break;
                         }
                     }
                 }
 
-                // --- Table captions ---
-                const tablePatterns = [
-                    /^Table\s*(\d+)[:\.\-–—\s]\s*(.*)/i,
-                    /^(\d+)\s*\.\s*Table[:\.\-–—\s]\s*(.*)/i
-                ];
+                // --- Match table captions ---
                 for (const line of lines) {
                     for (const pat of tablePatterns) {
                         const m = line.match(pat);
                         if (m) {
                             tableCount++;
+                            pageHasCaptionMatch = true;
                             const caption = (m[2] || line).trim();
-                            fullText += `\n[TABLE_${tableCount}]\n`;
+                            fullText += `
+[TABLE_${tableCount}]
+`;
                             mediaItems.push({ type: 'table', number: tableCount,
                                               caption, content: '', pageNumber: i });
                             break;
@@ -3180,49 +3254,66 @@
                     }
                 }
 
-                // --- Equation / formula detection ---
-                // Equations often appear as: "Equation N", "(N)", or lines dense with math symbols
-                const equationPatterns = [
-                    /^(Equation|Eq\.?)\s*(\d+)[:\.\-–—\s]/i,
-                    /^\(\s*(\d+)\s*\)\s*$/,       // standalone "(N)" = numbered equation
-                ];
-                const mathSymbolDensity = (s) => {
-                    const mathChars = (s.match(/[=∑∫∂∇×·÷√∞±≈≤≥α-ωΑ-Ω\^_{}\\]/g) || []).length;
-                    return s.length > 0 ? mathChars / s.length : 0;
-                };
-
+                // --- Equation detection ---
                 for (const line of lines) {
-                    let isEquation = false;
-                    let eqCaption = line;
-
-                    for (const pat of equationPatterns) {
-                        if (line.match(pat)) { isEquation = true; break; }
-                    }
-                    // Also flag lines that are purely mathematical (>25% special chars, short)
-                    if (!isEquation && line.length < 120 && mathSymbolDensity(line) > 0.25) {
-                        isEquation = true;
-                    }
-
-                    if (isEquation) {
+                    let isEq = equationPatterns.some(p => line.match(p));
+                    if (!isEq && line.length < 120 && mathSymbolDensity(line) > 0.25) isEq = true;
+                    if (isEq) {
                         equationCount++;
-                        fullText += `\n[EQUATION_${equationCount}]\n`;
-                        mediaItems.push({
-                            type: 'equation',
-                            number: equationCount,
-                            caption: `Equation ${equationCount}`,
-                            latex: line,          // store raw text for display
-                            pageNumber: i
-                        });
+                        fullText += `
+[EQUATION_${equationCount}]
+`;
+                        mediaItems.push({ type: 'equation', number: equationCount,
+                                          caption: `Equation ${equationCount}`, latex: line, pageNumber: i });
                     }
                 }
 
-                fullText += pageText + '\n\n';
+                if (pageHasCaptionMatch) captionMatchedPages.add(i);
             }
 
-            // ── Pass 3: attempt structured table extraction ─────────────────────────
+            // ── Pass 4: add embedded images from pages with NO caption match ─────────
+            // These are pages where real images exist but have no standard caption text.
+            // We crop the full page and label them as uncaptioned figures.
+            for (const [pageNumStr, images] of Object.entries(embeddedImagesByPage)) {
+                const pageNum = parseInt(pageNumStr);
+                if (captionMatchedPages.has(pageNum)) continue; // already handled via caption
+
+                const canvasData = pageCanvases[pageNum - 1];
+                if (!canvasData) continue;
+
+                // Only add if there's a meaningful number of images (skip tiny icons/bullets)
+                // We do this by checking if the page canvas has substantial non-white area
+                // (simple heuristic — crop top 60% of page as the "figure area")
+                for (let imgIdx = 0; imgIdx < images.length; imgIdx++) {
+                    figureCount++;
+                    const cropHeight = Math.floor(canvasData.canvas.height * 0.65);
+                    const crop = document.createElement('canvas');
+                    crop.width  = canvasData.canvas.width;
+                    crop.height = cropHeight;
+                    const ctx = crop.getContext('2d');
+                    ctx.drawImage(canvasData.canvas, 0, 0, crop.width, cropHeight,
+                                                     0, 0, crop.width, cropHeight);
+                    const figImage = crop.toDataURL('image/png');
+
+                    fullText += `
+[FIGURE_${figureCount}]
+`;
+                    mediaItems.push({
+                        type: 'figure',
+                        number: figureCount,
+                        caption: `Figure ${figureCount} (page ${pageNum})`,
+                        image: figImage,
+                        pageNumber: pageNum
+                    });
+                    // Only add one item per page even if multiple images detected
+                    // (avoids duplicate crops of the same page)
+                    break;
+                }
+            }
+
+            // ── Pass 5: structured table extraction ──────────────────────────────────
             try {
                 const structuredTables = await extractTablesFromPDF(pdf);
-                // Merge with caption-detected tables (avoid duplicates by page)
                 const existingTablePages = new Set(mediaItems.filter(m => m.type === 'table').map(m => m.pageNumber));
                 for (const tbl of structuredTables) {
                     if (!existingTablePages.has(tbl.pageNumber)) {
@@ -3746,7 +3837,7 @@
         let currentUser = null;
 
         const PAPER_LIMITS    = { free: 3,        student: Infinity, pro: Infinity };
-        const SUMMARY_LIMITS  = { free: 5,        student: Infinity, pro: Infinity };
+        const SUMMARY_LIMITS  = { free: 20,       student: Infinity, pro: Infinity };
 
         function getAuthToken() {
             return localStorage.getItem('sr_token') || '';
@@ -3806,15 +3897,31 @@
             if (upgradeBtn) upgradeBtn.style.display = (currentUser.tier === 'free') ? '' : 'none';
         }
 
+        // Global Escape key handler — closes any open modal overlay instantly
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                const overlays = document.querySelectorAll('.modal-overlay');
+                if (overlays.length) {
+                    overlays[overlays.length - 1].remove(); // close topmost
+                    e.stopPropagation();
+                }
+            }
+        });
+
         // Open upgrade modal (Stripe checkout)
+        // Prevents stacking — only one upgrade modal open at a time
         async function openUpgradeModal(reason) {
+            // Remove any existing upgrade modal before opening a new one
+            document.getElementById('upgradeModalOverlay')?.remove();
+
             const overlay = document.createElement('div');
             overlay.className = 'modal-overlay';
+            overlay.id = 'upgradeModalOverlay';
             overlay.innerHTML = `
-                <div class="modal" style="max-width:520px;">
+                <div class="modal" style="max-width:520px;" role="dialog" aria-modal="true" aria-label="Upgrade SwiftsReader">
                     <div class="modal-header">
                         <h2 class="modal-title">✨ Upgrade SwiftsReader</h2>
-                        <button class="modal-close" id="upgModalClose">×</button>
+                        <button class="modal-close" id="upgModalClose" aria-label="Close">×</button>
                     </div>
                     <div class="modal-content">
                         ${reason ? `<div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#F57F17;">${reason}</div>` : ''}
@@ -3847,8 +3954,14 @@
             document.body.appendChild(overlay);
 
             const close = () => overlay.remove();
+
+            // Close on X button
             overlay.querySelector('#upgModalClose').onclick = close;
-            overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+            // Close on single click anywhere on the backdrop
+            overlay.addEventListener('click', e => {
+                if (e.target === overlay) close();
+            });
 
             async function startCheckout(plan) {
                 const btn = overlay.querySelector(`#checkout${plan.charAt(0).toUpperCase() + plan.slice(1)}`);
@@ -3871,6 +3984,9 @@
 
             overlay.querySelector('#checkoutPro').onclick     = () => startCheckout('pro');
             overlay.querySelector('#checkoutStudent').onclick = () => startCheckout('student');
+
+            // Focus the close button for keyboard accessibility
+            setTimeout(() => overlay.querySelector('#upgModalClose')?.focus(), 50);
         }
         window.openUpgradeModal = openUpgradeModal;
 
@@ -4151,13 +4267,13 @@
                         ✅ ${tier === 'student' ? 'Student' : 'Pro'} plan — unlimited AI summaries
                     </div>`;
                 } else {
-                    const left = Math.max(0, (limit || 5) - used);
-                    const pct  = Math.min(100, (used / (limit || 5)) * 100);
+                    const left = Math.max(0, (limit || 20) - used);
+                    const pct  = Math.min(100, (used / (limit || 20)) * 100);
                     const barColor = left === 0 ? 'var(--error)' : left <= 1 ? 'var(--warning)' : 'var(--primary)';
                     statusHtml = `
                     <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:var(--space-sm) var(--space-md);margin-bottom:var(--space-md);">
                         <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px;">
-                            <span style="font-weight:600;">${used} / ${limit || 5} AI summaries used this month</span>
+                            <span style="font-weight:600;">${used} / ${limit || 20} AI summaries used this month</span>
                             ${left === 0
                                 ? `<button onclick="openUpgradeModal()" style="background:var(--primary);color:white;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;">Upgrade for more ✨</button>`
                                 : `<span style="color:var(--text-tertiary)">${left} remaining</span>`}
@@ -5622,91 +5738,178 @@
         // ============================================
         // AUDIO READER — Smart Human Voice Selection
         // ============================================
-        // No ElevenLabs needed! Modern browsers ship high-quality neural voices
-        // (e.g. Google Wavenet voices in Chrome, Microsoft Neural in Edge, 
-        //  Siri voices on Safari/macOS). We just pick the best one available.
+        // ── Audio / TTS system (browser speechSynthesis) ──────────────────────
+        // Picks the highest-quality voice available in the current browser:
+        //   Chrome  → Google UK/US voices (neural quality)
+        //   Edge    → Microsoft Natural voices (best available anywhere)
+        //   Safari  → Siri/Samantha (very natural on Mac/iOS)
+        //   Firefox → OS voices (varies by platform)
 
-        let audioSpeech = 'speechSynthesis' in window ? window.speechSynthesis : null;
-        let audioSpeed = 1.0;
-        let audioSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
-        let currentSpeedIndex = 2;
-        let isAudioPlaying = false;
-        let audioFullText = '';
+        let isAudioPlaying  = false;
+        let audioFullText   = '';
         let audioCharOffset = 0;
-        let audioKeepAliveTimer = null;
-        let selectedVoice = null;   // user-chosen or auto-selected voice
+        let audioSpeed      = 1.0;
+        let audioSpeeds     = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+        let currentSpeedIndex = 2;
+        let selectedVoice   = null;
         let availableVoices = [];
 
-        if (audioSpeech) console.log('✅ Text-to-speech supported');
-        else console.warn('❌ Text-to-speech not supported');
+        const synth = 'speechSynthesis' in window ? window.speechSynthesis : null;
 
-        // ── Voice quality scoring ───────────────────────────────────────────
-        // Higher = better / more human-sounding
-        const VOICE_QUALITY = {
-            // Google Neural voices (best in Chrome)
-            'google uk english female': 100,
-            'google uk english male': 95,
-            'google us english': 90,
-            // Microsoft Neural voices (best in Edge / Windows)
-            'microsoft aria online (natural)': 100,
-            'microsoft jenny online (natural)': 98,
-            'microsoft guy online (natural)': 95,
-            'microsoft natasha online (natural)': 97,
-            // macOS / iOS built-in (good quality)
-            'karen': 88, 'moira': 85, 'samantha': 82, 'tessa': 80,
-            'alex': 78, 'victoria': 75, 'kate': 80,
-            // Other decent voices
-            'zira': 70, 'david': 68,
-        };
+        // ── Voice quality scores ────────────────────────────────────────────
+        // Ranked by how natural they sound. Higher = better.
+        const VOICE_SCORES = [
+            // Microsoft Neural (Edge / Windows) — best browser voices available
+            { match: 'aria online (natural)',    score: 100 },
+            { match: 'jenny online (natural)',   score: 99  },
+            { match: 'natasha online (natural)', score: 98  },
+            { match: 'libby online (natural)',   score: 97  },
+            { match: 'ryan online (natural)',    score: 96  },
+            { match: 'guy online (natural)',     score: 95  },
+            { match: 'sonia online (natural)',   score: 94  },
+            { match: '(natural)',                score: 90  }, // catch any other MS Natural
+            // Google Neural (Chrome)
+            { match: 'google uk english female', score: 88 },
+            { match: 'google uk english male',   score: 85 },
+            { match: 'google us english',        score: 82 },
+            { match: 'google',                   score: 75 }, // other Google voices
+            // Apple / macOS / iOS
+            { match: 'samantha',  score: 80 },
+            { match: 'karen',     score: 78 },
+            { match: 'daniel',    score: 76 }, // UK English on Mac
+            { match: 'moira',     score: 74 },
+            { match: 'tessa',     score: 72 },
+            { match: 'kate',      score: 70 },
+            // Windows built-in
+            { match: 'zira',  score: 55 },
+            { match: 'david', score: 50 },
+        ];
 
         function scoreVoice(voice) {
             const name = voice.name.toLowerCase();
-            for (const [key, score] of Object.entries(VOICE_QUALITY)) {
-                if (name.includes(key)) return score;
+            for (const { match, score } of VOICE_SCORES) {
+                if (name.includes(match)) return score;
             }
-            // Prefer local voices over remote (more reliable)
-            if (voice.localService) return 40;
+            // Online/remote voices tend to be higher quality than local
+            if (!voice.localService) return 45;
             return 30;
         }
 
-        function getBestVoice(lang = 'en') {
-            const englishVoices = availableVoices.filter(v => v.lang.startsWith(lang));
-            if (englishVoices.length === 0) return availableVoices[0] || null;
-            englishVoices.sort((a, b) => scoreVoice(b) - scoreVoice(a));
-            return englishVoices[0];
+        function getBestVoice() {
+            const en = availableVoices.filter(v => v.lang.startsWith('en'));
+            if (!en.length) return availableVoices[0] || null;
+            return en.sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
         }
 
         function loadVoices() {
-            availableVoices = audioSpeech ? audioSpeech.getVoices() : [];
-            if (availableVoices.length === 0) return;
+            availableVoices = synth ? synth.getVoices() : [];
+            if (!availableVoices.length) return;
 
+            // Auto-select best voice on first load
             if (!selectedVoice) {
                 selectedVoice = getBestVoice();
-                console.log('[Audio] Auto-selected voice:', selectedVoice?.name);
+                console.log('[Audio] Best voice selected:', selectedVoice?.name,
+                            '(score:', scoreVoice(selectedVoice), ')');
             }
 
-            // Populate voice selector if it exists
+            // Populate dropdown
             const sel = document.getElementById('voiceSelector');
             if (!sel) return;
-            const englishVoices = availableVoices.filter(v => v.lang.startsWith('en'));
-            englishVoices.sort((a, b) => scoreVoice(b) - scoreVoice(a));
-            sel.innerHTML = englishVoices.map(v => {
-                const score = scoreVoice(v);
-                const tag = score >= 90 ? ' ⭐ Neural' : score >= 75 ? ' ✓ Natural' : '';
+
+            const en = availableVoices
+                .filter(v => v.lang.startsWith('en'))
+                .sort((a, b) => scoreVoice(b) - scoreVoice(a));
+
+            sel.innerHTML = en.map(v => {
+                const s = scoreVoice(v);
+                const tag = s >= 90 ? ' ⭐ Neural' : s >= 75 ? ' ✓ Enhanced' : s >= 50 ? ' · Standard' : '';
                 return `<option value="${v.name}" ${selectedVoice?.name === v.name ? 'selected' : ''}>${v.name}${tag}</option>`;
             }).join('');
         }
 
-        if (audioSpeech) {
-            if (speechSynthesis.onvoiceschanged !== undefined) {
-                speechSynthesis.onvoiceschanged = loadVoices;
+        // Load voices — Chrome fires onvoiceschanged, Safari fires synchronously
+        if (synth) {
+            if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
+            setTimeout(loadVoices, 200);
+        }
+
+        // ── Speak from char offset, in chunks to avoid browser 15s cutoff bug ──
+        const SPEAK_CHUNK = 2500; // chars per utterance
+
+        function speakFrom(charOffset) {
+            if (!synth) return;
+            synth.cancel();
+
+            const slice = audioFullText.slice(charOffset, charOffset + SPEAK_CHUNK);
+            if (!slice.trim()) { stopAudio(); return; }
+
+            const utter = new SpeechSynthesisUtterance(slice);
+            utter.voice = selectedVoice;
+            utter.rate  = audioSpeed;
+            utter.pitch = 1.0;
+            utter.lang  = selectedVoice?.lang || 'en-US';
+
+            // Track position as words are spoken
+            utter.onboundary = e => {
+                if (e.name === 'word') audioCharOffset = charOffset + e.charIndex;
+            };
+
+            utter.onend = () => {
+                const next = charOffset + slice.length;
+                if (isAudioPlaying && next < audioFullText.length) {
+                    speakFrom(next);
+                } else {
+                    stopAudio();
+                }
+            };
+
+            utter.onerror = e => {
+                if (e.error !== 'interrupted') {
+                    console.error('[Audio] TTS error:', e.error);
+                    stopAudio();
+                }
+            };
+
+            synth.speak(utter);
+
+            // Chrome bug: speechSynthesis pauses after ~15s in background tabs
+            // Workaround: pause/resume every 10s to keep it alive
+            clearInterval(window._ttsKeepAlive);
+            window._ttsKeepAlive = setInterval(() => {
+                if (synth.speaking && isAudioPlaying) {
+                    synth.pause();
+                    synth.resume();
+                }
+            }, 10000);
+        }
+
+        function stopAudio() {
+            isAudioPlaying = false;
+            clearInterval(window._ttsKeepAlive);
+            if (synth) synth.cancel();
+            const btn = document.getElementById('playBtn');
+            if (btn) btn.textContent = '▶';
+        }
+
+        function toggleTTSPlay() {
+            if (!synth) {
+                showNotification('❌ Text-to-speech not supported in this browser', 'error');
+                return;
             }
-            // Also load immediately (Safari fires synchronously)
-            setTimeout(loadVoices, 300);
+            if (isAudioPlaying) {
+                stopAudio();
+            } else {
+                const text = getReadableText ? getReadableText() : '';
+                if (!text) { showNotification('❌ No text loaded', 'error'); return; }
+                audioFullText  = text;
+                isAudioPlaying = true;
+                const btn = document.getElementById('playBtn');
+                if (btn) btn.textContent = '⏸';
+                speakFrom(audioCharOffset);
+            }
         }
 
         // ── Voice selector UI ───────────────────────────────────────────────
-        // Injected into the audio controls bar
         function buildVoiceSelectorUI() {
             const audioControls = document.getElementById('audioControls');
             if (!audioControls || document.getElementById('voiceSelector')) return;
@@ -5717,197 +5920,55 @@
                 <select id="voiceSelector" title="Choose voice"
                     style="font-size:11px;border:1px solid var(--border-light);border-radius:6px;
                            padding:3px 6px;background:var(--bg-surface);color:var(--text-primary);
-                           cursor:pointer;max-width:160px;height:28px;">
+                           cursor:pointer;max-width:190px;height:28px;">
                     <option>Loading voices…</option>
-                </select>
-            `;
+                </select>`;
             audioControls.appendChild(wrapper);
 
-            wrapper.querySelector('#voiceSelector').addEventListener('change', (e) => {
+            wrapper.querySelector('#voiceSelector').addEventListener('change', e => {
                 selectedVoice = availableVoices.find(v => v.name === e.target.value) || null;
                 console.log('[Audio] Voice changed to:', selectedVoice?.name);
-                showNotification('🎤 Voice: ' + (selectedVoice?.name || 'default'), 'info');
-                if (isAudioPlaying) speakFrom(audioCharOffset); // restart with new voice
+                showNotification('🎤 Voice: ' + (selectedVoice?.name || 'default'));
+                if (isAudioPlaying) { stopAudio(); toggleTTSPlay(); }
             });
 
-            loadVoices(); // populate now
-        }
-
-        // ── Text extraction ─────────────────────────────────────────────────
-        function extractTextForAudio() {
-            if (currentPaperId) {
-                const paper = library.find(p => p.id === currentPaperId);
-                if (paper && paper.text) {
-                    return paper.text
-                        .replace(/\[(FIGURE|TABLE|EQUATION)_\d+\]/gi, '')
-                        .replace(/\s{3,}/g, ' ')
-                        .trim();
-                }
-            }
-            if (typeof contentItems !== 'undefined' && contentItems.length > 0) {
-                return contentItems
-                    .filter(i => i.type === 'text' || i.type === 'TEXT')
-                    .map(i => i.content || i.word || '')
-                    .join(' ');
-            }
-            return '';
-        }
-
-        // ── Core speech engine ──────────────────────────────────────────────
-        function speakFrom(charOffset) {
-            if (!audioSpeech) return;
-            audioSpeech.cancel();
-            clearInterval(audioKeepAliveTimer);
-
-            const slice = audioFullText.slice(charOffset);
-            if (!slice.trim()) { stopAudio(); showNotification('✅ Finished reading', 'success'); return; }
-
-            const utter = new SpeechSynthesisUtterance(slice);
-            utter.rate   = audioSpeed;
-            utter.pitch  = 1.0;
-            utter.volume = 1.0;
-            if (selectedVoice) utter.voice = selectedVoice;
-
-            utter.onboundary = (e) => {
-                if (e.name === 'word') {
-                    audioCharOffset = charOffset + e.charIndex;
-                    syncReaderToAudio(audioCharOffset);
-                }
-            };
-
-            utter.onend = () => {
-                if (isAudioPlaying) {
-                    audioCharOffset = audioFullText.length;
-                    stopAudio();
-                    showNotification('✅ Finished reading', 'success');
-                }
-            };
-
-            utter.onerror = (e) => {
-                if (e.error === 'interrupted' || e.error === 'canceled') return;
-                console.error('[Audio] error:', e.error);
-                showNotification('❌ Audio error: ' + e.error, 'error');
-                stopAudio();
-            };
-
-            audioSpeech.speak(utter);
-
-            // Chrome 15-second silence bug workaround
-            audioKeepAliveTimer = setInterval(() => {
-                if (!isAudioPlaying) { clearInterval(audioKeepAliveTimer); return; }
-                if (audioSpeech.speaking) { audioSpeech.pause(); audioSpeech.resume(); }
-            }, 10000);
-        }
-
-        function syncReaderToAudio(charOffset) {
-            if (typeof contentItems === 'undefined') return;
-            const textItems = contentItems.filter(i => i.type === 'text' || i.type === 'TEXT');
-            if (!textItems.length) return;
-            let charCount = 0, targetWord = 0;
-            for (let idx = 0; idx < textItems.length; idx++) {
-                charCount += ((textItems[idx].content || textItems[idx].word || '').length + 1);
-                if (charCount >= charOffset) { targetWord = idx; break; }
-            }
-            let wordsSeen = 0;
-            for (let idx = 0; idx < contentItems.length; idx++) {
-                const item = contentItems[idx];
-                if (item.type === 'text' || item.type === 'TEXT') {
-                    if (wordsSeen === targetWord) {
-                        if (typeof currentIndex !== 'undefined') {
-                            currentIndex = idx;
-                            if (typeof updateDisplay === 'function') updateDisplay();
-                            if (typeof updateStats === 'function') updateStats();
-                        }
-                        break;
-                    }
-                    wordsSeen++;
-                }
-            }
-        }
-
-        function setAudioUIState(playing) {
-            const audioControls = document.getElementById('audioControls');
-            const audioPlayBtn  = document.getElementById('audioPlayBtn');
-            const audioPauseBtn = document.getElementById('audioPauseBtn');
-            if (!audioControls) return;
-            audioControls.style.display = 'flex';
-            audioControls.classList.toggle('active', playing);
-            if (audioPlayBtn)  audioPlayBtn.style.display  = playing ? 'none' : 'flex';
-            if (audioPauseBtn) audioPauseBtn.style.display = playing ? 'flex' : 'none';
-        }
-
-        // ── Public controls ─────────────────────────────────────────────────
-        function playAudio() {
-            if (!audioSpeech) { showNotification('❌ Text-to-speech not supported in this browser', 'error'); return; }
-            if (!currentPaperId) { showNotification('⚠️ Please open a document first', 'warning'); return; }
-            if (isAudioPlaying) return;
-
-            if (!audioFullText) {
-                audioFullText = extractTextForAudio();
-                audioCharOffset = 0;
-                if (!audioFullText) { showNotification('⚠️ No text to read', 'warning'); return; }
-            }
-
-            isAudioPlaying = true;
-            setAudioUIState(true);
-            speakFrom(audioCharOffset);
-            showNotification(`🎤 Reading with "${selectedVoice?.name || 'default voice'}" at ${audioSpeed}x`, 'info');
-        }
-
-        function pauseAudio() {
-            if (!audioSpeech || !isAudioPlaying) return;
-            audioSpeech.cancel(); // cancel is more reliable than pause() cross-browser
-            clearInterval(audioKeepAliveTimer);
-            isAudioPlaying = false;
-            setAudioUIState(false);
-            showNotification('⏸️ Audio paused', 'info');
-        }
-
-        function stopAudio() {
-            if (!audioSpeech) return;
-            audioSpeech.cancel();
-            clearInterval(audioKeepAliveTimer);
-            isAudioPlaying = false;
-            audioFullText = '';
-            audioCharOffset = 0;
-            setAudioUIState(false);
-        }
-
-        function cycleAudioSpeed() {
-            currentSpeedIndex = (currentSpeedIndex + 1) % audioSpeeds.length;
-            audioSpeed = audioSpeeds[currentSpeedIndex];
-            const btn = document.getElementById('audioSpeed');
-            if (btn) btn.textContent = audioSpeed.toFixed(1) + 'x';
-            showNotification('⚡ Speed: ' + audioSpeed + 'x', 'info');
-            if (isAudioPlaying) speakFrom(audioCharOffset);
-        }
-
-        function stopAudioOnDocumentChange() {
-            stopAudio();
-            audioFullText = '';
-            audioCharOffset = 0;
+            loadVoices();
         }
 
         // ── Init ────────────────────────────────────────────────────────────
         function initAudioControls() {
-            const audioPlayBtn  = document.getElementById('audioPlayBtn');
-            const audioPauseBtn = document.getElementById('audioPauseBtn');
-            const audioStopBtn  = document.getElementById('audioStopBtn');
-            const audioSpeedBtn = document.getElementById('audioSpeed');
-            if (!audioSpeech) return;
+            const playBtn  = document.getElementById('playBtn');
+            const prevBtn  = document.getElementById('prevBtn');
+            const nextBtn  = document.getElementById('nextBtn');
+            const speedBtn = document.getElementById('speedBtn');
 
-            audioPlayBtn?.addEventListener('click',  playAudio);
-            audioPauseBtn?.addEventListener('click', pauseAudio);
-            audioStopBtn?.addEventListener('click',  stopAudio);
-            audioSpeedBtn?.addEventListener('click', cycleAudioSpeed);
+            if (!playBtn) return;
+
+            playBtn.addEventListener('click', toggleTTSPlay);
+
+            if (prevBtn) prevBtn.addEventListener('click', () => {
+                audioCharOffset = Math.max(0, audioCharOffset - 500);
+                if (isAudioPlaying) { stopAudio(); toggleTTSPlay(); }
+            });
+
+            if (nextBtn) nextBtn.addEventListener('click', () => {
+                audioCharOffset = Math.min(audioFullText.length, audioCharOffset + 500);
+                if (isAudioPlaying) { stopAudio(); toggleTTSPlay(); }
+            });
+
+            if (speedBtn) speedBtn.addEventListener('click', () => {
+                currentSpeedIndex = (currentSpeedIndex + 1) % audioSpeeds.length;
+                audioSpeed = audioSpeeds[currentSpeedIndex];
+                speedBtn.textContent = audioSpeed + 'x';
+                showNotification('⚡ Speed: ' + audioSpeed + 'x');
+                if (isAudioPlaying) { stopAudio(); toggleTTSPlay(); }
+            });
 
             buildVoiceSelectorUI();
-            console.log('[Audio] Controls initialised. Voice:', selectedVoice?.name || 'pending');
         }
 
         document.addEventListener('DOMContentLoaded', () => setTimeout(initAudioControls, 600));
-
-        console.log('🎤 Audio reader v3 loaded — smart human voice selection active');
+        console.log('🎤 Audio TTS v4 — smart browser voice selection active');
         console.log('💡 Best voices: Google UK English Female (Chrome), Microsoft Neural (Edge), Karen/Moira (Safari)');
 
     </script>

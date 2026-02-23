@@ -2522,13 +2522,36 @@
             }
         }
 
-        // Save library
+        // Save library — strip base64 images before persisting to avoid
+        // hitting localStorage's ~5MB quota (images are kept in memory only)
         function saveLibrary() {
             try {
-                localStorage.setItem('swiftsLibrary', JSON.stringify(library));
-                console.log('[Library] Saved');
+                const toSave = library.map(paper => {
+                    if (!paper.media || paper.media.length === 0) return paper;
+                    return {
+                        ...paper,
+                        media: paper.media.map(m => {
+                            if (m.type === 'figure' && m.image) {
+                                // Keep metadata, drop the heavy base64 image data
+                                const { image, ...rest } = m;
+                                return { ...rest, imageStripped: true };
+                            }
+                            return m;
+                        })
+                    };
+                });
+                localStorage.setItem('swiftsLibrary', JSON.stringify(toSave));
+                console.log('[Library] Saved (' + toSave.length + ' papers, images stripped for storage)');
             } catch (error) {
                 console.error('[Library] Failed to save:', error);
+                // If still failing (e.g. text is huge), save without text content
+                try {
+                    const minimal = library.map(p => ({ ...p, text: '', media: [] }));
+                    localStorage.setItem('swiftsLibrary', JSON.stringify(minimal));
+                    console.warn('[Library] Saved in minimal mode (text stripped)');
+                } catch (e2) {
+                    console.error('[Library] Could not save even minimal library:', e2);
+                }
             }
         }
 
@@ -2634,8 +2657,8 @@
                 saveSettings();
             });
 
-            // Play/Pause
-            playBtn.addEventListener('click', toggleTTSPlay);
+            // Play/Pause (speed reader)
+            playBtn.addEventListener('click', togglePlay);
 
             // Navigation
             prevBtn.addEventListener('click', () => {
@@ -3198,32 +3221,54 @@
                             // Crop the figure region from the rendered canvas
                             let figImage = null;
                             if (canvasData) {
-                                // Find Y position of this caption line
+                                // Find caption Y on canvas (PDF coords are bottom-up)
                                 const captionItems = items.filter(it =>
-                                    it.str && line.includes(it.str.slice(0, Math.min(8, it.str.length)))
+                                    it.str && it.str.length > 3 &&
+                                    line.includes(it.str.slice(0, Math.min(10, it.str.length)))
                                 );
                                 if (captionItems.length > 0) {
-                                    const captionY  = Math.min(...captionItems.map(it => it.y));
-                                    const pageH     = canvasData.viewport.height / canvasData.viewport.scale;
-                                    const scale     = canvasData.viewport.scale;
-                                    const captionCanvasY = canvasData.viewport.height - (captionY * scale);
+                                    const scale = canvasData.viewport.scale;
+                                    const canvasH = canvasData.canvas.height;
+                                    // PDF y=0 is bottom of page; canvas y=0 is top
+                                    const captionPdfY   = Math.min(...captionItems.map(it => it.y));
+                                    const captionCanvasY = canvasH - (captionPdfY * scale);
 
-                                    // Try figure ABOVE caption first (most common layout)
-                                    const figHeight = Math.min(400, captionCanvasY - 10);
-                                    const figTop    = Math.max(0, captionCanvasY - figHeight);
+                                    // Figures can be ABOVE or BELOW the caption.
+                                    // Strategy: crop the larger region (above vs below caption).
+                                    const aboveHeight = Math.max(0, captionCanvasY - 20);
+                                    const belowHeight = Math.max(0, canvasH - captionCanvasY - 40);
 
-                                    if (figHeight > 40) {
+                                    let figTop, figHeight;
+                                    if (aboveHeight >= belowHeight && aboveHeight > 60) {
+                                        // Figure is above caption (most common in papers)
+                                        figTop    = Math.max(0, captionCanvasY - aboveHeight);
+                                        figHeight = aboveHeight;
+                                    } else if (belowHeight > 60) {
+                                        // Figure is below caption (some layouts)
+                                        figTop    = captionCanvasY + 20;
+                                        figHeight = belowHeight;
+                                    }
+
+                                    if (figHeight && figHeight > 60) {
                                         const crop = document.createElement('canvas');
                                         crop.width  = canvasData.canvas.width;
-                                        crop.height = figHeight;
+                                        crop.height = Math.min(figHeight, 500);
                                         const ctx = crop.getContext('2d');
                                         ctx.drawImage(canvasData.canvas,
-                                            0, figTop, crop.width, figHeight,
-                                            0, 0,      crop.width, figHeight);
-                                        figImage = crop.toDataURL('image/png');
+                                            0, figTop, crop.width, crop.height,
+                                            0, 0,      crop.width, crop.height);
+                                        figImage = crop.toDataURL('image/jpeg', 0.75); // JPEG saves ~4x space vs PNG
                                     }
                                 }
-                                if (!figImage) figImage = canvasData.canvas.toDataURL('image/png');
+                                // Fallback: use full page but compress heavily
+                                if (!figImage) {
+                                    const crop = document.createElement('canvas');
+                                    crop.width  = Math.floor(canvasData.canvas.width * 0.5);
+                                    crop.height = Math.floor(canvasData.canvas.height * 0.5);
+                                    const ctx = crop.getContext('2d');
+                                    ctx.drawImage(canvasData.canvas, 0, 0, crop.width, crop.height);
+                                    figImage = crop.toDataURL('image/jpeg', 0.6);
+                                }
                             }
 
                             fullText += `
@@ -3293,7 +3338,7 @@
                     const ctx = crop.getContext('2d');
                     ctx.drawImage(canvasData.canvas, 0, 0, crop.width, cropHeight,
                                                      0, 0, crop.width, cropHeight);
-                    const figImage = crop.toDataURL('image/png');
+                    const figImage = crop.toDataURL('image/jpeg', 0.7);
 
                     fullText += `
 [FIGURE_${figureCount}]
@@ -4916,6 +4961,11 @@
 
                 const previewContent = hasImage
                     ? `<img src="${item.image}" alt="${item.caption}" style="max-width:100%;max-height:160px;object-fit:contain;">`
+                    : item.imageStripped
+                        ? `<div style="font-size:11px;color:var(--text-tertiary);padding:8px;text-align:center;">
+                              <div style="font-size:28px;margin-bottom:4px;">🖼️</div>
+                              Re-open this paper to view image
+                           </div>`
                     : item.type === 'equation'
                         ? `<div style="font-family:monospace;font-size:13px;padding:8px;word-break:break-all;color:var(--text-primary);">${item.latex || item.caption}</div>`
                         : `<div style="font-size:40px;color:var(--text-tertiary);">${icon}</div>`;
@@ -5937,24 +5987,11 @@
 
         // ── Init ────────────────────────────────────────────────────────────
         function initAudioControls() {
-            const playBtn  = document.getElementById('playBtn');
-            const prevBtn  = document.getElementById('prevBtn');
-            const nextBtn  = document.getElementById('nextBtn');
-            const speedBtn = document.getElementById('speedBtn');
+            const audioPlayBtn = document.getElementById('audioPlayBtn');
+            const speedBtn     = document.getElementById('speedBtn');
 
-            if (!playBtn) return;
-
-            playBtn.addEventListener('click', toggleTTSPlay);
-
-            if (prevBtn) prevBtn.addEventListener('click', () => {
-                audioCharOffset = Math.max(0, audioCharOffset - 500);
-                if (isAudioPlaying) { stopAudio(); toggleTTSPlay(); }
-            });
-
-            if (nextBtn) nextBtn.addEventListener('click', () => {
-                audioCharOffset = Math.min(audioFullText.length, audioCharOffset + 500);
-                if (isAudioPlaying) { stopAudio(); toggleTTSPlay(); }
-            });
+            // Wire the TTS play button (separate from the speed-reader playBtn)
+            if (audioPlayBtn) audioPlayBtn.addEventListener('click', toggleTTSPlay);
 
             if (speedBtn) speedBtn.addEventListener('click', () => {
                 currentSpeedIndex = (currentSpeedIndex + 1) % audioSpeeds.length;

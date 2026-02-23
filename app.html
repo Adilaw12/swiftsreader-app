@@ -4671,7 +4671,10 @@
 
         // Play
         function play() {
-            if (contentItems.length === 0) return;
+            if (contentItems.length === 0) {
+                showNotification('📄 Open a paper first to start reading', 'warning');
+                return;
+            }
             if (currentIndex >= contentItems.length - 1) {
                 currentIndex = 0;
             }
@@ -5937,8 +5940,10 @@
             isAudioPlaying = false;
             clearInterval(window._ttsKeepAlive);
             if (synth) synth.cancel();
-            const btn = document.getElementById('playBtn');
-            if (btn) btn.textContent = '▶';
+            const btn = document.getElementById('audioPlayBtn');
+            if (btn) btn.textContent = '▶️';
+            const pauseBtn = document.getElementById('audioPauseBtn');
+            if (pauseBtn) pauseBtn.style.display = 'none';
         }
 
         function toggleTTSPlay() {
@@ -5949,13 +5954,22 @@
             if (isAudioPlaying) {
                 stopAudio();
             } else {
-                const text = getReadableText ? getReadableText() : '';
-                if (!text) { showNotification('❌ No text loaded', 'error'); return; }
-                audioFullText  = text;
-                isAudioPlaying = true;
-                const btn = document.getElementById('playBtn');
-                if (btn) btn.textContent = '⏸';
-                speakFrom(audioCharOffset);
+                // Get text from the currently open paper
+                const paper = currentPaperId ? library.find(p => p.id === currentPaperId) : null;
+                const text = (paper?.text || '').trim();
+                if (!text) {
+                    showNotification('📄 Open a paper first to use audio reading', 'warning');
+                    return;
+                }
+                audioFullText   = text;
+                audioCharOffset = 0;
+                isAudioPlaying  = true;
+                // Update the audio play button icon
+                const btn = document.getElementById('audioPlayBtn');
+                if (btn) btn.textContent = '⏸️';
+                const pauseBtn = document.getElementById('audioPauseBtn');
+                if (pauseBtn) pauseBtn.style.display = '';
+                speakFrom(0);
             }
         }
 
@@ -5990,8 +6004,34 @@
             const audioPlayBtn = document.getElementById('audioPlayBtn');
             const speedBtn     = document.getElementById('speedBtn');
 
-            // Wire the TTS play button (separate from the speed-reader playBtn)
+            // Wire TTS audio buttons
             if (audioPlayBtn) audioPlayBtn.addEventListener('click', toggleTTSPlay);
+
+            const audioPauseBtn = document.getElementById('audioPauseBtn');
+            if (audioPauseBtn) audioPauseBtn.addEventListener('click', () => {
+                if (synth && synth.speaking) {
+                    synth.pause();
+                    isAudioPlaying = false;
+                    audioPlayBtn.textContent = '▶️';
+                    audioPauseBtn.style.display = 'none';
+                }
+            });
+
+            const audioStopBtn = document.getElementById('audioStopBtn');
+            if (audioStopBtn) audioStopBtn.addEventListener('click', () => {
+                stopAudio();
+                audioCharOffset = 0; // reset position
+            });
+
+            // Wire speed control (id="audioSpeed" not "speedBtn")
+            const audioSpeedEl = document.getElementById('audioSpeed');
+            if (audioSpeedEl) audioSpeedEl.addEventListener('click', () => {
+                currentSpeedIndex = (currentSpeedIndex + 1) % audioSpeeds.length;
+                audioSpeed = audioSpeeds[currentSpeedIndex];
+                audioSpeedEl.textContent = audioSpeed + 'x';
+                showNotification('⚡ Speed: ' + audioSpeed + 'x');
+                if (isAudioPlaying) { stopAudio(); toggleTTSPlay(); }
+            });
 
             if (speedBtn) speedBtn.addEventListener('click', () => {
                 currentSpeedIndex = (currentSpeedIndex + 1) % audioSpeeds.length;

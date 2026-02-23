@@ -5910,54 +5910,6 @@
         console.log('🎤 Audio reader v3 loaded — smart human voice selection active');
         console.log('💡 Best voices: Google UK English Female (Chrome), Microsoft Neural (Edge), Karen/Moira (Safari)');
 
-        /* ── Contact Us Modal ─────────────────────────── */
-        function openContactModal() {
-            document.getElementById('contactModalOverlay').classList.add('open');
-            document.getElementById('appContactEmail').focus();
-        }
-        function closeContactModal() {
-            document.getElementById('contactModalOverlay').classList.remove('open');
-            document.getElementById('appContactFormEl').reset();
-            document.getElementById('appContactForm').style.display = '';
-            document.getElementById('appContactSuccess').style.display = 'none';
-            const btn = document.getElementById('appContactSubmitBtn');
-            if (btn) { btn.disabled = false; btn.textContent = 'Send Message'; }
-        }
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('contactModalOverlay').addEventListener('click', function(e) {
-                if (e.target === this) closeContactModal();
-            });
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && document.getElementById('contactModalOverlay').classList.contains('open')) {
-                    closeContactModal();
-                }
-            });
-            document.getElementById('appContactFormEl').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const btn = document.getElementById('appContactSubmitBtn');
-                btn.disabled = true;
-                btn.textContent = 'Sending…';
-                try {
-                    const resp = await fetch('https://formspree.io/f/xaqdyvjn', {
-                        method: 'POST',
-                        headers: { 'Accept': 'application/json' },
-                        body: new FormData(this)
-                    });
-                    if (resp.ok) {
-                        document.getElementById('appContactForm').style.display = 'none';
-                        document.getElementById('appContactSuccess').style.display = 'block';
-                    } else {
-                        btn.disabled = false;
-                        btn.textContent = 'Send Message';
-                        alert('Something went wrong. Please try again.');
-                    }
-                } catch {
-                    btn.disabled = false;
-                    btn.textContent = 'Send Message';
-                    alert('Network error. Please try again.');
-                }
-            });
-        });
     </script>
 
     <!-- Contact Us Modal -->
@@ -5986,5 +5938,54 @@
             </div>
         </div>
     </div>
+    <script>
+        /* ── Contact Us Modal ── placed after modal HTML so elements exist immediately ── */
+        function openContactModal() {
+            document.getElementById('contactModalOverlay').classList.add('open');
+            document.getElementById('appContactEmail').focus();
+        }
+        function closeContactModal() {
+            document.getElementById('contactModalOverlay').classList.remove('open');
+            document.getElementById('appContactFormEl').reset();
+            document.getElementById('appContactForm').style.display = '';
+            document.getElementById('appContactSuccess').style.display = 'none';
+            const btn = document.getElementById('appContactSubmitBtn');
+            if (btn) { btn.disabled = false; btn.textContent = 'Send Message'; }
+        }
+        // Elements exist now — attach listeners directly (no event wrapper needed)
+        document.getElementById('contactModalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeContactModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('contactModalOverlay').classList.contains('open')) {
+                closeContactModal();
+            }
+        });
+        document.getElementById('appContactFormEl').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('appContactSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Sending…';
+            try {
+                const resp = await fetch('https://formspree.io/f/xaqdyvjn', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: new FormData(this)
+                });
+                if (resp.ok) {
+                    document.getElementById('appContactForm').style.display = 'none';
+                    document.getElementById('appContactSuccess').style.display = 'block';
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = 'Send Message';
+                    alert('Something went wrong. Please try again.');
+                }
+            } catch {
+                btn.disabled = false;
+                btn.textContent = 'Send Message';
+                alert('Network error. Please try again.');
+            }
+        });
+    </script>
 </body>
 </html>

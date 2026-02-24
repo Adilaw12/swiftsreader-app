@@ -792,6 +792,24 @@
             padding: var(--space-2xl);
         }
 
+        /* ── Dyslexia mode CSS ────────────────────────────────── */
+        /* Letter and word spacing applied via CSS vars set by applyDyslexiaMode() */
+        body.dyslexia-mode .word-display {
+            letter-spacing: var(--dyslexia-letter-spacing, 0px);
+            word-spacing:   var(--dyslexia-word-spacing,   0px);
+            font-family:    Arial, Verdana, sans-serif; /* sans-serif: evidence-based */
+            line-height:    1.6;  /* extra line height reduces crowding */
+        }
+        /* Narrow column: limits line length to ~60 chars (reduces visual crowding) */
+        body.dyslexia-mode .reader-area {
+            max-width: 640px;
+            margin: 0 auto;
+        }
+        /* Smooth tint transitions */
+        .reader-area, .word-display {
+            transition: background-color 0.3s ease;
+        }
+
         .word-display {
             font-size: 48px;
             font-weight: 700;
@@ -2064,10 +2082,42 @@
                         </div>
                     </div>
                     <div class="control-group">
-                        <div class="control-label">Accessibility</div>
+                        <div class="control-label">Dyslexia Mode</div>
                         <div class="select-group">
-                            <button class="select-button active" data-dyslexia="false">Regular</button>
-                            <button class="select-button" data-dyslexia="true">Dyslexic</button>
+                            <button class="select-button active" data-dyslexia="false">Off</button>
+                            <button class="select-button" data-dyslexia="true">On</button>
+                        </div>
+                    </div>
+                    <!-- Dyslexia sub-controls — shown only when Dyslexia Mode is On -->
+                    <div id="dyslexiaControls" style="display:none;">
+                        <div class="control-group" style="margin-top:8px;">
+                            <div class="control-label" style="font-size:10px;color:var(--text-tertiary);">Background tint</div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                                <button class="tint-btn active" data-tint="none"    title="None"        style="width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid var(--primary);cursor:pointer;"></button>
+                                <button class="tint-btn"        data-tint="cream"   title="Cream"       style="width:22px;height:22px;border-radius:50%;background:#FEFAE0;border:2px solid transparent;cursor:pointer;"></button>
+                                <button class="tint-btn"        data-tint="yellow"  title="Pale yellow" style="width:22px;height:22px;border-radius:50%;background:#FFFACD;border:2px solid transparent;cursor:pointer;"></button>
+                                <button class="tint-btn"        data-tint="blue"    title="Pale blue"   style="width:22px;height:22px;border-radius:50%;background:#E8F4FD;border:2px solid transparent;cursor:pointer;"></button>
+                                <button class="tint-btn"        data-tint="green"   title="Pale green"  style="width:22px;height:22px;border-radius:50%;background:#F0FBF0;border:2px solid transparent;cursor:pointer;"></button>
+                                <button class="tint-btn"        data-tint="peach"   title="Peach"       style="width:22px;height:22px;border-radius:50%;background:#FEF0E7;border:2px solid transparent;cursor:pointer;"></button>
+                                <button class="tint-btn"        data-tint="lavender" title="Lavender"   style="width:22px;height:22px;border-radius:50%;background:#F3EFFE;border:2px solid transparent;cursor:pointer;"></button>
+                            </div>
+                        </div>
+                        <div class="control-group" style="margin-top:8px;">
+                            <div class="control-label" style="font-size:10px;color:var(--text-tertiary);">Letter spacing <span id="letterSpacingVal">+2px</span></div>
+                            <input type="range" id="letterSpacingSlider" min="0" max="6" step="1" value="2"
+                                style="width:100%;margin-top:4px;accent-color:var(--primary);">
+                        </div>
+                        <div class="control-group" style="margin-top:8px;">
+                            <div class="control-label" style="font-size:10px;color:var(--text-tertiary);">Word spacing <span id="wordSpacingVal">+4px</span></div>
+                            <input type="range" id="wordSpacingSlider" min="0" max="12" step="2" value="4"
+                                style="width:100%;margin-top:4px;accent-color:var(--primary);">
+                        </div>
+                        <div class="control-group" style="margin-top:8px;">
+                            <div class="control-label" style="font-size:10px;color:var(--text-tertiary);">TTS word highlight</div>
+                            <div class="select-group" style="margin-top:4px;">
+                                <button class="select-button active" data-ttshighlight="on">On</button>
+                                <button class="select-button" data-ttshighlight="off">Off</button>
+                            </div>
                         </div>
                     </div>
                     <div class="control-group">
@@ -2310,7 +2360,22 @@
         let fontSize = 48;
         let fontFamily = 'Inter';
         let highlightMode = 'none';
-        let isDyslexic = false;
+        let isDyslexic        = false;
+        let dyslexiaTint      = 'none';   // background tint colour key
+        let letterSpacing     = 2;        // px, added inter-letter spacing
+        let wordSpacing       = 4;        // px, added inter-word spacing
+        let ttsWordHighlight  = true;     // highlight current word during TTS
+
+        // Tint colour map (evidence-based tints from visual stress research)
+        const TINT_COLORS = {
+            none:     null,
+            cream:    '#FEFAE0',
+            yellow:   '#FFFACD',
+            blue:     '#E8F4FD',
+            green:    '#F0FBF0',
+            peach:    '#FEF0E7',
+            lavender: '#F3EFFE',
+        };
         let theme = 'light';
         let animationFrame = null;
         let lastUpdate = 0;
@@ -2470,6 +2535,35 @@
                         btn.classList.toggle('active', btn.dataset.dyslexia === String(isDyslexic));
                     });
                 }
+                if (settings.dyslexiaTint) {
+                    dyslexiaTint = settings.dyslexiaTint;
+                    document.querySelectorAll('.tint-btn').forEach(btn => {
+                        const active = btn.dataset.tint === dyslexiaTint;
+                        btn.style.border = active ? '2px solid var(--primary)' : '2px solid transparent';
+                    });
+                }
+                if (settings.letterSpacing !== undefined) {
+                    letterSpacing = settings.letterSpacing;
+                    const ls = document.getElementById('letterSpacingSlider');
+                    const lv = document.getElementById('letterSpacingVal');
+                    if (ls) ls.value = letterSpacing;
+                    if (lv) lv.textContent = '+' + letterSpacing + 'px';
+                }
+                if (settings.wordSpacing !== undefined) {
+                    wordSpacing = settings.wordSpacing;
+                    const ws = document.getElementById('wordSpacingSlider');
+                    const wv = document.getElementById('wordSpacingVal');
+                    if (ws) ws.value = wordSpacing;
+                    if (wv) wv.textContent = '+' + wordSpacing + 'px';
+                }
+                if (settings.ttsWordHighlight !== undefined) {
+                    ttsWordHighlight = settings.ttsWordHighlight;
+                    document.querySelectorAll('[data-ttshighlight]').forEach(btn => {
+                        btn.classList.toggle('active', (btn.dataset.ttshighlight === 'on') === ttsWordHighlight);
+                    });
+                }
+                // Re-apply dyslexia mode after loading settings
+                if (isDyslexic) applyDyslexiaMode();
                 
                 if (settings.theme) {
                     theme = settings.theme;
@@ -2503,7 +2597,11 @@
                     highlightMode,
                     isDyslexic,
                     theme,
-                    breakInterval
+                    breakInterval,
+                    dyslexiaTint,
+                    letterSpacing,
+                    wordSpacing,
+                    ttsWordHighlight,
                 };
                 localStorage.setItem('swiftsSettings', JSON.stringify(settings));
             } catch (error) {
@@ -2710,13 +2808,69 @@
                 });
             });
 
-            // Dyslexia Toggle
+            // ── Dyslexia Mode toggle ────────────────────────────────────────
             document.querySelectorAll('[data-dyslexia]').forEach(btn => {
-                btn.addEventListener('click', (e) => {
+                btn.addEventListener('click', () => {
                     document.querySelectorAll('[data-dyslexia]').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     isDyslexic = btn.dataset.dyslexia === 'true';
+                    // Evidence: slower reading improves comprehension for dyslexic readers
+                    if (isDyslexic && audioSpeed === 1.0) {
+                        audioSpeed = 0.75;
+                        currentSpeedIndex = audioSpeeds.indexOf(0.75);
+                        const speedEl = document.getElementById('audioSpeed');
+                        if (speedEl) speedEl.textContent = '0.75x';
+                    } else if (!isDyslexic && audioSpeed === 0.75) {
+                        audioSpeed = 1.0;
+                        currentSpeedIndex = audioSpeeds.indexOf(1.0);
+                        const speedEl = document.getElementById('audioSpeed');
+                        if (speedEl) speedEl.textContent = '1.0x';
+                    }
+                    applyDyslexiaMode();
                     updateDisplay();
+                    saveSettings();
+                });
+            });
+
+            // Tint buttons
+            document.querySelectorAll('.tint-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tint-btn').forEach(b => {
+                        b.style.border = '2px solid transparent';
+                    });
+                    btn.style.border = '2px solid var(--primary)';
+                    dyslexiaTint = btn.dataset.tint;
+                    applyDyslexiaMode();
+                    saveSettings();
+                });
+            });
+
+            // Letter spacing slider
+            const letterSlider = document.getElementById('letterSpacingSlider');
+            const letterVal    = document.getElementById('letterSpacingVal');
+            if (letterSlider) letterSlider.addEventListener('input', () => {
+                letterSpacing = parseInt(letterSlider.value);
+                if (letterVal) letterVal.textContent = '+' + letterSpacing + 'px';
+                applyDyslexiaMode();
+                saveSettings();
+            });
+
+            // Word spacing slider
+            const wordSlider = document.getElementById('wordSpacingSlider');
+            const wordVal    = document.getElementById('wordSpacingVal');
+            if (wordSlider) wordSlider.addEventListener('input', () => {
+                wordSpacing = parseInt(wordSlider.value);
+                if (wordVal) wordVal.textContent = '+' + wordSpacing + 'px';
+                applyDyslexiaMode();
+                saveSettings();
+            });
+
+            // TTS word highlight toggle
+            document.querySelectorAll('[data-ttshighlight]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('[data-ttshighlight]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    ttsWordHighlight = btn.dataset.ttshighlight === 'on';
                     saveSettings();
                 });
             });
@@ -2897,6 +3051,76 @@
         }
 
         // Apply reading template
+        // ── Apply dyslexia mode settings to the whole app ──────────────────────
+        function applyDyslexiaMode() {
+            const root         = document.documentElement;
+            const readerArea   = document.querySelector('.reader-area');
+            const dyslexiaPanel = document.getElementById('dyslexiaControls');
+
+            if (!isDyslexic) {
+                // Reset everything dyslexia-specific
+                document.body.classList.remove('dyslexia-mode');
+                root.style.removeProperty('--dyslexia-letter-spacing');
+                root.style.removeProperty('--dyslexia-word-spacing');
+                if (readerArea) {
+                    readerArea.style.removeProperty('background-color');
+                    readerArea.style.removeProperty('max-width');
+                }
+                const wd = document.querySelector('.word-display');
+                if (wd) {
+                    wd.style.removeProperty('background-color');
+                    wd.style.removeProperty('border-radius');
+                    wd.style.removeProperty('padding');
+                    wd.style.removeProperty('letter-spacing');
+                    wd.style.removeProperty('word-spacing');
+                }
+                if (dyslexiaPanel) dyslexiaPanel.style.display = 'none';
+                clearWordHighlight();
+                return;
+            }
+            document.body.classList.add('dyslexia-mode');
+
+            // Show the sub-controls panel
+            if (dyslexiaPanel) dyslexiaPanel.style.display = '';
+
+            // 1. Background tint (evidence: coloured overlays reduce visual stress)
+            const tintColor = TINT_COLORS[dyslexiaTint];
+            if (readerArea) {
+                readerArea.style.backgroundColor = tintColor || '';
+            }
+            // Also tint the word display area
+            const wordDisplay = document.querySelector('.word-display');
+            if (wordDisplay) {
+                wordDisplay.style.backgroundColor = tintColor || '';
+                wordDisplay.style.borderRadius = tintColor ? '12px' : '';
+                wordDisplay.style.padding = tintColor ? '16px' : '';
+            }
+
+            // 2. Letter spacing (evidence: Zorzi et al. 2012, Perea et al. 2012)
+            root.style.setProperty('--dyslexia-letter-spacing', letterSpacing + 'px');
+
+            // 3. Word spacing (evidence: inter-word spacing reduces crowding)
+            root.style.setProperty('--dyslexia-word-spacing', wordSpacing + 'px');
+
+            // 4. Narrow column — limits line length to ~60 chars (reduces crowding)
+            if (readerArea) {
+                readerArea.style.maxWidth = '640px';
+            }
+
+            // 5. Apply spacing to the reader display
+            updateDyslexiaStyles();
+        }
+
+        // Apply letter/word spacing CSS to any currently rendered text
+        function updateDyslexiaStyles() {
+            if (!isDyslexic) return;
+            const display = document.querySelector('.word-display');
+            if (display) {
+                display.style.letterSpacing = letterSpacing + 'px';
+                display.style.wordSpacing   = wordSpacing + 'px';
+            }
+        }
+
         function applyTemplate(templateName) {
             const template = ReadingTemplates[templateName];
             if (!template) return;
@@ -4642,6 +4866,22 @@
             html += '</div>';
             
             displayEl.innerHTML = html;
+
+            // Apply dyslexia spacing and font after render
+            if (isDyslexic) {
+                const wd = displayEl.querySelector('.word-display');
+                if (wd) {
+                    wd.style.letterSpacing = letterSpacing + 'px';
+                    wd.style.wordSpacing   = wordSpacing + 'px';
+                    // Apply tint to the display box too
+                    const tintColor = TINT_COLORS[dyslexiaTint];
+                    if (tintColor) {
+                        wd.style.backgroundColor = tintColor;
+                        wd.style.borderRadius    = '12px';
+                        wd.style.padding         = '16px';
+                    }
+                }
+            }
         }
 
         // Zoom image
@@ -5791,6 +6031,63 @@
         // ============================================
         // AUDIO READER — Smart Human Voice Selection
         // ============================================
+        // ── TTS word highlight helper ────────────────────────────────────────────
+        // Called on each word boundary event during TTS playback.
+        // Highlights the spoken word in a dedicated overlay bar beneath the reader.
+        let _ttsHighlightBar = null;
+
+        function highlightCurrentWord(word, charPos) {
+            if (!word || !isDyslexic || !ttsWordHighlight) return;
+
+            // Create the highlight bar if it doesn't exist
+            if (!_ttsHighlightBar) {
+                _ttsHighlightBar = document.createElement('div');
+                _ttsHighlightBar.id = 'ttsWordBar';
+                _ttsHighlightBar.style.cssText = [
+                    'position:fixed',
+                    'bottom:80px',
+                    'left:50%',
+                    'transform:translateX(-50%)',
+                    'background:var(--primary)',
+                    'color:#fff',
+                    'padding:8px 24px',
+                    'border-radius:24px',
+                    'font-size:20px',
+                    'font-weight:700',
+                    'letter-spacing:3px',
+                    'pointer-events:none',
+                    'z-index:9999',
+                    'opacity:0',
+                    'transition:opacity 0.1s',
+                    'max-width:80vw',
+                    'text-align:center',
+                ].join(';');
+                document.body.appendChild(_ttsHighlightBar);
+            }
+
+            _ttsHighlightBar.textContent = word;
+            _ttsHighlightBar.style.opacity = '1';
+
+            // Also highlight matching word spans in the speed-reader display
+            document.querySelectorAll('.word-display .word').forEach(span => {
+                const matches = span.textContent.trim().toLowerCase().startsWith(word.toLowerCase().slice(0, 4));
+                span.style.background    = matches ? 'var(--primary)' : '';
+                span.style.color         = matches ? '#fff' : '';
+                span.style.borderRadius  = matches ? '4px' : '';
+                span.style.padding       = matches ? '0 2px' : '';
+            });
+        }
+
+        function clearWordHighlight() {
+            if (_ttsHighlightBar) _ttsHighlightBar.style.opacity = '0';
+            document.querySelectorAll('.word-display .word').forEach(span => {
+                span.style.background   = '';
+                span.style.color        = '';
+                span.style.borderRadius = '';
+                span.style.padding      = '';
+            });
+        }
+
         // ── Audio / TTS system (browser speechSynthesis) ──────────────────────
         // Picks the highest-quality voice available in the current browser:
         //   Chrome  → Google UK/US voices (neural quality)
@@ -5902,9 +6199,20 @@
             utter.pitch = 1.0;
             utter.lang  = selectedVoice?.lang || 'en-US';
 
-            // Track position as words are spoken
+            // Track position and highlight current word during TTS
             utter.onboundary = e => {
-                if (e.name === 'word') audioCharOffset = charOffset + e.charIndex;
+                if (e.name === 'word') {
+                    audioCharOffset = charOffset + e.charIndex;
+
+                    // Word highlight — only when dyslexia mode is on with highlight enabled
+                    if (isDyslexic && ttsWordHighlight) {
+                        // Find the word being spoken in the visible reader display
+                        const charPos = charOffset + e.charIndex;
+                        // Get text up to current position to find the word
+                        const wordText = audioFullText.slice(charPos, charPos + (e.charLength || 20)).split(/\s/)[0];
+                        highlightCurrentWord(wordText, charPos);
+                    }
+                }
             };
 
             utter.onend = () => {
@@ -5940,6 +6248,7 @@
             isAudioPlaying = false;
             clearInterval(window._ttsKeepAlive);
             if (synth) synth.cancel();
+            clearWordHighlight();
             const btn = document.getElementById('audioPlayBtn');
             if (btn) btn.textContent = '▶️';
             const pauseBtn = document.getElementById('audioPauseBtn');

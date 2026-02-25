@@ -928,17 +928,92 @@
 
         .progress-bar {
             width: 100%;
-            height: 8px;
+            height: 12px;
             background: var(--bg-tertiary);
             border-radius: var(--radius-full);
+            overflow: visible;
+            position: relative;
+        }
+
+        .progress-bar-inner {
+            width: 100%; height: 100%;
+            border-radius: var(--radius-full);
             overflow: hidden;
+            position: relative;
         }
 
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
             border-radius: var(--radius-full);
-            transition: width var(--transition-fast);
+            transition: width 0.3s ease;
+        }
+
+        .progress-section-tick {
+            position: absolute;
+            top: -2px; bottom: -2px;
+            width: 2px;
+            background: rgba(255,255,255,0.6);
+            pointer-events: none;
+        }
+
+        .paper-eta-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: var(--primary-pale);
+            color: var(--primary-dark);
+            border: 1px solid rgba(0,188,212,0.25);
+            border-radius: 100px;
+            padding: 3px 12px;
+            font-size: 12px; font-weight: 600;
+            margin-top: 6px;
+        }
+
+        .section-progress-bar {
+            display: flex; gap: 3px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .section-pip {
+            height: 6px; flex: 1; min-width: 8px; max-width: 32px;
+            border-radius: 3px;
+            background: var(--bg-tertiary);
+            transition: background 0.3s;
+        }
+        .section-pip.done { background: var(--primary); }
+        .section-pip.current { background: var(--accent); }
+
+        .chunk-pause-banner {
+            display: none;
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: linear-gradient(135deg, var(--primary-pale), rgba(233,30,99,0.08));
+            border: 1.5px solid rgba(0,188,212,0.3);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            text-align: center;
+            z-index: 10;
+        }
+        .chunk-pause-banner.visible { display: block; }
+        .chunk-pause-title {
+            font-size: 18px; font-weight: 700;
+            color: var(--text-primary); margin-bottom: 6px;
+        }
+        .chunk-pause-sub {
+            font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;
+        }
+        .chunk-pause-actions { display: flex; gap: 10px; justify-content: center; }
+        .chunk-btn-continue {
+            background: var(--primary); color: white;
+            border: none; border-radius: var(--radius-md);
+            padding: 10px 24px; font-size: 14px; font-weight: 700;
+            cursor: pointer;
+        }
+        .chunk-btn-continue:hover { background: var(--primary-dark); }
+        .chunk-btn-skip {
+            background: transparent; color: var(--text-secondary);
+            border: 1.5px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 10px 18px; font-size: 14px; cursor: pointer;
         }
 
         /* Notes Area */
@@ -2057,6 +2132,14 @@
                             <button class="select-button" data-break="45">45min</button>
                         </div>
                     </div>
+                    <div class="control-group">
+                        <div class="control-label">Section-by-Section Mode</div>
+                        <div class="select-group">
+                            <button class="select-button active" data-chunkmode="false">Off</button>
+                            <button class="select-button" data-chunkmode="true">On</button>
+                        </div>
+                        <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;line-height:1.4;">Pauses at each section break so you can absorb one chunk at a time</div>
+                    </div>
                 </div>
 
                 <!-- Appearance -->
@@ -2206,13 +2289,30 @@
                         </div>
 
                         <!-- Progress -->
-                        <div class="progress-container">
+                        <div class="progress-container" style="position:relative;">
                             <div class="progress-info">
                                 <span id="progressText">0 / 0 words</span>
                                 <span id="timeRemaining">0:00 remaining</span>
                             </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="progressFill"></div>
+                            <div class="progress-bar" id="progressBarWrap">
+                                <div class="progress-bar-inner">
+                                    <div class="progress-fill" id="progressFill"></div>
+                                </div>
+                            </div>
+                            <!-- Section pips -->
+                            <div class="section-progress-bar" id="sectionPips"></div>
+                            <!-- ETA badge shown before reading starts -->
+                            <div id="etaBadge" class="paper-eta-badge" style="display:none;">
+                                ⏱ <span id="etaBadgeText">~0 min read</span> at your speed
+                            </div>
+                            <!-- Chunk mode pause banner -->
+                            <div class="chunk-pause-banner" id="chunkPauseBanner">
+                                <div class="chunk-pause-title" id="chunkPauseTitle">Section complete ✓</div>
+                                <div class="chunk-pause-sub" id="chunkPauseSub">Take a breath. Ready for the next section?</div>
+                                <div class="chunk-pause-actions">
+                                    <button class="chunk-btn-continue" onclick="chunkContinue()">Next Section →</button>
+                                    <button class="chunk-btn-skip" onclick="chunkSkip()">Skip to End</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2383,6 +2483,8 @@
         let readingStreak = 0;
         let lastReadDate = null;
         let breakInterval = 25; // minutes
+        let isChunkMode = false;          // section-by-section mode
+        let chunkNextSectionStart = -1;   // word index where next section begins (after pause)
         let breakTimer = null;
         let readingStartTime = null;
 
@@ -2746,6 +2848,7 @@
                 document.getElementById('headerWpmDisplay').textContent = wpm;
                 updateStats();
                 saveSettings();
+                showPaperETA(); // refresh ETA estimate
             });
 
             // Chunk Size Slider
@@ -2914,6 +3017,16 @@
                     breakInterval = parseInt(btn.dataset.break);
                     saveSettings();
                     resetBreakTimer();
+                });
+            });
+
+            // Section-by-Section Chunk Mode
+            document.querySelectorAll('[data-chunkmode]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('[data-chunkmode]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    isChunkMode = btn.dataset.chunkmode === 'true';
+                    showNotification(isChunkMode ? '📚 Section Mode: On — pauses at each section' : '📚 Section Mode: Off');
                 });
             });
 
@@ -3898,6 +4011,8 @@
             updateStats();
             buildDocumentMap();
             updateLibraryUI();
+            updateSectionPips();
+            showPaperETA();
 
             const mediaCount = paper.media?.length || 0;
             const mediaInfo = mediaCount > 0 ? ` (${mediaCount} figures/tables)` : '';
@@ -4919,6 +5034,10 @@
                 currentIndex = 0;
             }
 
+            // Hide the ETA badge once reading begins
+            const etaBadge = document.getElementById('etaBadge');
+            if (etaBadge) etaBadge.style.display = 'none';
+
             isPlaying = true;
             playBtn.querySelector('span').textContent = '⏸';
             lastUpdate = performance.now();
@@ -4989,6 +5108,13 @@
                 updateDisplay();
                 updateStats();
                 updateMapViewport();
+                updateSectionPips();
+
+                // Section-by-section chunk mode boundary check
+                if (checkChunkBoundary(currentIndex)) {
+                    return; // paused at section boundary
+                }
+
                 lastUpdate = timestamp;
             }
 
@@ -5021,6 +5147,96 @@
         function updateHeaderStats() {
             const completedCount = library.filter(p => p.completed).length;
             headerPapersDisplay.textContent = completedCount;
+        }
+
+        // ── Feature: Estimated Reading Time ──────────────────────────────────
+        function showPaperETA() {
+            const etaBadge = document.getElementById('etaBadge');
+            const etaBadgeText = document.getElementById('etaBadgeText');
+            if (!etaBadge) return;
+            const totalWords = contentItems.filter(i => i.type === ContentType.TEXT).length;
+            if (totalWords === 0) { etaBadge.style.display = 'none'; return; }
+            const mins = Math.round(totalWords / wpm);
+            const label = mins < 1 ? '<1 min' : mins === 1 ? '~1 min' : `~${mins} min`;
+            etaBadgeText.textContent = `${label} read`;
+            etaBadge.style.display = 'inline-flex';
+        }
+
+        // ── Feature: Section Progress Pips ──────────────────────────────────
+        function updateSectionPips() {
+            const container = document.getElementById('sectionPips');
+            if (!container) return;
+            if (!documentSections || documentSections.length < 2) {
+                container.innerHTML = ''; return;
+            }
+            // Build pips
+            const totalWords = contentItems.filter(i => i.type === ContentType.TEXT).length;
+            const currentWord = contentItems.slice(0, currentIndex + 1).filter(i => i.type === ContentType.TEXT).length;
+            let sectionWordCount = 0;
+            const html = documentSections.map((sec, i) => {
+                sectionWordCount += (sec.words?.length || 0);
+                const sectionProgress = totalWords > 0 ? sectionWordCount / totalWords : 0;
+                const isCurrent = sectionProgress * totalWords >= currentWord && 
+                                  (i === 0 || ((documentSections.slice(0, i).reduce((a,s) => a + (s.words?.length||0), 0) / totalWords) * totalWords < currentWord));
+                const isDone = (sectionWordCount / totalWords) * totalWords < currentWord;
+                return `<div class="section-pip ${isDone ? 'done' : isCurrent ? 'current' : ''}" title="Section ${i+1}"></div>`;
+            }).join('');
+            container.innerHTML = html;
+        }
+
+        // ── Feature: Section-by-Section Chunk Mode ───────────────────────────
+        function checkChunkBoundary(idx) {
+            if (!isChunkMode || !documentSections || documentSections.length < 2) return false;
+            // Find which section we just completed
+            let wordCount = 0;
+            for (let i = 0; i < documentSections.length - 1; i++) {
+                wordCount += (documentSections[i].words?.length || 0);
+                // Map word count to content index approximately
+                const sectionEndIndex = contentItems.filter((_,ci) => {
+                    return contentItems.slice(0, ci+1).filter(c => c.type === ContentType.TEXT).length <= wordCount;
+                }).length;
+                if (idx === sectionEndIndex && idx > 0) {
+                    // At a section boundary — pause
+                    isPlaying = false;
+                    const playBtn = document.getElementById('playBtn');
+                    if (playBtn) playBtn.innerHTML = '▶';
+                    chunkNextSectionStart = idx + 1;
+                    const banner = document.getElementById('chunkPauseBanner');
+                    const title = document.getElementById('chunkPauseTitle');
+                    const sub = document.getElementById('chunkPauseSub');
+                    if (banner) {
+                        title.textContent = `Section ${i + 1} of ${documentSections.length} complete ✓`;
+                        sub.textContent = documentSections[i+1]?.title 
+                            ? `Up next: "${documentSections[i+1].title}" — take a breath first.`
+                            : 'Take a breath. Ready for the next section?';
+                        banner.classList.add('visible');
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function chunkContinue() {
+            const banner = document.getElementById('chunkPauseBanner');
+            if (banner) banner.classList.remove('visible');
+            if (chunkNextSectionStart >= 0) {
+                currentIndex = chunkNextSectionStart;
+                chunkNextSectionStart = -1;
+            }
+            isPlaying = true;
+            const playBtn = document.getElementById('playBtn');
+            if (playBtn) playBtn.innerHTML = '⏸';
+            scheduleNext();
+        }
+
+        function chunkSkip() {
+            const banner = document.getElementById('chunkPauseBanner');
+            if (banner) banner.classList.remove('visible');
+            isChunkMode = false;
+            document.querySelectorAll('[data-chunkmode]').forEach(b => {
+                b.classList.toggle('active', b.dataset.chunkmode === 'false');
+            });
         }
 
         // Save current paper progress

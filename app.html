@@ -5199,7 +5199,7 @@
                     // At a section boundary — pause
                     isPlaying = false;
                     const playBtn = document.getElementById('playBtn');
-                    if (playBtn) playBtn.innerHTML = '▶';
+                    if (playBtn) { const sp = playBtn.querySelector('span'); if (sp) sp.textContent = '▶'; }
                     chunkNextSectionStart = idx + 1;
                     const banner = document.getElementById('chunkPauseBanner');
                     const title = document.getElementById('chunkPauseTitle');
@@ -5224,10 +5224,7 @@
                 currentIndex = chunkNextSectionStart;
                 chunkNextSectionStart = -1;
             }
-            isPlaying = true;
-            const playBtn = document.getElementById('playBtn');
-            if (playBtn) playBtn.innerHTML = '⏸';
-            scheduleNext();
+            play();
         }
 
         function chunkSkip() {

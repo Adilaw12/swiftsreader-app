@@ -1016,6 +1016,96 @@
             padding: 10px 18px; font-size: 14px; cursor: pointer;
         }
 
+        /* ── Page Minimap ────────────────────────────────────────────── */
+        .page-minimap {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+            padding: 14px 16px;
+            background: var(--bg-surface);
+            border: 1.5px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+        }
+        .page-minimap.visible { display: flex; }
+        .minimap-header {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            letter-spacing: 0.5px;
+        }
+        .minimap-page-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .minimap-thumb-wrap {
+            position: relative;
+            width: 100%;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1.5px solid var(--border-light);
+            background: #f5f5f5;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            cursor: pointer;
+        }
+        .minimap-thumb-img {
+            width: 100%;
+            display: block;
+            border-radius: 4px;
+        }
+        /* Glowing position strip */
+        .minimap-position-strip {
+            position: absolute;
+            left: 0; right: 0;
+            height: 18px;
+            background: rgba(0, 188, 212, 0.35);
+            border-top: 2px solid #00BCD4;
+            border-bottom: 2px solid #00BCD4;
+            pointer-events: none;
+            transition: top 0.25s ease;
+            box-shadow: 0 0 8px rgba(0,188,212,0.4);
+        }
+        /* Page dots row */
+        .minimap-page-dots {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .minimap-page-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--border-light);
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .minimap-page-dot.active {
+            background: var(--primary);
+            transform: scale(1.3);
+        }
+        .minimap-page-dot.visited {
+            background: var(--primary-light);
+        }
+        /* No thumbnail placeholder */
+        .minimap-placeholder {
+            width: 100%;
+            aspect-ratio: 3/4;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
         /* Notes Area */
         .notes-area {
             padding: var(--space-lg);
@@ -2315,6 +2405,20 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Page Minimap -->
+                        <div class="page-minimap" id="pageMinimap">
+                            <div class="minimap-header">
+                                <span>📄 Page Snapshot</span>
+                                <span class="minimap-page-label" id="minimapPageLabel">—</span>
+                            </div>
+                            <div class="minimap-thumb-wrap" id="minimapThumbWrap">
+                                <div class="minimap-placeholder" id="minimapPlaceholder">No PDF loaded</div>
+                                <img class="minimap-thumb-img" id="minimapThumbImg" style="display:none;" alt="Page preview" />
+                                <div class="minimap-position-strip" id="minimapStrip" style="top:40%;display:none;"></div>
+                            </div>
+                            <div class="minimap-page-dots" id="minimapPageDots"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -3374,6 +3478,8 @@
 
                 paper.text = result.text;
                 paper.media = result.media || [];
+                paper.pageThumbnails = result.pageThumbnails || [];
+                paper.numPages = result.numPages || 0;
                 
                 // Log what we extracted
                 console.log('[Upload] Paper:', paper.title);
@@ -3422,6 +3528,8 @@
             // ── Pass 1: render each page to canvas (for image cropping) ─────────────
             console.log('[PDF] Rendering pages for image extraction...');
             const pageCanvases = [];
+            const pageThumbnails = []; // small JPEG dataURLs for the minimap
+            const THUMB_W = 180; // thumbnail width in px
             for (let i = 1; i <= pdf.numPages; i++) {
                 try {
                     const page = await pdf.getPage(i);
@@ -3431,9 +3539,23 @@
                     canvas.height = viewport.height;
                     await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
                     pageCanvases.push({ pageNumber: i, canvas, viewport });
+
+                    // Generate small thumbnail for page minimap
+                    try {
+                        const thumbScale = THUMB_W / viewport.width;
+                        const tvp = page.getViewport({ scale: thumbScale * 1.5 });
+                        const tc = document.createElement('canvas');
+                        tc.width  = Math.round(viewport.width  * thumbScale);
+                        tc.height = Math.round(viewport.height * thumbScale);
+                        await page.render({ canvasContext: tc.getContext('2d'), viewport: tvp }).promise;
+                        pageThumbnails.push(tc.toDataURL('image/jpeg', 0.7));
+                    } catch(te) {
+                        pageThumbnails.push(null);
+                    }
                 } catch (err) {
                     console.warn('[PDF] Could not render page', i, err);
                     pageCanvases.push(null);
+                    pageThumbnails.push(null);
                 }
             }
 
@@ -3530,7 +3652,7 @@
                 }));
 
                 const pageText = items.map(it => it.str).join(' ');
-                fullText += pageText + '\n\n';
+                fullText += `[PAGE_${i}] ` + pageText + '\n\n';
 
                 // Group text into logical lines
                 const lineGroups = {};
@@ -3707,7 +3829,7 @@
             }
 
             console.log(`[PDF] Extracted: ${figureCount} figures, ${tableCount} tables, ${equationCount} equations`);
-            return { text: fullText, media: mediaItems };
+            return { text: fullText, media: mediaItems, pageThumbnails, numPages: pdf.numPages };
         }
 
         // Load DOCX text with figures and tables
@@ -4013,6 +4135,7 @@
             updateLibraryUI();
             updateSectionPips();
             showPaperETA();
+            initMinimap();
 
             const mediaCount = paper.media?.length || 0;
             const mediaInfo = mediaCount > 0 ? ` (${mediaCount} figures/tables)` : '';
@@ -4792,11 +4915,21 @@
             // Get current paper's media items
             const paper = library.find(p => p.id === currentPaperId);
             const mediaItems = paper?.media || [];
+
+            // Track current page number as we parse
+            let currentPageNum = 1;
             
-            // Split into sentences and words, handling figure/table markers
-            const segments = text.split(/(\[FIGURE_\d+\]|\[TABLE_\d+\])/);
+            // Split into segments including PAGE markers, figure/table markers
+            const segments = text.split(/(\[PAGE_\d+\]|\[FIGURE_\d+\]|\[TABLE_\d+\])/);
             
             segments.forEach((segment) => {
+                // Handle page marker — update page tracker, don't push a content item
+                const pageMatch = segment.match(/\[PAGE_(\d+)\]/);
+                if (pageMatch) {
+                    currentPageNum = parseInt(pageMatch[1]);
+                    return;
+                }
+
                 // Check if this is a figure marker
                 const figureMatch = segment.match(/\[FIGURE_(\d+)\]/);
                 if (figureMatch) {
@@ -4807,7 +4940,8 @@
                         type: ContentType.FIGURE,
                         number: figureNum,
                         caption: figure?.caption || `Figure ${figureNum}`,
-                        image: figure?.image || null
+                        image: figure?.image || null,
+                        page: currentPageNum
                     });
                     
                     // Add pause after figure
@@ -4828,7 +4962,8 @@
                         type: ContentType.TABLE,
                         number: tableNum,
                         caption: table?.caption || `Table ${tableNum}`,
-                        content: table?.content || ''
+                        content: table?.content || '',
+                        page: currentPageNum
                     });
                     
                     // Add pause after table
@@ -4853,7 +4988,8 @@
                     words.forEach(word => {
                         contentItems.push({
                             type: ContentType.TEXT,
-                            content: word
+                            content: word,
+                            page: currentPageNum
                         });
                     });
 
@@ -5109,6 +5245,7 @@
                 updateStats();
                 updateMapViewport();
                 updateSectionPips();
+                updateMinimap();
 
                 // Section-by-section chunk mode boundary check
                 if (checkChunkBoundary(currentIndex)) {
@@ -5160,6 +5297,111 @@
             const label = mins < 1 ? '<1 min' : mins === 1 ? '~1 min' : `~${mins} min`;
             etaBadgeText.textContent = `${label} read`;
             etaBadge.style.display = 'inline-flex';
+        }
+
+        // ── Feature: Page Minimap ─────────────────────────────────────────────
+        let minimapLastPage = -1;
+
+        function initMinimap() {
+            const paper = library.find(p => p.id === currentPaperId);
+            const minimap  = document.getElementById('pageMinimap');
+            const dots     = document.getElementById('minimapPageDots');
+
+            if (!minimap) return;
+
+            // Only show for PDFs that have thumbnails
+            if (!paper?.pageThumbnails?.length) {
+                minimap.classList.remove('visible');
+                return;
+            }
+
+            minimap.classList.add('visible');
+            minimapLastPage = -1; // force first render
+
+            // Build page dots
+            dots.innerHTML = paper.pageThumbnails.map((_, i) =>
+                `<div class="minimap-page-dot" id="mdot${i}" title="Page ${i+1}" onclick="minimapJumpToPage(${i+1})"></div>`
+            ).join('');
+
+            updateMinimap();
+        }
+
+        function updateMinimap() {
+            const paper = library.find(p => p.id === currentPaperId);
+            if (!paper?.pageThumbnails?.length) return;
+
+            // Find current page from contentItems
+            const item = contentItems[currentIndex];
+            const pageNum = item?.page || 1;
+
+            // Update page label
+            const label = document.getElementById('minimapPageLabel');
+            if (label) label.textContent = `Page ${pageNum} of ${paper.numPages || paper.pageThumbnails.length}`;
+
+            // Update dot highlights
+            paper.pageThumbnails.forEach((_, i) => {
+                const dot = document.getElementById(`mdot${i}`);
+                if (!dot) return;
+                dot.classList.toggle('active',  i + 1 === pageNum);
+                dot.classList.toggle('visited', i + 1 < pageNum);
+            });
+
+            // Only swap image when page actually changes
+            if (pageNum !== minimapLastPage) {
+                minimapLastPage = pageNum;
+                const thumb   = paper.pageThumbnails[pageNum - 1];
+                const img     = document.getElementById('minimapThumbImg');
+                const ph      = document.getElementById('minimapPlaceholder');
+                const strip   = document.getElementById('minimapStrip');
+
+                if (thumb && img) {
+                    img.src = thumb;
+                    img.style.display = 'block';
+                    ph.style.display  = 'none';
+                    strip.style.display = 'block';
+                } else {
+                    img.style.display = 'none';
+                    ph.style.display  = 'block';
+                    ph.textContent    = `Page ${pageNum}`;
+                    strip.style.display = 'none';
+                }
+            }
+
+            // Update the position strip — how far through this page are we?
+            updateMinimapStrip(pageNum);
+        }
+
+        function updateMinimapStrip(pageNum) {
+            const strip = document.getElementById('minimapStrip');
+            if (!strip) return;
+
+            // Find all items on this page
+            const pageItems  = contentItems.filter(it => it.page === pageNum && it.type === ContentType.TEXT);
+            const beforePage = contentItems.filter(it => it.page < pageNum  && it.type === ContentType.TEXT);
+            const currentWordOnPage = contentItems
+                .slice(0, currentIndex + 1)
+                .filter(it => it.page === pageNum && it.type === ContentType.TEXT).length;
+
+            const totalOnPage = pageItems.length;
+            if (totalOnPage === 0) return;
+
+            const progress = currentWordOnPage / totalOnPage; // 0–1 position on this page
+            // Map to % of thumbnail height, with a small top margin for page header
+            const topPct = 5 + progress * 88;
+            strip.style.top = topPct + '%';
+        }
+
+        function minimapJumpToPage(pageNum) {
+            // Find first contentItem on that page
+            const idx = contentItems.findIndex(it => it.page === pageNum);
+            if (idx >= 0) {
+                pause();
+                currentIndex = idx;
+                updateDisplay();
+                updateStats();
+                updateMinimap();
+                showNotification(`📄 Jumped to page ${pageNum}`);
+            }
         }
 
         // ── Feature: Section Progress Pips ──────────────────────────────────

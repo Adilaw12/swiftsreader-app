@@ -2589,6 +2589,7 @@
         let breakInterval = 25; // minutes
         let isChunkMode = false;          // section-by-section mode
         let chunkNextSectionStart = -1;   // word index where next section begins (after pause)
+        const thumbnailCache = {};        // paperId → [dataURL, ...] — never persisted to localStorage
         let breakTimer = null;
         let readingStartTime = null;
 
@@ -2831,26 +2832,27 @@
         function saveLibrary() {
             try {
                 const toSave = library.map(paper => {
-                    if (!paper.media || paper.media.length === 0) return paper;
+                    // Strip heavy data that must not go to localStorage:
+                    // figure base64 images AND page thumbnails (kept in thumbnailCache)
+                    const { pageThumbnails, numPages, ...rest } = paper;
+                    if (!rest.media || rest.media.length === 0) return rest;
                     return {
-                        ...paper,
-                        media: paper.media.map(m => {
+                        ...rest,
+                        media: rest.media.map(m => {
                             if (m.type === 'figure' && m.image) {
-                                // Keep metadata, drop the heavy base64 image data
-                                const { image, ...rest } = m;
-                                return { ...rest, imageStripped: true };
+                                const { image, ...mRest } = m;
+                                return { ...mRest, imageStripped: true };
                             }
                             return m;
                         })
                     };
                 });
                 localStorage.setItem('swiftsLibrary', JSON.stringify(toSave));
-                console.log('[Library] Saved (' + toSave.length + ' papers, images stripped for storage)');
+                console.log('[Library] Saved (' + toSave.length + ' papers, images + thumbnails stripped for storage)');
             } catch (error) {
                 console.error('[Library] Failed to save:', error);
-                // If still failing (e.g. text is huge), save without text content
                 try {
-                    const minimal = library.map(p => ({ ...p, text: '', media: [] }));
+                    const minimal = library.map(p => ({ ...p, text: '', media: [], pageThumbnails: undefined }));
                     localStorage.setItem('swiftsLibrary', JSON.stringify(minimal));
                     console.warn('[Library] Saved in minimal mode (text stripped)');
                 } catch (e2) {
@@ -3478,8 +3480,11 @@
 
                 paper.text = result.text;
                 paper.media = result.media || [];
-                paper.pageThumbnails = result.pageThumbnails || [];
                 paper.numPages = result.numPages || 0;
+                // Store thumbnails in memory-only cache (not persisted to localStorage)
+                if (result.pageThumbnails?.length) {
+                    thumbnailCache[paper.id] = result.pageThumbnails;
+                }
                 
                 // Log what we extracted
                 console.log('[Upload] Paper:', paper.title);
@@ -3542,13 +3547,15 @@
 
                     // Generate small thumbnail for page minimap
                     try {
-                        const thumbScale = THUMB_W / viewport.width;
-                        const tvp = page.getViewport({ scale: thumbScale * 1.5 });
+                        // viewport was rendered at scale 1.5; natural page width = viewport.width / 1.5
+                        const naturalW = viewport.width / 1.5;
+                        const thumbScale = THUMB_W / naturalW;
+                        const tvp = page.getViewport({ scale: thumbScale });
                         const tc = document.createElement('canvas');
-                        tc.width  = Math.round(viewport.width  * thumbScale);
-                        tc.height = Math.round(viewport.height * thumbScale);
+                        tc.width  = Math.round(tvp.width);
+                        tc.height = Math.round(tvp.height);
                         await page.render({ canvasContext: tc.getContext('2d'), viewport: tvp }).promise;
-                        pageThumbnails.push(tc.toDataURL('image/jpeg', 0.7));
+                        pageThumbnails.push(tc.toDataURL('image/jpeg', 0.75));
                     } catch(te) {
                         pageThumbnails.push(null);
                     }
@@ -5303,14 +5310,15 @@
         let minimapLastPage = -1;
 
         function initMinimap() {
-            const paper = library.find(p => p.id === currentPaperId);
-            const minimap  = document.getElementById('pageMinimap');
-            const dots     = document.getElementById('minimapPageDots');
+            const paper   = library.find(p => p.id === currentPaperId);
+            const thumbs  = thumbnailCache[currentPaperId];
+            const minimap = document.getElementById('pageMinimap');
+            const dots    = document.getElementById('minimapPageDots');
 
             if (!minimap) return;
 
-            // Only show for PDFs that have thumbnails
-            if (!paper?.pageThumbnails?.length) {
+            // Only show for PDFs that have thumbnails in cache
+            if (!thumbs?.length) {
                 minimap.classList.remove('visible');
                 return;
             }
@@ -5319,7 +5327,7 @@
             minimapLastPage = -1; // force first render
 
             // Build page dots
-            dots.innerHTML = paper.pageThumbnails.map((_, i) =>
+            dots.innerHTML = thumbs.map((_, i) =>
                 `<div class="minimap-page-dot" id="mdot${i}" title="Page ${i+1}" onclick="minimapJumpToPage(${i+1})"></div>`
             ).join('');
 
@@ -5327,19 +5335,20 @@
         }
 
         function updateMinimap() {
-            const paper = library.find(p => p.id === currentPaperId);
-            if (!paper?.pageThumbnails?.length) return;
+            const thumbs = thumbnailCache[currentPaperId];
+            if (!thumbs?.length) return;
 
-            // Find current page from contentItems
-            const item = contentItems[currentIndex];
+            const paper  = library.find(p => p.id === currentPaperId);
+            const item   = contentItems[currentIndex];
             const pageNum = item?.page || 1;
+            const total   = paper?.numPages || thumbs.length;
 
             // Update page label
             const label = document.getElementById('minimapPageLabel');
-            if (label) label.textContent = `Page ${pageNum} of ${paper.numPages || paper.pageThumbnails.length}`;
+            if (label) label.textContent = `Page ${pageNum} of ${total}`;
 
             // Update dot highlights
-            paper.pageThumbnails.forEach((_, i) => {
+            thumbs.forEach((_, i) => {
                 const dot = document.getElementById(`mdot${i}`);
                 if (!dot) return;
                 dot.classList.toggle('active',  i + 1 === pageNum);
@@ -5349,25 +5358,25 @@
             // Only swap image when page actually changes
             if (pageNum !== minimapLastPage) {
                 minimapLastPage = pageNum;
-                const thumb   = paper.pageThumbnails[pageNum - 1];
-                const img     = document.getElementById('minimapThumbImg');
-                const ph      = document.getElementById('minimapPlaceholder');
-                const strip   = document.getElementById('minimapStrip');
+                const thumb = thumbs[pageNum - 1];
+                const img   = document.getElementById('minimapThumbImg');
+                const ph    = document.getElementById('minimapPlaceholder');
+                const strip = document.getElementById('minimapStrip');
 
                 if (thumb && img) {
                     img.src = thumb;
-                    img.style.display = 'block';
-                    ph.style.display  = 'none';
+                    img.style.display   = 'block';
+                    ph.style.display    = 'none';
                     strip.style.display = 'block';
                 } else {
-                    img.style.display = 'none';
-                    ph.style.display  = 'block';
-                    ph.textContent    = `Page ${pageNum}`;
+                    img.style.display   = 'none';
+                    ph.style.display    = 'block';
+                    ph.textContent      = `Page ${pageNum}`;
                     strip.style.display = 'none';
                 }
             }
 
-            // Update the position strip — how far through this page are we?
+            // Update the position strip
             updateMinimapStrip(pageNum);
         }
 
@@ -5375,9 +5384,7 @@
             const strip = document.getElementById('minimapStrip');
             if (!strip) return;
 
-            // Find all items on this page
-            const pageItems  = contentItems.filter(it => it.page === pageNum && it.type === ContentType.TEXT);
-            const beforePage = contentItems.filter(it => it.page < pageNum  && it.type === ContentType.TEXT);
+            const pageItems = contentItems.filter(it => it.page === pageNum && it.type === ContentType.TEXT);
             const currentWordOnPage = contentItems
                 .slice(0, currentIndex + 1)
                 .filter(it => it.page === pageNum && it.type === ContentType.TEXT).length;
@@ -5385,14 +5392,13 @@
             const totalOnPage = pageItems.length;
             if (totalOnPage === 0) return;
 
-            const progress = currentWordOnPage / totalOnPage; // 0–1 position on this page
-            // Map to % of thumbnail height, with a small top margin for page header
-            const topPct = 5 + progress * 88;
+            const progress = currentWordOnPage / totalOnPage;
+            // Map 0–1 to 5%–88% of thumbnail height (leaving margins for page header/footer)
+            const topPct = 5 + progress * 83;
             strip.style.top = topPct + '%';
         }
 
         function minimapJumpToPage(pageNum) {
-            // Find first contentItem on that page
             const idx = contentItems.findIndex(it => it.page === pageNum);
             if (idx >= 0) {
                 pause();

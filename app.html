@@ -2376,6 +2376,9 @@
                             <button class="control-button" id="highlightBtn" title="Highlight (H)">
                                 <span>✨</span>
                             </button>
+                            <button class="control-button" id="restartBtn" title="Restart from beginning (R)">
+                                <span>↩</span>
+                            </button>
                         </div>
 
                         <!-- Progress -->
@@ -2624,6 +2627,7 @@
         const nextBtn = document.getElementById('nextBtn');
         const bookmarkBtn = document.getElementById('bookmarkBtn');
         const highlightBtn = document.getElementById('highlightBtn');
+        const restartBtn = document.getElementById('restartBtn');
         const progressText = document.getElementById('progressText');
         const headerProgressDisplay = document.getElementById('headerProgressDisplay');
         const headerPapersDisplay = document.getElementById('headerPapersDisplay');
@@ -2992,6 +2996,20 @@
             // Highlight
             highlightBtn.addEventListener('click', addHighlight);
 
+            // Restart
+            restartBtn.addEventListener('click', () => {
+                if (!currentPaperId) return;
+                pause();
+                currentIndex = 0;
+                updateDisplay();
+                updateStats();
+                updateSectionPips();
+                updateMinimap();
+                showPaperETA();
+                saveCurrentPaperProgress();
+                showNotification('↩ Restarted from the beginning');
+            });
+
             // Save notes
             saveNotesBtn.addEventListener('click', saveNotes);
 
@@ -3225,11 +3243,16 @@
                 case 'r':
                 case 'R':
                     e.preventDefault();
+                    pause();
                     currentIndex = 0;
                     updateDisplay();
                     updateStats();
                     updateMapViewport();
-                    showNotification('⏮ Restarted from beginning');
+                    updateSectionPips();
+                    updateMinimap();
+                    showPaperETA();
+                    saveCurrentPaperProgress();
+                    showNotification('↩ Restarted from the beginning');
                     break;
             }
         }
@@ -3545,18 +3568,16 @@
                     await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
                     pageCanvases.push({ pageNumber: i, canvas, viewport });
 
-                    // Generate small thumbnail for page minimap
+                    // Generate small thumbnail by scaling down the already-rendered canvas
                     try {
-                        // viewport was rendered at scale 1.5; natural page width = viewport.width / 1.5
-                        const naturalW = viewport.width / 1.5;
-                        const thumbScale = THUMB_W / naturalW;
-                        const tvp = page.getViewport({ scale: thumbScale });
                         const tc = document.createElement('canvas');
-                        tc.width  = Math.round(tvp.width);
-                        tc.height = Math.round(tvp.height);
-                        await page.render({ canvasContext: tc.getContext('2d'), viewport: tvp }).promise;
+                        const scale = THUMB_W / canvas.width;
+                        tc.width  = THUMB_W;
+                        tc.height = Math.round(canvas.height * scale);
+                        tc.getContext('2d').drawImage(canvas, 0, 0, tc.width, tc.height);
                         pageThumbnails.push(tc.toDataURL('image/jpeg', 0.75));
                     } catch(te) {
+                        console.warn('[PDF] Thumbnail failed for page', i, te);
                         pageThumbnails.push(null);
                     }
                 } catch (err) {

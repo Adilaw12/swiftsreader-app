@@ -1636,12 +1636,14 @@
 
             /* ── Header ── */
             .app-header {
-                padding: var(--space-sm) 0;
+                padding: var(--space-xs) 0;
             }
 
             .header-content {
                 padding: 0 var(--space-md);
                 gap: var(--space-sm);
+                flex-wrap: nowrap;
+                min-height: 48px;
             }
 
             .brand-text p,
@@ -1652,7 +1654,11 @@
             #upgradeBtn,
             #exportAllBtn,
             #shortcutsBtn,
-            #goalsBtn {
+            #goalsBtn,
+            #contactUsBtn,
+            #audioControls,
+            #userInfoBar,
+            #addPaperBtn {
                 display: none;
             }
 
@@ -2446,7 +2452,7 @@
                     <button class="button button-primary" id="addPaperBtn">
                         <span>+ Add Paper</span>
                     </button>
-                    <button class="button" onclick="openContactModal()" aria-label="Contact Us" style="background:transparent;border:1.5px solid var(--border-light);color:var(--text-secondary);border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border-light)';this.style.color='var(--text-secondary)'">Contact Us</button>
+                    <button id="contactUsBtn" class="button" onclick="openContactModal()" aria-label="Contact Us" style="background:transparent;border:1.5px solid var(--border-light);color:var(--text-secondary);border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border-light)';this.style.color='var(--text-secondary)'">Contact Us</button>
                     <!-- User account info -->
                     <div id="userInfoBar" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);">
                         <span id="userTierBadge" style="padding:3px 10px;border-radius:20px;font-weight:700;font-size:11px;background:var(--primary-pale);color:var(--primary-dark);">FREE</span>

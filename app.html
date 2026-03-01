@@ -2680,6 +2680,9 @@
                             <button class="control-button" id="nextBtn" title="Next (→)">
                                 <span>⏭</span>
                             </button>
+                            <button class="control-button" id="ttsBtn" title="Read aloud (TTS)" onclick="toggleTTSPlay()">
+                                <span>🔊</span>
+                            </button>
                             <button class="control-button" id="bookmarkBtn" title="Bookmark (B)">
                                 <span>🔖</span>
                             </button>
@@ -7097,6 +7100,8 @@
             if (btn) btn.textContent = '▶️';
             const pauseBtn = document.getElementById('audioPauseBtn');
             if (pauseBtn) pauseBtn.style.display = 'none';
+            const ttsBtn = document.getElementById('ttsBtn');
+            if (ttsBtn) { ttsBtn.querySelector('span').textContent = '🔊'; ttsBtn.classList.remove('active'); }
         }
 
         function toggleTTSPlay() {
@@ -7122,6 +7127,8 @@
                 if (btn) btn.textContent = '⏸️';
                 const pauseBtn = document.getElementById('audioPauseBtn');
                 if (pauseBtn) pauseBtn.style.display = '';
+                const ttsBtn = document.getElementById('ttsBtn');
+                if (ttsBtn) { ttsBtn.querySelector('span').textContent = '🔇'; ttsBtn.classList.add('active'); }
                 speakFrom(0);
             }
         }

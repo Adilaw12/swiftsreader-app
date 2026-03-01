@@ -2508,18 +2508,20 @@
 
             <!-- Page Minimap Sidebar -->
             <aside class="document-map" id="minimapSidebar" style="display:none;">
-                <div class="page-minimap" id="pageMinimap" style="margin-top:0;border:none;padding:0;background:transparent;box-shadow:none;">
-                    <div class="minimap-header">
-                        <span>📄 Page View</span>
-                        <span class="minimap-page-label" id="minimapPageLabel">—</span>
+                <div style="position:sticky;top:calc(92px + 24px);">
+                    <div style="background:var(--bg-surface);border:1.5px solid var(--border-light);border-radius:12px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <span style="font-size:11px;font-weight:700;color:var(--text-tertiary);letter-spacing:0.5px;">📄 PAGE VIEW</span>
+                            <span id="minimapPageLabel" style="font-size:11px;font-weight:700;color:var(--primary);">—</span>
+                        </div>
+                        <div id="minimapThumbWrap" style="position:relative;width:100%;border-radius:6px;overflow:hidden;border:1.5px solid var(--border-light);background:#f0f0f0;cursor:pointer;">
+                            <div id="minimapPlaceholder" style="width:100%;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-tertiary);padding:8px;text-align:center;">Upload a PDF to see page preview</div>
+                            <img id="minimapThumbImg" style="width:100%;display:none;" alt="Page preview" />
+                            <div id="minimapStrip" style="display:none;position:absolute;left:0;right:0;height:14px;background:rgba(0,188,212,0.4);border-top:2px solid #00BCD4;border-bottom:2px solid #00BCD4;pointer-events:none;box-shadow:0 0 8px rgba(0,188,212,0.5);transition:top 0.3s ease;"></div>
+                        </div>
+                        <div id="minimapPageDots" style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:8px;"></div>
+                        <div style="font-size:10px;color:var(--text-tertiary);text-align:center;margin-top:4px;">Click dot to jump to page</div>
                     </div>
-                    <div class="minimap-thumb-wrap" id="minimapThumbWrap">
-                        <div class="minimap-placeholder" id="minimapPlaceholder">Open a PDF to see page preview</div>
-                        <img class="minimap-thumb-img" id="minimapThumbImg" style="display:none;" alt="Page preview" />
-                        <div class="minimap-position-strip" id="minimapStrip" style="display:none;"></div>
-                    </div>
-                    <div class="minimap-page-dots" id="minimapPageDots"></div>
-                    <div style="font-size:10px;color:var(--text-tertiary);text-align:center;margin-top:4px;">Click a dot to jump to page</div>
                 </div>
             </aside>
         </main>
@@ -3535,6 +3537,8 @@
                     mediaMsg = ` with ${parts.join(' and ')}`;
                 }
                 showNotification(`✅ Added: ${paper.title}${mediaMsg}`);
+                // Auto-open the paper so the minimap and reader are ready immediately
+                loadPaper(paper.id);
             } catch (error) {
                 console.error('[File] Error:', error);
                 showNotification('❌ Failed to load file', 'error');
@@ -5335,52 +5339,59 @@
         function initMinimap() {
             const thumbs  = thumbnailCache[currentPaperId];
             const sidebar = document.getElementById('minimapSidebar');
-            const dots    = document.getElementById('minimapPageDots');
-
-            console.log(`[Minimap] initMinimap called — paperId=${currentPaperId}, thumbs=${thumbs?.length ?? 'none'}, sidebar=${!!sidebar}`);
 
             if (!sidebar) return;
 
-            if (!thumbs?.length) {
+            if (!thumbs || thumbs.length === 0) {
                 sidebar.style.display = 'none';
-                console.log('[Minimap] Hidden — no thumbnails for this paper');
                 return;
             }
 
-            sidebar.style.display = ''; // show sidebar column
-            minimapLastPage = -1;       // force first render
-            console.log(`[Minimap] Showing sidebar with ${thumbs.length} pages`);
+            // Show sidebar
+            sidebar.style.display = 'flex';
+            minimapLastPage = -1;
 
             // Build page dots
-            dots.innerHTML = thumbs.map((_, i) =>
-                `<div class="minimap-page-dot" id="mdot${i}" title="Page ${i+1}" onclick="minimapJumpToPage(${i+1})"></div>`
-            ).join('');
+            const dots = document.getElementById('minimapPageDots');
+            if (dots) {
+                dots.innerHTML = thumbs.map((_, i) =>
+                    `<div style="width:9px;height:9px;border-radius:50%;background:#e0e0e0;cursor:pointer;display:inline-block;transition:all 0.2s;" id="mdot${i}" title="Page ${i+1}" onclick="minimapJumpToPage(${i+1})"></div>`
+                ).join('');
+            }
 
             updateMinimap();
         }
 
         function updateMinimap() {
             const thumbs = thumbnailCache[currentPaperId];
-            if (!thumbs?.length) return;
+            if (!thumbs || thumbs.length === 0) return;
 
-            const paper  = library.find(p => p.id === currentPaperId);
-            const item   = contentItems[currentIndex];
-            const pageNum = item?.page || 1;
-            const total   = paper?.numPages || thumbs.length;
+            const paper   = library.find(p => p.id === currentPaperId);
+            const item    = contentItems[currentIndex];
+            const pageNum = (item && item.page) ? item.page : 1;
+            const total   = (paper && paper.numPages) ? paper.numPages : thumbs.length;
 
-            // Update page label
+            // Page label
             const label = document.getElementById('minimapPageLabel');
-            if (label) label.textContent = `Page ${pageNum} of ${total}`;
+            if (label) label.textContent = 'Page ' + pageNum + ' of ' + total;
 
-            // Update dot highlights
-            thumbs.forEach((_, i) => {
-                const dot = document.getElementById(`mdot${i}`);
+            // Dot highlights
+            thumbs.forEach(function(_, i) {
+                const dot = document.getElementById('mdot' + i);
                 if (!dot) return;
-                dot.classList.toggle('active',  i + 1 === pageNum);
-                dot.classList.toggle('visited', i + 1 < pageNum);
+                if (i + 1 === pageNum) {
+                    dot.style.background = '#00BCD4';
+                    dot.style.transform = 'scale(1.4)';
+                } else if (i + 1 < pageNum) {
+                    dot.style.background = '#80DEEA';
+                    dot.style.transform = 'scale(1)';
+                } else {
+                    dot.style.background = '#e0e0e0';
+                    dot.style.transform = 'scale(1)';
+                }
             });
 
-            // Only swap image when page actually changes
+            // Swap image when page changes
             if (pageNum !== minimapLastPage) {
                 minimapLastPage = pageNum;
                 const thumb = thumbs[pageNum - 1];
@@ -5388,50 +5399,40 @@
                 const ph    = document.getElementById('minimapPlaceholder');
                 const strip = document.getElementById('minimapStrip');
 
-                if (thumb && img) {
+                if (thumb) {
                     img.src = thumb;
-                    img.style.display   = 'block';
-                    ph.style.display    = 'none';
-                    strip.style.display = 'block';
+                    img.style.display = 'block';
+                    if (ph) ph.style.display = 'none';
+                    if (strip) strip.style.display = 'block';
                 } else {
-                    img.style.display   = 'none';
-                    ph.style.display    = 'block';
-                    ph.textContent      = `Page ${pageNum}`;
-                    strip.style.display = 'none';
+                    img.style.display = 'none';
+                    if (ph) { ph.style.display = 'flex'; ph.textContent = 'Page ' + pageNum; }
+                    if (strip) strip.style.display = 'none';
                 }
             }
 
-            // Update the position strip
-            updateMinimapStrip(pageNum);
-        }
-
-        function updateMinimapStrip(pageNum) {
+            // Move position strip
             const strip = document.getElementById('minimapStrip');
-            if (!strip) return;
-
-            const pageItems = contentItems.filter(it => it.page === pageNum && it.type === ContentType.TEXT);
-            const currentWordOnPage = contentItems
-                .slice(0, currentIndex + 1)
-                .filter(it => it.page === pageNum && it.type === ContentType.TEXT).length;
-
-            const totalOnPage = pageItems.length;
-            if (totalOnPage === 0) return;
-
-            const progress = currentWordOnPage / totalOnPage;
-            // Map 0–1 to 5%–88% of thumbnail height (leaving margins for page header/footer)
-            const topPct = 5 + progress * 83;
-            strip.style.top = topPct + '%';
+            const img   = document.getElementById('minimapThumbImg');
+            if (strip && img && img.style.display !== 'none') {
+                const pageItems = contentItems.filter(function(it) { return it.page === pageNum && it.type === ContentType.TEXT; });
+                const wordsRead = contentItems.slice(0, currentIndex + 1).filter(function(it) { return it.page === pageNum && it.type === ContentType.TEXT; }).length;
+                if (pageItems.length > 0) {
+                    const pct = 5 + (wordsRead / pageItems.length) * 83;
+                    strip.style.top = pct + '%';
+                }
+            }
         }
 
         function minimapJumpToPage(pageNum) {
-            const idx = contentItems.findIndex(it => it.page === pageNum);
+            const idx = contentItems.findIndex(function(it) { return it.page === pageNum; });
             if (idx >= 0) {
                 pause();
                 currentIndex = idx;
                 updateDisplay();
                 updateStats();
                 updateMinimap();
-                showNotification(`📄 Jumped to page ${pageNum}`);
+                showNotification('📄 Jumped to page ' + pageNum);
             }
         }
 

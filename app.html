@@ -3142,7 +3142,22 @@
         // Load library
         function loadLibrary() {
             try {
-                library = JSON.parse(localStorage.getItem('swiftsLibrary') || '[]');
+                const raw = JSON.parse(localStorage.getItem('swiftsLibrary') || '[]');
+                // Restore papers — figures that had images stripped get a placeholder flag
+                library = raw.map(paper => {
+                    if (!paper.media || paper.media.length === 0) return paper;
+                    return {
+                        ...paper,
+                        media: paper.media.map(m => {
+                            if (m.imageStripped) {
+                                // Image was stripped to save localStorage space — mark as reloadNeeded
+                                const { imageStripped, ...rest } = m;
+                                return { ...rest, image: null, imageReloadNeeded: true };
+                            }
+                            return m;
+                        })
+                    };
+                });
                 console.log('[Library] Loaded', library.length, 'papers');
             } catch (error) {
                 console.error('[Library] Failed to load:', error);
@@ -3178,8 +3193,10 @@
                     const minimal = library.map(p => ({ ...p, text: '', media: [], pageThumbnails: undefined }));
                     localStorage.setItem('swiftsLibrary', JSON.stringify(minimal));
                     console.warn('[Library] Saved in minimal mode (text stripped)');
+                    showNotification('⚠️ Storage nearly full — re-upload papers to read them again. Consider upgrading for cloud sync.', 'warning');
                 } catch (e2) {
                     console.error('[Library] Could not save even minimal library:', e2);
+                    showNotification('❌ Storage full — could not save library. Please delete some papers.', 'error');
                 }
             }
         }
@@ -4908,6 +4925,7 @@
                         return null;
                     }
                     if (response.status === 401) {
+                        summaryGenerating = false;
                         window.location.href = '/login';
                         return null;
                     }
@@ -5334,8 +5352,14 @@
                 if (segment.trim().length === 0) return;
                 
                 const sentences = segment
-                    .replace(/\n+/g, '. ')
-                    .split(/(?<=[.!?])\s+/)
+                    .replace(/\n{2,}/g, '\x00PARA\x00')  // double newline = paragraph break
+                    .replace(/\n/g, ' ')                  // single newline = space (author lists, wrapped lines)
+                    .split('\x00PARA\x00')
+                    .flatMap(para =>
+                        para
+                        .replace(/([.!?])\s+/g, '$1\x00')
+                        .split('\x00')
+                    )
                     .filter(s => s.trim().length > 0);
 
                 sentences.forEach((sentence, idx) => {
@@ -5574,7 +5598,9 @@
             }
 
             if (elapsed >= delay) {
-                currentIndex += chunkSize;
+                // Always advance by 1 when current item is a PAUSE — never skip pauses
+                const step = (item.type === ContentType.PAUSE) ? 1 : chunkSize;
+                currentIndex += step;
 
                 if (currentIndex >= contentItems.length) {
                     currentIndex = contentItems.length - 1;
@@ -6013,7 +6039,7 @@
 
                 const previewContent = hasImage
                     ? `<img src="${item.image}" alt="${item.caption}" style="max-width:100%;max-height:160px;object-fit:contain;">`
-                    : item.imageStripped
+                    : item.imageReloadNeeded
                         ? `<div style="font-size:11px;color:var(--text-tertiary);padding:8px;text-align:center;">
                               <div style="font-size:28px;margin-bottom:4px;">🖼️</div>
                               Re-open this paper to view image

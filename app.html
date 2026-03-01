@@ -330,7 +330,7 @@
             margin: 0 auto;
             padding: var(--space-2xl) var(--space-xl);
             display: grid;
-            grid-template-columns: 280px 1fr 60px;
+            grid-template-columns: 280px 1fr 200px;
             gap: var(--space-2xl);
             align-items: start;
         }
@@ -1017,17 +1017,23 @@
         }
 
         /* ── Page Minimap ────────────────────────────────────────────── */
+        /* ── Page Minimap Sidebar ────────────────────────────────────────── */
+        #minimapSidebar {
+            position: sticky;
+            top: calc(92px + var(--space-2xl));
+            max-height: calc(100vh - 92px - var(--space-2xl) * 2);
+            overflow-y: auto;
+        }
         .page-minimap {
-            display: none;
+            display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
-            margin-top: 20px;
-            padding: 14px 16px;
+            gap: 10px;
+            padding: 12px;
             background: var(--bg-surface);
             border: 1.5px solid var(--border-light);
             border-radius: var(--radius-lg);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+            box-shadow: var(--shadow-sm);
         }
         .page-minimap.visible { display: flex; }
         .minimap-header {
@@ -1561,9 +1567,14 @@
         /* Responsive */
         @media (max-width: 1400px) {
             .app-main {
+                grid-template-columns: 250px 1fr 180px;
+            }
+        }
+
+        @media (max-width: 1100px) {
+            .app-main {
                 grid-template-columns: 250px 1fr;
             }
-
             .document-map {
                 display: none;
             }
@@ -2408,20 +2419,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Page Minimap -->
-                        <div class="page-minimap" id="pageMinimap">
-                            <div class="minimap-header">
-                                <span>📄 Page Snapshot</span>
-                                <span class="minimap-page-label" id="minimapPageLabel">—</span>
-                            </div>
-                            <div class="minimap-thumb-wrap" id="minimapThumbWrap">
-                                <div class="minimap-placeholder" id="minimapPlaceholder">No PDF loaded</div>
-                                <img class="minimap-thumb-img" id="minimapThumbImg" style="display:none;" alt="Page preview" />
-                                <div class="minimap-position-strip" id="minimapStrip" style="top:40%;display:none;"></div>
-                            </div>
-                            <div class="minimap-page-dots" id="minimapPageDots"></div>
-                        </div>
                     </div>
                 </div>
 
@@ -2509,22 +2506,20 @@
                 </div>
             </section>
 
-            <!-- Document Map - DISABLED -->
-            <aside class="document-map" style="display: none;">
-                <div class="map-container" id="mapContainer">
-                    <div class="map-sections" id="mapSections"></div>
-                    <div class="map-viewport" id="mapViewport"></div>
-                    <div class="map-progress" id="mapProgress"></div>
-                </div>
-                <div class="map-info">
-                    <div class="map-stat">
-                        <span class="map-stat-label">Position</span>
-                        <span class="map-stat-value" id="mapPosition">0%</span>
+            <!-- Page Minimap Sidebar -->
+            <aside class="document-map" id="minimapSidebar" style="display:none;">
+                <div class="page-minimap" id="pageMinimap" style="margin-top:0;border:none;padding:0;background:transparent;box-shadow:none;">
+                    <div class="minimap-header">
+                        <span>📄 Page View</span>
+                        <span class="minimap-page-label" id="minimapPageLabel">—</span>
                     </div>
-                    <div class="map-stat">
-                        <span class="map-stat-label">Section</span>
-                        <span class="map-stat-value" id="mapSectionDisplay">-/-</span>
+                    <div class="minimap-thumb-wrap" id="minimapThumbWrap">
+                        <div class="minimap-placeholder" id="minimapPlaceholder">Open a PDF to see page preview</div>
+                        <img class="minimap-thumb-img" id="minimapThumbImg" style="display:none;" alt="Page preview" />
+                        <div class="minimap-position-strip" id="minimapStrip" style="display:none;"></div>
                     </div>
+                    <div class="minimap-page-dots" id="minimapPageDots"></div>
+                    <div style="font-size:10px;color:var(--text-tertiary);text-align:center;margin-top:4px;">Click a dot to jump to page</div>
                 </div>
             </aside>
         </main>
@@ -3507,6 +3502,9 @@
                 // Store thumbnails in memory-only cache (not persisted to localStorage)
                 if (result.pageThumbnails?.length) {
                     thumbnailCache[paper.id] = result.pageThumbnails;
+                    console.log(`[Minimap] Cached ${result.pageThumbnails.length} thumbnails for paper ${paper.id}`);
+                } else {
+                    console.log('[Minimap] No thumbnails generated (non-PDF or failed)');
                 }
                 
                 // Log what we extracted
@@ -4108,6 +4106,10 @@
         function loadPaper(paperId) {
             const paper = library.find(p => p.id === paperId);
             if (!paper) return;
+
+            // Hide minimap sidebar until initMinimap decides if it should show
+            const minimapSidebar = document.getElementById('minimapSidebar');
+            if (minimapSidebar) minimapSidebar.style.display = 'none';
 
             // Save current paper if any
             if (currentPaperId) {
@@ -5331,21 +5333,23 @@
         let minimapLastPage = -1;
 
         function initMinimap() {
-            const paper   = library.find(p => p.id === currentPaperId);
             const thumbs  = thumbnailCache[currentPaperId];
-            const minimap = document.getElementById('pageMinimap');
+            const sidebar = document.getElementById('minimapSidebar');
             const dots    = document.getElementById('minimapPageDots');
 
-            if (!minimap) return;
+            console.log(`[Minimap] initMinimap called — paperId=${currentPaperId}, thumbs=${thumbs?.length ?? 'none'}, sidebar=${!!sidebar}`);
 
-            // Only show for PDFs that have thumbnails in cache
+            if (!sidebar) return;
+
             if (!thumbs?.length) {
-                minimap.classList.remove('visible');
+                sidebar.style.display = 'none';
+                console.log('[Minimap] Hidden — no thumbnails for this paper');
                 return;
             }
 
-            minimap.classList.add('visible');
-            minimapLastPage = -1; // force first render
+            sidebar.style.display = ''; // show sidebar column
+            minimapLastPage = -1;       // force first render
+            console.log(`[Minimap] Showing sidebar with ${thumbs.length} pages`);
 
             // Build page dots
             dots.innerHTML = thumbs.map((_, i) =>

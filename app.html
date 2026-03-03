@@ -1355,6 +1355,141 @@
             box-shadow: 0 6px 20px rgba(233, 30, 99, 0.35);
         }
 
+        /* ── Focus Music Player ─────────────────────────────── */
+        .music-player {
+            position: fixed;
+            bottom: var(--space-xl);
+            left: calc(var(--space-xl) + 64px); /* right of focus toggle */
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .music-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-full);
+            background: var(--bg-surface);
+            border: 2px solid var(--border-light);
+            color: var(--text-primary);
+            font-size: 22px;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .music-btn:hover {
+            border-color: var(--accent);
+            transform: scale(1.08);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.22);
+        }
+
+        .music-btn.playing {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-color: var(--accent);
+            box-shadow: 0 6px 20px rgba(0,188,212,0.35);
+        }
+
+        /* Pulsing ring when playing */
+        .music-btn.playing::after {
+            content: '';
+            position: absolute;
+            inset: -5px;
+            border-radius: 50%;
+            border: 2px solid var(--accent);
+            animation: musicPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes musicPulse {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50%       { opacity: 0.2; transform: scale(1.18); }
+        }
+
+        .music-pill {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            border-radius: 99px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0;
+            transform: translateX(-8px);
+            transition: opacity 0.25s, transform 0.25s;
+            pointer-events: none;
+        }
+
+        .music-pill.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .music-pill .pill-title {
+            color: var(--accent);
+        }
+
+        /* Volume slider tooltip */
+        .music-vol {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            border-radius: 99px;
+            padding: 6px 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0;
+            transform: translateX(-8px);
+            transition: opacity 0.25s 0.05s, transform 0.25s 0.05s;
+            pointer-events: none;
+        }
+
+        .music-vol.visible {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+
+        .music-vol input[type=range] {
+            -webkit-appearance: none;
+            width: 80px;
+            height: 4px;
+            background: var(--border-medium);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .music-vol input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+        }
+
+        .music-vol-icon { font-size: 14px; }
+
+        /* Hide on mobile (bottom nav takes over space) */
+        @media (max-width: 768px) {
+            .music-player {
+                bottom: calc(70px + env(safe-area-inset-bottom));
+                left: var(--space-md);
+            }
+            .music-pill, .music-vol { display: none; }
+        }
+
+        /* YouTube iframe — hidden, audio only */
+        #ytPlayer { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+        /* Modal */
         /* Modal */
         .modal-overlay {
             position: fixed;
@@ -2366,6 +2501,23 @@
     <button class="focus-toggle" id="focusToggle" title="Toggle Focus Mode (F)">
         <span>🎯</span>
     </button>
+
+    <!-- Focus Music Player -->
+    <div class="music-player" id="musicPlayer">
+        <div class="music-pill" id="musicPill">
+            <span class="pill-title">432Hz</span> · Deep Focus
+        </div>
+        <div class="music-vol" id="musicVol">
+            <span class="music-vol-icon">🔊</span>
+            <input type="range" id="musicVolSlider" min="0" max="100" value="40">
+        </div>
+        <button class="music-btn" id="musicBtn" title="Focus Music (432Hz)">
+            <span id="musicIcon">🎵</span>
+        </button>
+    </div>
+
+    <!-- Hidden YouTube player -->
+    <div id="ytPlayer"></div>
 
     <script>
         // Configure PDF.js worker
@@ -6072,6 +6224,127 @@
     }, { passive: true });
 
     console.log('📱 Mobile drawer loaded');
+    </script>
+
+    <!-- YouTube IFrame API (loaded async, no tracking until user hits play) -->
+    <script>
+    // ── Focus Music Player — YouTube IFrame API ───────────────────────────
+    // VIDEO ID: paste the YouTube video ID here (the part after ?v= in the URL)
+    // e.g. for https://www.youtube.com/watch?v=ABC123 → set VIDEO_ID = 'ABC123'
+    const FOCUS_VIDEO_ID = '0w80F8FffQ4';
+
+    let ytPlayer   = null;
+    let ytReady    = false;
+    let ytWantsPlay= false;
+    let musicPlaying = false;
+
+    const musicBtn    = document.getElementById('musicBtn');
+    const musicIcon   = document.getElementById('musicIcon');
+    const musicPill   = document.getElementById('musicPill');
+    const musicVol    = document.getElementById('musicVol');
+    const volSlider   = document.getElementById('musicVolSlider');
+
+    // Load YouTube IFrame API lazily on first click
+    function loadYouTubeAPI() {
+        if (document.getElementById('yt-api-script')) return;
+        const tag = document.createElement('script');
+        tag.id  = 'yt-api-script';
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+    }
+
+    // Called automatically by YouTube API when ready
+    window.onYouTubeIframeAPIReady = function() {
+        ytPlayer = new YT.Player('ytPlayer', {
+            height: '1',
+            width:  '1',
+            videoId: FOCUS_VIDEO_ID,
+            playerVars: {
+                autoplay:       0,
+                controls:       0,
+                disablekb:      1,
+                fs:             0,
+                iv_load_policy: 3,
+                modestbranding: 1,
+                rel:            0,
+                showinfo:       0,
+                origin:         window.location.origin
+            },
+            events: {
+                onReady: (e) => {
+                    ytReady = true;
+                    e.target.setVolume(parseInt(volSlider.value));
+                    if (ytWantsPlay) startMusic();
+                },
+                onStateChange: (e) => {
+                    // If video ends, loop it
+                    if (e.data === YT.PlayerState.ENDED) {
+                        ytPlayer.seekTo(0);
+                        ytPlayer.playVideo();
+                    }
+                },
+                onError: (e) => {
+                    console.warn('[Music] YouTube error:', e.data);
+                    showNotification('⚠️ Music unavailable — check video ID or connection', 'warning');
+                    setMusicStopped();
+                }
+            }
+        });
+    };
+
+    function startMusic() {
+        if (!ytReady || !ytPlayer) return;
+        ytPlayer.playVideo();
+        setMusicPlaying();
+    }
+
+    function stopMusic() {
+        if (ytPlayer && ytReady) ytPlayer.pauseVideo();
+        setMusicStopped();
+    }
+
+    function setMusicPlaying() {
+        musicPlaying = true;
+        musicBtn.classList.add('playing');
+        musicIcon.textContent = '⏸';
+        musicPill.classList.add('visible');
+        musicVol.classList.add('visible');
+    }
+
+    function setMusicStopped() {
+        musicPlaying = false;
+        musicBtn.classList.remove('playing');
+        musicIcon.textContent = '🎵';
+        musicPill.classList.remove('visible');
+        musicVol.classList.remove('visible');
+    }
+
+    musicBtn.addEventListener('click', () => {
+        if (FOCUS_VIDEO_ID === 'PASTE_VIDEO_ID_HERE') {
+            showNotification('🎵 Paste the YouTube video ID into app.html to enable focus music', 'warning');
+            return;
+        }
+
+        if (musicPlaying) {
+            stopMusic();
+        } else {
+            if (!ytReady) {
+                ytWantsPlay = true;
+                loadYouTubeAPI();
+                musicIcon.textContent = '⏳';
+                showNotification('🎵 Loading 432Hz focus music…');
+            } else {
+                startMusic();
+            }
+        }
+    });
+
+    // Volume control
+    volSlider.addEventListener('input', () => {
+        if (ytPlayer && ytReady) ytPlayer.setVolume(parseInt(volSlider.value));
+    });
+
+    console.log('🎵 Focus music player loaded');
     </script>
 </body>
 </html>

@@ -366,18 +366,19 @@
             padding: var(--space-lg);
             box-shadow: var(--shadow-sm);
             position: relative;
-            overflow: hidden;
+            overflow: visible; /* was hidden — caused settings to clip & lose scroll */
         }
 
         .control-panel::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: -1px;
+            left: -1px;
+            right: -1px;
             height: 3px;
             background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
             border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            z-index: 1;
         }
 
         .panel-title {
@@ -1446,47 +1447,159 @@
         }
 
         @media (max-width: 1024px) {
+            .app-main { grid-template-columns: 1fr; }
+            .library-panel { position: static; max-height: none; overflow-y: visible; }
+            .header-stats { display: none; }
+        }
+
+        /* ── Mobile Layout (<=768px) ─────────────────────────── */
+        @media (max-width: 768px) {
+            .library-panel { display: none; }
+            .document-map  { display: none; }
+
             .app-main {
                 grid-template-columns: 1fr;
+                padding: var(--space-md) var(--space-md) 90px;
+                gap: var(--space-md);
             }
 
-            .library-panel {
-                position: static;
-                max-height: none;
+            .app-header { padding: var(--space-sm) 0; }
+            .brand-text h1 { font-size: 17px; }
+            .brand-text p  { display: none; }
+            .brand-logo-img { width: 34px; height: 34px; }
+            .header-stats   { display: none; }
+            .streak-badge   { display: none !important; }
+            .audio-controls { display: none; }
+
+            #addPaperBtn span { display: none; }
+            #addPaperBtn::after { content: "+"; font-size: 20px; font-weight: 700; }
+            #addPaperBtn {
+                width: 40px; height: 40px; border-radius: 50%;
+                padding: 0; display: flex; align-items: center; justify-content: center;
             }
 
-            .header-stats {
-                display: none;
+            .reader-area { padding: var(--space-md); min-height: calc(100vh - 180px); }
+            .word-display { font-size: 34px; min-height: 64px; }
+            .phrase-display { font-size: 18px; padding: 20px 16px; }
+
+            .control-button { width: 52px; height: 52px; font-size: 22px; }
+            .control-button.primary { width: 64px; height: 64px; font-size: 26px; }
+
+            .reader-tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                flex-wrap: nowrap;
             }
+            .reader-tabs::-webkit-scrollbar { display: none; }
+            .reader-tab { white-space: nowrap; flex-shrink: 0; }
+
+            .bottom-nav { display: flex !important; }
+            .mobile-drawer { display: flex !important; }
         }
 
         @media (max-width: 640px) {
-            .app-header {
-                padding: var(--space-md) 0;
-            }
-
-            .brand-text h1 {
-                font-size: 18px;
-            }
-
-            .brand-icon {
-                width: 40px;
-                height: 40px;
-                font-size: 20px;
-            }
-
-            .app-main {
-                padding: var(--space-lg);
-            }
-
-            .reader-area {
-                padding: var(--space-lg);
-            }
-
-            .word-display {
-                font-size: 32px;
-            }
+            .word-display { font-size: 30px; }
         }
+
+        /* ── Bottom Navigation Bar ───────────────────────────── */
+        .bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: calc(60px + env(safe-area-inset-bottom));
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border-light);
+            padding-bottom: env(safe-area-inset-bottom);
+            z-index: 1000;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+        }
+        .bottom-nav-inner {
+            display: flex;
+            height: 60px;
+            align-items: stretch;
+        }
+        .nav-tab {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            cursor: pointer;
+            transition: color 0.15s;
+            -webkit-tap-highlight-color: transparent;
+            padding: 0;
+        }
+        .nav-tab .nav-icon { font-size: 22px; line-height: 1; }
+        .nav-tab.active { color: var(--primary); }
+
+        /* ── Slide-up Drawer ─────────────────────────────────── */
+        .mobile-drawer {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1100;
+            pointer-events: none;
+        }
+        .drawer-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            opacity: 0;
+            transition: opacity 0.28s ease;
+            pointer-events: none;
+        }
+        .drawer-sheet {
+            position: absolute;
+            left: 0; right: 0; bottom: 0;
+            max-height: 88vh;
+            background: var(--bg-surface);
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            flex-direction: column;
+            transform: translateY(100%);
+            transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+            pointer-events: auto;
+            overflow: hidden;
+        }
+        .mobile-drawer.open { pointer-events: auto; }
+        .mobile-drawer.open .drawer-backdrop { opacity: 1; pointer-events: auto; }
+        .mobile-drawer.open .drawer-sheet { transform: translateY(0); }
+        .drawer-handle {
+            width: 40px; height: 4px;
+            background: var(--border-medium);
+            border-radius: 2px;
+            margin: 12px auto 4px;
+            flex-shrink: 0;
+        }
+        .drawer-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 4px 20px 12px;
+            flex-shrink: 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .drawer-body {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: var(--space-lg) var(--space-lg) calc(var(--space-lg) + env(safe-area-inset-bottom));
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-lg);
+        }
+        /* Ensure control panels inside drawer scroll properly */
+        .drawer-body .control-panel { overflow: visible; }
 
         /* Template Badge */
         .template-badge {
@@ -2213,6 +2326,40 @@
                 </div>
             </aside>
         </main>
+    </div>
+
+    <!-- Bottom Navigation Bar (mobile only) -->
+    <nav class="bottom-nav" id="bottomNav">
+        <div class="bottom-nav-inner">
+            <button class="nav-tab active" id="navRead" onclick="mobileNavSwitch('read')">
+                <span class="nav-icon">📖</span>
+                Read
+            </button>
+            <button class="nav-tab" id="navLibrary" onclick="mobileNavSwitch('library')">
+                <span class="nav-icon">📚</span>
+                Library
+            </button>
+            <button class="nav-tab" id="navSettings" onclick="mobileNavSwitch('settings')">
+                <span class="nav-icon">⚙️</span>
+                Settings
+            </button>
+            <button class="nav-tab" id="navNotes" onclick="mobileNavSwitch('notes')">
+                <span class="nav-icon">📝</span>
+                Notes
+            </button>
+        </div>
+    </nav>
+
+    <!-- Slide-up Drawer (mobile only) -->
+    <div class="mobile-drawer" id="mobileDrawer">
+        <div class="drawer-backdrop" id="drawerBackdrop" onclick="closeDrawer()"></div>
+        <div class="drawer-sheet" id="drawerSheet">
+            <div class="drawer-handle"></div>
+            <div class="drawer-title" id="drawerTitle">Library</div>
+            <div class="drawer-body" id="drawerBody">
+                <!-- Content injected by JS -->
+            </div>
+        </div>
     </div>
 
     <!-- Focus Mode Toggle -->
@@ -3600,30 +3747,31 @@
 
         // Generate section summary using Backend API
         // Updated function that calls YOUR Vercel backend (not Anthropic directly)
-        async function generateSectionSummary(sectionIndex) {
+        // silent=true suppresses per-section notifications (used when batch-generating)
+        async function generateSectionSummary(sectionIndex, silent = false) {
             console.log(`[AI] Generating summary for section ${sectionIndex}...`);
             
             if (!currentPaperId) {
-                showNotification('❌ No document loaded', 'error');
+                if (!silent) showNotification('❌ No document loaded', 'error');
                 return null;
             }
 
             const paper = library.find(p => p.id === currentPaperId);
             if (!paper) {
-                showNotification('❌ Document not found', 'error');
+                if (!silent) showNotification('❌ Document not found', 'error');
                 return null;
             }
 
             const section = documentSections[sectionIndex];
             if (!section) {
-                showNotification('❌ Section not found', 'error');
+                if (!silent) showNotification('❌ Section not found', 'error');
                 return null;
             }
 
             // Check if section has at least 400 words before generating summary
             if (!section.words || section.words.length < 400) {
                 console.log(`[AI] Section ${sectionIndex} has only ${section.words?.length || 0} words. Minimum 400 words required for summary.`);
-                showNotification(`⚠️ Section too short (${section.words?.length || 0}/400 words). Need 400+ words for summary.`, 'warning');
+                if (!silent) showNotification(`⚠️ Section too short (${section.words?.length || 0}/400 words). Need 400+ words for summary.`, 'warning');
                 return null;
             }
 
@@ -3633,7 +3781,7 @@
                 
                 if (!content || content.trim().length < 50) {
                     console.warn('[AI] Section content too short:', content.length, 'characters');
-                    showNotification('⚠️ Section too short to summarize', 'warning');
+                    if (!silent) showNotification('⚠️ Section too short to summarize', 'warning');
                     return null;
                 }
 
@@ -3656,24 +3804,19 @@
                     const errorData = await response.json();
                     console.error('[AI] API Error:', response.status, errorData);
                     
-                    // Log raw and cleaned responses for debugging
-                    if (errorData.rawResponse) {
-                        console.error('[AI] Raw API response:', errorData.rawResponse);
-                    }
-                    if (errorData.cleanedResponse) {
-                        console.error('[AI] Cleaned API response:', errorData.cleanedResponse);
-                    }
+                    if (errorData.rawResponse) console.error('[AI] Raw API response:', errorData.rawResponse);
+                    if (errorData.cleanedResponse) console.error('[AI] Cleaned API response:', errorData.cleanedResponse);
                     
-                    if (response.status === 429) {
-                        showNotification('⚠️ Rate limit reached. Please wait a moment', 'warning');
-                    } else if (response.status === 400) {
-                        showNotification('❌ Invalid request: ' + (errorData.error || 'Unknown error'), 'error');
-                    } else if (response.status === 500) {
-                        const errorMsg = errorData.error || 'Server error';
-                        showNotification('❌ ' + errorMsg, 'error');
-                        console.error('[AI] Full error details:', errorData);
-                    } else {
-                        showNotification(`❌ Error: ${errorData.error || 'Unknown error'}`, 'error');
+                    if (!silent) {
+                        if (response.status === 429) {
+                            showNotification('⚠️ Rate limit reached. Please wait a moment', 'warning');
+                        } else if (response.status === 400) {
+                            showNotification('❌ Invalid request: ' + (errorData.error || 'Unknown error'), 'error');
+                        } else if (response.status === 500) {
+                            showNotification('❌ ' + (errorData.error || 'Server error'), 'error');
+                        } else {
+                            showNotification(`❌ Error: ${errorData.error || 'Unknown error'}`, 'error');
+                        }
                     }
                     return null;
                 }
@@ -3683,14 +3826,13 @@
                 
                 if (!data || !data.success) {
                     console.error('[AI] Invalid response format:', data);
-                    const errorMsg = data?.error || data?.message || 'Unknown server error';
-                    showNotification('❌ ' + errorMsg, 'error');
+                    if (!silent) showNotification('❌ ' + (data?.error || data?.message || 'Unknown server error'), 'error');
                     return null;
                 }
                 
                 if (!data.summary) {
                     console.error('[AI] No summary in response:', data);
-                    showNotification('❌ Invalid response from server', 'error');
+                    if (!silent) showNotification('❌ Invalid response from server', 'error');
                     return null;
                 }
 
@@ -3699,7 +3841,9 @@
                 console.log('[AI] ✅ Summary generated successfully');
                 console.log('[AI] Summary object:', summary);
                 console.log(`[AI] Usage: ${data.usage?.inputTokens || 0} input tokens, ${data.usage?.outputTokens || 0} output tokens`);
-                showNotification('✅ Summary generated!', 'success');
+                
+                // Only show success toast when generating a single summary, not in batch
+                if (!silent) showNotification('✅ Summary generated!', 'success');
 
                 return {
                     sectionIndex,
@@ -3712,13 +3856,13 @@
 
             } catch (error) {
                 console.error('[AI] Error generating summary:', error);
-                
-                if (error.message.includes('fetch')) {
-                    showNotification('❌ Network error. Check your connection.', 'error');
-                } else {
-                    showNotification('❌ Error: ' + error.message, 'error');
+                if (!silent) {
+                    if (error.message.includes('fetch')) {
+                        showNotification('❌ Network error. Check your connection.', 'error');
+                    } else {
+                        showNotification('❌ Error: ' + error.message, 'error');
+                    }
                 }
-                
                 return null;
             }
         }
@@ -4037,30 +4181,33 @@
                 return;
             }
 
-            showNotification(`🤖 Generating ${eligibleSections} summaries (minimum 400 words per section)...`);
+            showNotification(`🤖 Summarising ${eligibleSections} sections in the background…`);
 
             let generatedCount = 0;
+            let errorCount = 0;
             for (let i = 0; i < documentSections.length; i++) {
                 const section = documentSections[i];
                 const existing = paper.summaries?.find(s => s.sectionIndex === i);
                 
                 // Only generate for sections with 400+ words that don't have summaries yet
                 if (section.words && section.words.length >= 400 && !existing) {
-                    const summary = await generateSectionSummary(i);
+                    const summary = await generateSectionSummary(i, true); // silent=true
                     if (summary) {
-                        if (!paper.summaries) {
-                            paper.summaries = [];
-                        }
+                        if (!paper.summaries) paper.summaries = [];
                         paper.summaries.push(summary);
                         generatedCount++;
+                        saveLibrary();
+                        updateSummariesUI();
+                    } else {
+                        errorCount++;
                     }
                     // Small delay to avoid rate limits
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             }
 
-            saveLibrary();
-            showNotification(`✅ Generated ${generatedCount} summaries for sections with 400+ words`);
+            const errorNote = errorCount > 0 ? ` (${errorCount} skipped)` : '';
+            showNotification(`✅ ${generatedCount} of ${eligibleSections} summaries ready${errorNote}`, 'success');
             updateSummariesUI();
         });
 
@@ -5775,7 +5922,156 @@
             stopAudio();
         }
 
-        console.log('🎤 Audio reader module loaded');
+        console.log('🎤 Audio reader module loaded.');
+    </script>
+
+    <script>
+    // ── Mobile Bottom Nav & Slide-up Drawer ──────────────────────────────
+
+    const drawer     = document.getElementById('mobileDrawer');
+    const drawerBody = document.getElementById('drawerBody');
+    const drawerTitle= document.getElementById('drawerTitle');
+    const libraryPanel = document.querySelector('.library-panel');
+
+    // Panels to clone into drawer
+    const DRAWER_PANELS = {
+        library: {
+            label: 'Library',
+            selectors: ['.control-panel:has(#libraryList)', '.control-panel:has(#librarySearch)']
+        },
+        settings: {
+            label: 'Settings',
+            selectors: [
+                '.control-panel:has([data-size])',     // Appearance
+                '.control-panel:has(#wpmSlider)',      // Reading Settings
+                '.control-panel:has(#goalsBtn)'        // Quick Actions
+            ]
+        }
+    };
+
+    function openDrawer(type) {
+        drawerTitle.textContent = type === 'library' ? '📚 Library' : '⚙️ Settings';
+        drawerBody.innerHTML = '';
+
+        // Clone all matching panels from the sidebar into the drawer
+        const panels = libraryPanel ? libraryPanel.querySelectorAll('.control-panel') : [];
+        const panelArr = Array.from(panels);
+
+        if (type === 'library') {
+            // First panel = Library (has libraryList)
+            const p = panelArr.find(el => el.querySelector('#libraryList'));
+            if (p) drawerBody.appendChild(p.cloneNode(true));
+        } else {
+            // All panels except Library
+            panelArr.forEach(p => {
+                if (!p.querySelector('#libraryList')) {
+                    drawerBody.appendChild(p.cloneNode(true));
+                }
+            });
+            // Re-attach setting button listeners on cloned elements
+            rebindDrawerSettings();
+        }
+
+        drawer.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDrawer() {
+        drawer.classList.remove('open');
+        document.body.style.overflow = '';
+        // Reset nav tabs to Read
+        setActiveNavTab('navRead');
+    }
+
+    function setActiveNavTab(id) {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        const el = document.getElementById(id);
+        if (el) el.classList.add('active');
+    }
+
+    function mobileNavSwitch(tab) {
+        if (tab === 'read') {
+            closeDrawer();
+            setActiveNavTab('navRead');
+        } else if (tab === 'library') {
+            setActiveNavTab('navLibrary');
+            openDrawer('library');
+        } else if (tab === 'settings') {
+            setActiveNavTab('navSettings');
+            openDrawer('settings');
+        } else if (tab === 'notes') {
+            setActiveNavTab('navNotes');
+            closeDrawer();
+            // Switch to Notes tab in reader
+            const notesTab = document.querySelector('.reader-tab[data-tab="notes"]');
+            if (notesTab) notesTab.click();
+        }
+    }
+
+    // Re-bind interactive setting controls inside drawer (they're clones so events are lost)
+    function rebindDrawerSettings() {
+        // WPM slider
+        const wpmSlider = drawerBody.querySelector('#wpmSlider');
+        const wpmValue  = drawerBody.querySelector('#wpmValue');
+        if (wpmSlider) {
+            wpmSlider.addEventListener('input', e => {
+                document.getElementById('wpmSlider').value = e.target.value;
+                document.getElementById('wpmSlider').dispatchEvent(new Event('input'));
+                if (wpmValue) wpmValue.textContent = e.target.value + ' WPM';
+            });
+        }
+
+        // Chunk slider
+        const chunkSlider = drawerBody.querySelector('#chunkSlider');
+        if (chunkSlider) {
+            chunkSlider.addEventListener('input', e => {
+                document.getElementById('chunkSlider').value = e.target.value;
+                document.getElementById('chunkSlider').dispatchEvent(new Event('input'));
+            });
+        }
+
+        // All select-button groups (font, size, dyslexia, highlight, theme, template)
+        drawerBody.querySelectorAll('.select-button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Find the matching real button in the sidebar and click it
+                const attrs = ['data-size','data-font','data-dyslexia','data-highlight','data-theme','data-template'];
+                for (const attr of attrs) {
+                    if (btn.hasAttribute(attr)) {
+                        const val = btn.getAttribute(attr);
+                        const real = document.querySelector(`.library-panel [${attr}="${val}"]`);
+                        if (real) real.click();
+                        // Update active state inside drawer
+                        drawerBody.querySelectorAll(`[${attr}]`).forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        break;
+                    }
+                }
+            });
+        });
+
+        // Quick action buttons
+        ['goalsBtn','exportAllBtn','shortcutsBtn','generateAllSummariesBtn'].forEach(id => {
+            const btn = drawerBody.querySelector('#' + id);
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    const real = document.getElementById(id);
+                    if (real) { real.click(); closeDrawer(); }
+                });
+            }
+        });
+    }
+
+    // Swipe down on drawer handle to close
+    let touchStartY = 0;
+    document.getElementById('drawerSheet').addEventListener('touchstart', e => {
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    document.getElementById('drawerSheet').addEventListener('touchmove', e => {
+        const delta = e.touches[0].clientY - touchStartY;
+        if (delta > 60) closeDrawer();
+    }, { passive: true });
+
+    console.log('📱 Mobile drawer loaded');
     </script>
 </body>
 </html>

@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     
-    <title>SwiftReader — Academic Reader for ADHD & Dyslexic Minds</title>
+    <title>SwiftsReader — Academic Reader for ADHD & Dyslexic Minds</title>
     
-    <!-- Version: 2.0 - Unified with SwiftReader landing page design system -->
-    <meta name="description" content="SwiftReader Academic Reader. Fast, focused, unstoppable. Designed specifically for ADHD & dyslexic academics.">
+    <!-- Version: 2.0 - Unified with SwiftsReader design system -->
+    <meta name="description" content="SwiftsReader Academic Reader. Fast, focused, unstoppable. Designed specifically for ADHD & dyslexic academics.">
     
-    <!-- Typography — unified with SwiftReader landing page -->
+    <!-- Typography — unified with SwiftsReader -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -335,28 +335,43 @@
             align-items: start;
         }
 
-        /* Library Panel */
+        /* Library Panel — sticky wrapper, no overflow here */
         .library-panel {
             position: sticky;
             top: calc(92px + var(--space-2xl));
-            max-height: calc(100vh - 92px - var(--space-2xl) * 2);
+            height: calc(100vh - 92px - var(--space-2xl) * 2);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Inner scroll container — all overflow lives here */
+        .library-panel-inner {
+            flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             display: flex;
             flex-direction: column;
             gap: var(--space-lg);
+            padding-right: 4px;
+            padding-bottom: var(--space-lg);
+            min-height: 0; /* critical — lets flexbox shrink below content size */
         }
 
-        .library-panel::-webkit-scrollbar {
-            width: 6px;
+        .library-panel-inner::-webkit-scrollbar {
+            width: 5px;
         }
 
-        .library-panel::-webkit-scrollbar-track {
+        .library-panel-inner::-webkit-scrollbar-track {
             background: transparent;
         }
 
-        .library-panel::-webkit-scrollbar-thumb {
+        .library-panel-inner::-webkit-scrollbar-thumb {
             background: var(--border-medium);
             border-radius: var(--radius-full);
+        }
+
+        .library-panel-inner::-webkit-scrollbar-thumb:hover {
+            background: var(--border-strong);
         }
 
         .control-panel {
@@ -366,19 +381,18 @@
             padding: var(--space-lg);
             box-shadow: var(--shadow-sm);
             position: relative;
-            overflow: visible; /* was hidden — caused settings to clip & lose scroll */
+            flex-shrink: 0; /* prevent panels from being squashed */
         }
 
         .control-panel::before {
             content: '';
             position: absolute;
-            top: -1px;
-            left: -1px;
-            right: -1px;
+            top: 0;
+            left: 0;
+            right: 0;
             height: 3px;
             background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
             border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-            z-index: 1;
         }
 
         .panel-title {
@@ -807,80 +821,6 @@
 
         .word-display.highlight-all .word {
             color: var(--primary);
-        }
-
-        /* Dyslexia Phrase Display Mode */
-        .phrase-display {
-            font-family: 'OpenDyslexic', sans-serif;
-            font-size: 22px;
-            line-height: 2.0;
-            letter-spacing: 0.06em;
-            word-spacing: 0.25em;
-            text-align: left;
-            color: var(--text-primary);
-            max-width: 62ch;
-            width: 100%;
-            margin: 0 auto;
-            padding: 28px 32px;
-            background: rgba(255, 248, 220, 0.07);
-            border-radius: 16px;
-            border-left: 3px solid var(--accent);
-            animation: phraseIn 0.25s ease;
-        }
-
-        @keyframes phraseIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        .phrase-display .bio-word {
-            display: inline;
-        }
-
-        /* Bold prefix of each word — bionic reading anchor */
-        .phrase-display .bio-bold {
-            font-weight: 800;
-            color: var(--text-primary);
-        }
-
-        .phrase-display .bio-tail {
-            font-weight: 400;
-            color: var(--text-secondary);
-        }
-
-        /* Phrase progress dots */
-        .phrase-progress {
-            display: flex;
-            justify-content: center;
-            gap: 6px;
-            margin-top: 16px;
-            flex-wrap: wrap;
-        }
-
-        .phrase-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: var(--border);
-            transition: background 0.2s, transform 0.2s;
-        }
-
-        .phrase-dot.done {
-            background: var(--accent);
-            opacity: 0.5;
-        }
-
-        .phrase-dot.current {
-            background: var(--accent);
-            transform: scale(1.4);
-        }
-
-        .phrase-nav-hint {
-            text-align: center;
-            font-size: 12px;
-            color: var(--text-tertiary);
-            margin-top: 10px;
-            letter-spacing: 0.04em;
         }
 
         /* Placeholder */
@@ -1355,141 +1295,6 @@
             box-shadow: 0 6px 20px rgba(233, 30, 99, 0.35);
         }
 
-        /* ── Focus Music Player ─────────────────────────────── */
-        .music-player {
-            position: fixed;
-            bottom: var(--space-xl);
-            left: calc(var(--space-xl) + 64px); /* right of focus toggle */
-            z-index: 999;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .music-btn {
-            width: 56px;
-            height: 56px;
-            border-radius: var(--radius-full);
-            background: var(--bg-surface);
-            border: 2px solid var(--border-light);
-            color: var(--text-primary);
-            font-size: 22px;
-            cursor: pointer;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-            transition: var(--transition-fast);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-
-        .music-btn:hover {
-            border-color: var(--accent);
-            transform: scale(1.08);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.22);
-        }
-
-        .music-btn.playing {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            border-color: var(--accent);
-            box-shadow: 0 6px 20px rgba(0,188,212,0.35);
-        }
-
-        /* Pulsing ring when playing */
-        .music-btn.playing::after {
-            content: '';
-            position: absolute;
-            inset: -5px;
-            border-radius: 50%;
-            border: 2px solid var(--accent);
-            animation: musicPulse 2s ease-in-out infinite;
-        }
-
-        @keyframes musicPulse {
-            0%, 100% { opacity: 0.8; transform: scale(1); }
-            50%       { opacity: 0.2; transform: scale(1.18); }
-        }
-
-        .music-pill {
-            background: var(--bg-surface);
-            border: 1px solid var(--border-light);
-            border-radius: 99px;
-            padding: 6px 14px;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            white-space: nowrap;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            opacity: 0;
-            transform: translateX(-8px);
-            transition: opacity 0.25s, transform 0.25s;
-            pointer-events: none;
-        }
-
-        .music-pill.visible {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        .music-pill .pill-title {
-            color: var(--accent);
-        }
-
-        /* Volume slider tooltip */
-        .music-vol {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: var(--bg-surface);
-            border: 1px solid var(--border-light);
-            border-radius: 99px;
-            padding: 6px 14px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            opacity: 0;
-            transform: translateX(-8px);
-            transition: opacity 0.25s 0.05s, transform 0.25s 0.05s;
-            pointer-events: none;
-        }
-
-        .music-vol.visible {
-            opacity: 1;
-            transform: translateX(0);
-            pointer-events: auto;
-        }
-
-        .music-vol input[type=range] {
-            -webkit-appearance: none;
-            width: 80px;
-            height: 4px;
-            background: var(--border-medium);
-            border-radius: 2px;
-            outline: none;
-        }
-
-        .music-vol input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: var(--accent);
-            cursor: pointer;
-        }
-
-        .music-vol-icon { font-size: 14px; }
-
-        /* Hide on mobile (bottom nav takes over space) */
-        @media (max-width: 768px) {
-            .music-player {
-                bottom: calc(70px + env(safe-area-inset-bottom));
-                left: var(--space-md);
-            }
-            .music-pill, .music-vol { display: none; }
-        }
-
-        /* YouTube iframe — hidden, audio only */
-        #ytPlayer { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-
-        /* Modal */
         /* Modal */
         .modal-overlay {
             position: fixed;
@@ -1582,159 +1387,47 @@
         }
 
         @media (max-width: 1024px) {
-            .app-main { grid-template-columns: 1fr; }
-            .library-panel { position: static; max-height: none; overflow-y: visible; }
-            .header-stats { display: none; }
-        }
-
-        /* ── Mobile Layout (<=768px) ─────────────────────────── */
-        @media (max-width: 768px) {
-            .library-panel { display: none; }
-            .document-map  { display: none; }
-
             .app-main {
                 grid-template-columns: 1fr;
-                padding: var(--space-md) var(--space-md) 90px;
-                gap: var(--space-md);
             }
 
-            .app-header { padding: var(--space-sm) 0; }
-            .brand-text h1 { font-size: 17px; }
-            .brand-text p  { display: none; }
-            .brand-logo-img { width: 34px; height: 34px; }
-            .header-stats   { display: none; }
-            .streak-badge   { display: none !important; }
-            .audio-controls { display: none; }
-
-            #addPaperBtn span { display: none; }
-            #addPaperBtn::after { content: "+"; font-size: 20px; font-weight: 700; }
-            #addPaperBtn {
-                width: 40px; height: 40px; border-radius: 50%;
-                padding: 0; display: flex; align-items: center; justify-content: center;
+            .library-panel {
+                position: static;
+                max-height: none;
             }
 
-            .reader-area { padding: var(--space-md); min-height: calc(100vh - 180px); }
-            .word-display { font-size: 34px; min-height: 64px; }
-            .phrase-display { font-size: 18px; padding: 20px 16px; }
-
-            .control-button { width: 52px; height: 52px; font-size: 22px; }
-            .control-button.primary { width: 64px; height: 64px; font-size: 26px; }
-
-            .reader-tabs {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-                flex-wrap: nowrap;
+            .header-stats {
+                display: none;
             }
-            .reader-tabs::-webkit-scrollbar { display: none; }
-            .reader-tab { white-space: nowrap; flex-shrink: 0; }
-
-            .bottom-nav { display: flex !important; }
-            .mobile-drawer { display: flex !important; }
         }
 
         @media (max-width: 640px) {
-            .word-display { font-size: 30px; }
-        }
+            .app-header {
+                padding: var(--space-md) 0;
+            }
 
-        /* ── Bottom Navigation Bar ───────────────────────────── */
-        .bottom-nav {
-            display: none;
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            height: calc(60px + env(safe-area-inset-bottom));
-            background: var(--bg-surface);
-            border-top: 1px solid var(--border-light);
-            padding-bottom: env(safe-area-inset-bottom);
-            z-index: 1000;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-        }
-        .bottom-nav-inner {
-            display: flex;
-            height: 60px;
-            align-items: stretch;
-        }
-        .nav-tab {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 3px;
-            background: none;
-            border: none;
-            color: var(--text-tertiary);
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 0.03em;
-            cursor: pointer;
-            transition: color 0.15s;
-            -webkit-tap-highlight-color: transparent;
-            padding: 0;
-        }
-        .nav-tab .nav-icon { font-size: 22px; line-height: 1; }
-        .nav-tab.active { color: var(--primary); }
+            .brand-text h1 {
+                font-size: 18px;
+            }
 
-        /* ── Slide-up Drawer ─────────────────────────────────── */
-        .mobile-drawer {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 1100;
-            pointer-events: none;
+            .brand-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+            }
+
+            .app-main {
+                padding: var(--space-lg);
+            }
+
+            .reader-area {
+                padding: var(--space-lg);
+            }
+
+            .word-display {
+                font-size: 32px;
+            }
         }
-        .drawer-backdrop {
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.45);
-            opacity: 0;
-            transition: opacity 0.28s ease;
-            pointer-events: none;
-        }
-        .drawer-sheet {
-            position: absolute;
-            left: 0; right: 0; bottom: 0;
-            max-height: 88vh;
-            background: var(--bg-surface);
-            border-radius: 20px 20px 0 0;
-            display: flex;
-            flex-direction: column;
-            transform: translateY(100%);
-            transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
-            pointer-events: auto;
-            overflow: hidden;
-        }
-        .mobile-drawer.open { pointer-events: auto; }
-        .mobile-drawer.open .drawer-backdrop { opacity: 1; pointer-events: auto; }
-        .mobile-drawer.open .drawer-sheet { transform: translateY(0); }
-        .drawer-handle {
-            width: 40px; height: 4px;
-            background: var(--border-medium);
-            border-radius: 2px;
-            margin: 12px auto 4px;
-            flex-shrink: 0;
-        }
-        .drawer-title {
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--text-tertiary);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            padding: 4px 20px 12px;
-            flex-shrink: 0;
-            border-bottom: 1px solid var(--border-light);
-        }
-        .drawer-body {
-            flex: 1;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: var(--space-lg) var(--space-lg) calc(var(--space-lg) + env(safe-area-inset-bottom));
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-lg);
-        }
-        /* Ensure control panels inside drawer scroll properly */
-        .drawer-body .control-panel { overflow: visible; }
 
         /* Template Badge */
         .template-badge {
@@ -2124,7 +1817,114 @@
         .toggle-summary:hover {
             background: var(--primary-pale);
         }
+
+        /* ── Contact Us Modal ───────────────────────────── */
+        .contact-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .contact-modal-overlay.open {
+            display: flex;
+        }
+        .contact-modal {
+            background: #fff;
+            border-radius: 20px;
+            padding: 40px 36px 32px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+            position: relative;
+            animation: contactFadeIn .2s ease;
+        }
+        @keyframes contactFadeIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .contact-modal-close-btn {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            line-height: 1;
+            padding: 4px;
+        }
+        .contact-modal-close-btn:hover { color: var(--text-primary); }
+        .contact-modal h2 {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .contact-modal p.contact-sub {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+        .contact-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+        .contact-field label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .contact-field input,
+        .contact-field textarea {
+            border: 1.5px solid var(--border-light);
+            border-radius: 10px;
+            padding: 11px 14px;
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            transition: border-color .15s;
+            resize: vertical;
+            outline: none;
+        }
+        .contact-field input:focus,
+        .contact-field textarea:focus {
+            border-color: var(--primary);
+            background: #fff;
+        }
+        .contact-field textarea { min-height: 110px; }
+        .contact-submit-btn {
+            width: 100%;
+            padding: 13px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, var(--primary) 0%, #26C6DA 100%);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 4px;
+            transition: opacity .15s;
+        }
+        .contact-submit-btn:hover { opacity: .88; }
+        .contact-modal-success {
+            display: none;
+            text-align: center;
+            padding: 20px 0 8px;
+        }
+        .contact-modal-success .success-icon { font-size: 48px; margin-bottom: 12px; }
+        .contact-modal-success h3 { font-size: 20px; font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
+        .contact-modal-success p  { font-size: 14px; color: var(--text-secondary); }
     </style>
+  <!-- Vercel Analytics -->
+  <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -2132,9 +1932,9 @@
         <header class="app-header">
             <div class="header-content">
                 <div class="brand">
-                    <img src="swiftsreader-icon.jpeg" alt="SwiftReader" class="brand-logo-img">
+                    <img src="data:image/jpeg;base64,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AKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD/9D9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAjqJ2UIcnAx19KkY4HArxv4qeKzo+nDSbRitzfgjIxlI+5/HpWtOm5ySPPxmKjhqTqzPTNI1mx1mOSexfzEikeIntuQ4OK288E18/wDwSv08i/0s8eXIJVGc5Dggn16ivf8APGKqtT5JcplluL+tYdVe4+iiisD1QooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP/9H9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigApD0paYe/agCjd3UVnbPcSsFSIEsT0wOtfEHiLXJPEOt3OsMSEmfbGDj5YkOFx9a+h/jBrbaZ4b+wREq9+wiyMZCcFvzAx+NfKgIwFUYAxj8BgV9DgaVo89j8i4qxvNJYeJ6X8LtW/svxdbpJ8kd5GYSxPcbio/MAV9hKVx161+e8d1LbzLdxEiSFhIv1Qgj+XSvu3w7qcWsaPaanH925jVsehPUfgeKwx9PVTR6nCeKvSdDsdDzn2paTHT2pa8U/SQooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP//S/fyiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooATAxionXA47Cn/wioJmwm7OMc/gKnqKXw3PkT4x6wNQ8UiyR8x2MYUjjG98En8sCvKNwxir+t6j/AGlrd/qOcrczuy8D7pPH8qysjGK+6oR5YRjY/nDMK/t8RKfmTlgcc4xz+VfSfwR8QGa0ufDUxObM+ZEeOY3zx+B/zivmZGw2a3PC3iF/DmuWmrICViIRwO8bcMD9Ac+2KnE0lOn5nVlGM+q4mM+h+gHRqcQPXFUrS6juoI7iFg8bgMpHQqRkGrnbFfFNWP6DjJNJrZklFFFIsKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP/0/38ooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAoopOBQAtFFFADCMVzXim8Gm+HdRvd4jMNvK4Y44IUkdeOtdGenpXi/x2vxZfDnUFB2tcGKNccZ3SKSPxUGuijHmqJHnY+r7LDzmfHkTnykIP3gCPYYyB+ZNL5jbutZ1hOJrRF43oBn6YwKubs8Zr71Rtp2P5t5+ZuRYEjCkZiTjGc8Y9e2KhDDuaDJnoaXLqhH1f8EvFi3+nv4ZumJmsBuhY/wAcByB/3yePpivoAHGK/Obw94guPDWs22tWZO62PzKOjR4IZcdMYJ+h5HIFff2h6rBrWl22q2bAwXCB19RkdPwr5LH0PZyutj9u4dzD29H2Ut0bgOcU+mgYNOryD7YKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP//U/fyiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAIXOPrXzv8AHX4sz/DKx0f7HzPe3sfmKMEi1iIaXg5wGUEZHIzwQa+hmO1eeor8sf2kvEp174o3dqr7oNHiW0QcY3fK7jjvnAJPPbpXNXqckbo+fzbF/V6N47n6e6ZqFrqunW2pWTh4LmNZEI6FXGRWrXxn+yj8Q11TR5fAWpSE3mkjdbEkZe2fOQPXa31OPYV9l+nH/wBatoT54pnoYPErEUIzWzHDnHavmr9pOVovB+nRZwst/ECPUCNz/MCvpP8Ahx6f0r5h/aawPC2kqOgv1/SNwK9TAq9dHlZ+7YCp6HyFaTiCVXzwTgj17CukMgH3egGc+tcWzqvFb9ndCWHymPzRd/UV+h1afU/nLD1NeU0skUA4qv5rU3zG9a4z07F1WyQAMnjGP89K91+CvjuPS77/AIRfUJALW6YvbsT8qSc5Qn3xxnvjFfP25jnnBI7cfypQzB1KHy2UhlI4ww6H8DWFagqsHE9TA4qWFrKpE/T8e3I/z+lS4NeNfCTx4ni3SFtb07dRslCSqTyw6Bvxr2QNxXwVSHI+U/oDDYiNen7SBJRRRWZ1hRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFAH//V/fyiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAM+/nitrSe4lO1I1LMfQLyf0r8TNe1OTWdb1LW2yXvrueZmPUl2Jz6DgDgYA7V+vvxV1D+zPhz4lvkfy3h066Ktxw/lkL19yK/GaJtqJEBjy1AHtwc15mMeiR+ecSz1jA6Xwt4o1Hwb4hsPE2luRPYyBsA43pjDofZlJHsTkYIBH7D+D/FWmeM/D1l4i0lxJBeIHGCDsOOVPoQeDX4rZyK+kv2b/i2PAWvDwzq0hXQ9VcbGONsE7cA8jIDHAIzgZzis8NUUXy9DyslzD2E/Zzeh+op6V80/tM27SeC7G4Qf6u/iYn0DI4/mRX0gjBlDZBB7jGCMda8h+Ommf2l8OdUWNNz24jnXHYQyKzH/AL5yK+lwsuWtFn3ecU/aYKa8j88huOcfhUiTGFg6nBT/APV/KqscoaNG9QM/p/jTwRke9fqvKmfy8m1Y6iKWNkEqdG6D0p+8flXN2Vz5DGM/cP6VuF14CnPfNebUpuHTQ9qlUU4ruWN604MBVQNyKk3ioSOi3U6Hw/4k1Dwrq0Ot6ccTRH5lPIdcEFSMdwSB6dRjFfoB4S8UWHizRrfV9OYFHXDKOqPgZX8P8K/NtvmB/wBn09q9D+G/xAuvA2rifJfTrjAniB6dtwB4BHU4xwMV42PwfOuaKPtMjzV4Wfs5/Cz9DV9KkI71kaZqNnq9lBqFjKJbedQyMMYIPpWruGc18U01pbY/ZIyUkmnckooooNAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP/W/fyiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAPEP2hpvI+DviWUDINuqEezyIp/Q1+Rysdgyck8n9D/AFr9c/2hoTcfB/xJGvUQI34JIjH+VfkMHwCw6kAfoDXnYrofmPEf8aJP83HO3GD+VMcKV8s85PTJGST2x0OemO+Kh8w0FsnbiuBJHxJ+hn7MvxsXXbeL4e+J5c6jaJizmcjM8SdUOAPmQD8QK+vNa0u31fSbrTLj5oruJ4nH+y67T0wehr8PbS6ubG6gvrSf7NNbESRyqcFGHOQR+o6EcEYr9RPgJ8cLb4k6P/Y+tOtv4jsUAmiBA89AOJUAwOepA6fSvaoVfM/R8pzFV6bw1Y+H7mzm0u8l0y6H+kWTvC+PWJtvI7ZGPyqMNg+1ew/HvwsfDvjuW8WMLbasgnjI4/e/KJAR7kA140zjg9B/9ev2fD1FVpRmj8Px+HdDESpNbExYnI9avWF0qgQyHr0PpWYD29KQ5xjoex+ldEoXVjhpzcHodSHAJGc56Uu49uaybS73gK/BHGavFm3EK3HavKlCSZ78JqSuWAO1IDn5eg68ADpVYSMTjOKa596qyasaW6Ht3wj+KMvg2+XStSLPoty4CnOfIY8ZA9CcZHQDkV902tzDdwJcwOJI5AGVlIIIPQgjtX5VZDcN/D+Ar3b4R/FqTwxcQ+HtalZ9LkbEcnXyM5/2c7ScAgnAHI6V8xj8B9umfoOSZz7KXsK23Q+6hz1p/b6VTt54rqJJ7dxJFIAyspBBBGQQRVzBr5GSP1RPRWd0PooopFhRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQB/9f9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA85+KmnDVfh54hsM48yxnAPoQhI/UCvxlvdPn0y6NjcrteMAH3wAAR+Fft34ntvtnh3UbQLu86CRMDvuUjFfmJ4w8Jp4g09J7ZfLvoFBHAG8Dgqe3br1rzsVKzifl3E8lGrBvqfOhIA4pu9qWeOWGV4pgY3QlSpHQjqPpUBbiuex8QmTEfLjrWlo+tan4f1W21vRbg2d/ZsJIZV4wR0Bx1UjgggjHasUsQMZ5pWcyLtY7eMenFNX3XQ0hJp3Tsfed946074/fDtxDEtv4v8ADyidrYnBlVQBI0fTKsOQMcEADrXzjvSRVkj5HHsMFd2cdcgjGK8q0jWNU0DUrfWtIuGttQtWDRyKcHgg7T6qcYKnII4IxXoUGuRa1LLeRxCCVm3SxrjapPLEemWPQcDoABxX6Zw9jlK9GRxZxUde1TqahkIIxSeYR0qAMNvP3qdvXpX6IonydiUvnG44x6VqWd9u+Rhg9BWKHUjBOBTDIq4YHAH3cVlUoqRvSqOHodR5jhhkcGlEvbtWDFqUccyWlydpb7pPQ4Gf5CtYsMZU5A9K8mdKyse9CakkTCQbfY0Bx91uBjHA7CqwY04ZByKz0NT3r4UfGGfwfMmj627zaQzAK2dzQE8cA87c4yM4A5FfdFlf2uo2qXdk6zwSAMjKQVIPQgivydDdgAevHTqMV638M/i1qfgC4S0uGa60ZziSAg74cDloye3qOmOgzivmMdl3N79M+8yjO3RtSr7H6L98dqX14rn/AA94g0zxNp8Or6Ncrc2s4yrL/IjqCO4NdDXxrTTs1Zo/VYTjJc0XoSUUUUFBRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFAH/9D9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAopOgpi/5HpQBBcDdC6D0r879Vs207U7vT8ndazvGc9sZIx7V+irYIwa+IPi3pH9l+M7hlTEV+gnUjP3htDfmR/hXBjFeCPzniyg5UI1Etj5u8c+CV1aP+19MAF4g+ZR/Hjrx0GB6V4Cd6OyOpR14ZSMYxX2R8wA7Y6V5j4y8EjWs6npACXwGWXoHx2x0HtgCvMpVNkfldCvy+6zwBuKTdT7hXtme2mVkdDggjBBHUEenpVUue1en8j0kWNzdKu6ffPYXAnQkDoR6j3rLBNKWJGMZ7YrpoVXSlzwYSimmj1yC5hu4kmibII6VKGUHnqK890jV/sDi2nOIifyz0rvVkV1DoRjGeO9fteWY6GKpJrc+Wr0XTlYsEdx0pM45qJXbBpNzete1Y5DP1q0F3pzxgEmIboyOCMEE8j2FZuieLPL2WWonKEfLIAOPY8V0DNlSnY8Htx+FeXalbGzvpoGUKgO5fTBpSpKSO7Dztoe6rLuVSpyCMgjuKcJMfLXjekeJLnTDsZfNg9ByQPbPPFen2Op2mowi4spd6ADOMcH0NeJVoOD20PajJNI0ix6f0pfMbqSfzqt5uetIHJrBaF2PQPA/xA1zwFqf23SDvilI8+3YjZKBxjkcEdQRgkgA8cV9/eBPiNoHj3TRdaTOI548ebbtjzIj3BHp6Ef/AFq/MLeAOnH0rR0jWtS0G/j1TR7h7S8jwQ8ZwSB/ezwwx1yDxXiY3L4VvejufU5bm9TCWi9Yn63pk/Tt2/AipcH0xXzN8L/jzpvigxaN4lKWGqfwyEhYLjjqhPQnHQ4GenYV9KKwPcYI4xXwtahOk+Weh+t4XFUsRDnpvQs0UgGPpS1gdoUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRUG/P3SPxyKAJ6KhDjHb8DmpFNTqA6iiiqAKKKKACiiigAoopjcDP9KVwEz36U75qhyMZLYA9Riufv/E+gaWpW+1C3gYdmdc/985BP4CtFBy2Q0n2Om+Wk4ryS/wDjD4NsiVine7kHQQrnP0LYH6/0ridV+P8AY2kTy29hsiX/AJaXEgiA+owc+nB/wr06WWYqp8MDb2M+x9G8fWo8gLxxj1GP8K+NLb49+OPFdwbPwPpTam2cZtYGKJ/vzy/uwPoD6V3Fh4M+NfiZhP4q8RroUOf9TYgSTgehcBEB+ikYrWplkqK/fSSH7Puz6Pe5jiTzJXEaL1LEAenXOBRa3treqZLWZJlBwShDAfiK830b4WeFtNlNzeJLrF2eXmv5DcMxHQlDiIY7YUfpXp0UUVvGsUKLGi9FUAAfQCvHmop2Ri7FmiiioJCiiigD/9H9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACkz37UtN/hoA8P+NnjPUfBfhCHVNKfbdPdwRqCBhwD5jryDjcqkZHIrr/APjnS/HugQa3pr4LALLET80UgHzIR7Hoe/wCleGftXEDwhpKjo2oKce4hkAP4An/IFfKvw7+Imp/DrXF1WzLS2spC3VsMYlTBHAIOGHUEYJIAOQSK+XxGYexxXK9j5PEZl7DFqM9mfqz1A9P6V8/fHfQRc6Jb6/Eh36c43Ec/unIXGOnBINeseFvFGkeL9Jg1rQp1ntZx2IyhxyjDswPUf/WrV1bTbbVdOuNNulDRTxtGwPTDDH9a+ivGcNHdM9bHUI4rDShHqfnMSTkduMD2PINNLthR0AI6cH9KuazpNzoGpT6JdffsmMeT/EnVWHqMcVnbx2rwuSz2P5wqwlCThJWscd4u8F2fiCJp4gLe+Xox4DDsDjj8cZr5z1PT77SLprLUYzFKvQEcMPavrzfgY6jGOef51ka1oWm+IbU22oICQPlYD5lxzwRz/wDWrphUaeux0Ua7jo9j5PyRSbiCK6nxP4O1Tw7IZFU3FoTxIo6DtkD8q5IuQMqQQfzH4V3qz1R60WnqhwLDJTk10uia4YD9luzlOgJ7elcnnHWjhsA969fBYqeHmpwIqU4zVmeyq6snyEE4yCO9Sg5FecaPrRs8W10dsS8c84rt1uUkQPA4kB/iHav2TA4+ni4pxep8vWoSpst/MB7DiuS8TW/nQR3UQ5Q4ZvbkD2rpCzd6r3UIuLZrZ+hH6jkfyr3GjKDs0eU7h9zONvpVqxvrnTJhc2b7GH8Ixg54xg8VSuENvcPE67XU8n/ZqPzRjBHFZ2TVj1keuaT4tsdSxDPi2nHBB6E11W4qQpAGBk59O2K+dwyZGOSPTr+ddPpPiq8079xMPtNsOACfmH07n8e1eXUwnVHTCZ7FlaXeKwrDV7HUU32bgkYyh4YfQVpZIJ+X5R68EV5soNPax1potHDHacHpyeduORj0x2x0r374bfH7W/CezTPEm/U9KQgCTIMsKYI4JGWA4yCTgdK+d9wpuRu38Z9uP0FcVbDQqq00d+FxVXDvmps/XHw34o0PxXp0eq6BeR3dtIAQUPI9iOoPsa6YjtjNfkZ4W8X+IPB2oDUfD12bOXjcMZicdMOhBBB6ZxkdRgivtr4c/tDeH/E/laX4lCaPqbYUbmzBKcfwt2zjofpXxGKyydJ3hsfqGAzunWtGpoz6aHWn1TiYMAykY7EYIPHbFXK8E+sT0CiiigoKKKKACiiigAooooAQDFLRUZzjjI+mKTYBjA9qQ4VM/wAqwda13S9AtGvNWuEt417twTzwAOp/Cvmbxb8bNSv3ez8Nj7FbdBKQDK/0BBCj9cV6uDy+viXamjWMG/Q+j9c8W+H/AA5F5mrXiQHspOXPbhRz+leM618drdSYfDtk0wH/AC1lyq/gg+Y/gR+VfNE13PdXD3NzI0srnJZyXIJ9Cc4/DFRMxf73JHQnqPoeo/Cv0HC8NUoq9Z3PQhRgrXPUtQ+L3je+LbLpbaNv4Y4gMfRmBP61zE3jTxTOxeTVbnnqBMyj8gcfpXJD6UbhX0sMtwsFZQOr3OiOmHi3xIp3DVbsH2nkH9a2bX4k+M7LHkarIdvaQCUfiGGT/SuB3L6Um4U5YDDy0dNEtwfQ930n456/bEJqltFeKv8AFGDGSPxOB+XtXsPh/wCLXhXXXSFpTZ3D8eXONvOM4DdK+JiVY4ZRg+wpwkx945HHB5A9MeleLiOHsNU1grGUqUXsfpRHKkqq6EEHkH1HtUnGM18JeFfiL4g8LSKkcpubQEFopWypB44JBIx1GMDIA6V2es/HLXrlDFpNslkjcBjiSTj0zlR+I6dK+JqcPYuNTlitDidB3sfWbzJCpZ2CgdzgAVxWrfEbwjomUvNRiMg/gjy7H2AXNfFup+KNe1kltTvZZN/Vd2EPflRhTjtxWFlgpCAkHsO9ezQ4Xf8Ay+kaxoI+pdT+PelQMyaTYSXJXgM7CIfkQTXnepfGzxffEizMNimOPLTeR9S4I/IV4xPcRQLvuJQigZJY9B+NcLrHxG060Pl6an2qUEKrEkIT0yB94/Qfyr6vDcN4dNWjc1bow3PZNQ8U6/qoZ9S1GeVW5ZWcqmBz04HHUcV51qXjLQNMIgmuDcznokQ3yHPAAAz/APqq/wCD/g38U/igUu9Tc6LpLnIeYbSyHp5cYwT7FuK+y/h/8BPAHgBBNb2gv7/ADXVwA7kj0X7q/gM+9YYvMcvwN6cNX5GTxC+yfKHhrwZ8WfiBh9F05dA08kAT3wO8r6rGBg5HA4469q+iPCv7NPg3TmS98WSy+JbtSD/pRxCpx2jXCkemQe1fSaxqoG3gDjA6DHoKl2ivz7F59ia/ux92PkckqkmUbDTrDTbaO00+3S2giGFjjUIgHsBxV0KvyjaMDoPSpSM0nA+WvmG76vVmQ3avHHTp7VJRRQAUUUUAFFFFAH//0v38ooooAKKKKACiiigAooooAKKKKACiiigAooooAKa1OpD0pXA+S/2r0J8IaTJt4GoIPzhk/wAK+EOOOxXoRX6H/tNaeL34ayXLcf2dcQSkj0LCI8f9tK/Opm+XA6YBB9RX53nVP9/c/Lc9jbE3PQ/hz8TNd+HGr/a9MJltZWBuLUkCKUYIJAx8rDqCvJIAJIJFfpL4K8eaF490ddV0SfejD95EcCWJu6uO31r8k3Ibg4rofCvjHxB4J1VNY8OXJimUjcpI2SjoVYHIORwCRkHGKMvzF0fclqiMuzWWHfLPVH358b/BD6lYjxPp0XmXFkAJVUZLxccgeqk5Pt9K+T/l2LyDwMEdCD835jpivr/4YfGnw18SrX+zpCLLVUXEtpKcByQc+WSfmHt2HavFfip4Dl8H6k+o2KH+x71ycj/lhKeSh54U44PrgV9rJQqxU6bOTP8AAKp/teHV09zynqMjtQDimbuDtPpkEeoyCCOPam5NcfLpY/MySVIp0aOcBo3GCCMg57Y6V5L4n+GUMga90AeU5yTC3TPsTXrAORtoUD+8T9ea1i2vQ1hUlF6Hx9e2N7YzGC8iaCVTghhx+BqrnH4V9a6voWna5bmC/h35GAwyCD2ORg8GvnbXPCN9psrpB+8WMkYxyR6ivSpy5lY9aniIz0ejOSwFXrgCtHTdWmsJAqsTEeq8c/4YrIlVlfy2XBHBBGDSc16dCtOi+aDOmUIyVmtD1W01G1vIk8o/Uf3auB1dcdQP8rXkMM8to4khfyyvfj6dK6/T/EkW1Irw7D2P0r9Qy7PKdVKFXRng18G46w2KXieyZZVvoxgOMN7HmuTDBSCeUFep3iw6jYyW+4HzBlceo5HT6V5PcRSwSPBJwV6/TNfYNppNbDoyurPdEhbaDntTQ33dvHpVdpQOtHmjsKzijqt0LkUskbh4HMbryCDj+VdnpvjaSILFqqeYo43KBuH4AYP+FcFu557d6TzP7xz9KzlTUug07Hvdnf2t+u+zlVwew+8Pwq7kcgZ49e1fO8F3JbvutXMbryCDj+Vdpp3je5gUR6jH5ijjcoG4D2AGK86phXf3TpjU0PU9x9cfTikYBwQ2MdcYGARyMDoDkdqxrDXNM1FVNrcLuP8AA3DfgK0GaZevI/DFcEoW3RuvJnunw4+O3ibwK8VheOdV0k4/cysfOiHcox5P0ORjoK++PBnxA8OeOrAX+gXaykYMkR4lj9mXr/n8K/JMyFxtIyPfmtbQ/EGreHNSj1bQrlrW8jOQynGcDoR0Ixxgg185jMqhV1gfW5dnVXD+7U2P2NDMp6jHbA/Spskjjivlr4UftCaT4reLQ/E5TTdV4VZD8sFw3opPRsDocD07Cvp5eSCG4I6e9fCVqMqT5Zo/UsPiqeIhzQLPpzS0nH5Utc51hRRRQAUUU1jgUAIeBXlfj/4l6Z4Oh+ypi51B8bYQfuj+8/oPT1PFc/8AE34q2/hhG0PRyr6m68nqkI98fxY6CvkG6vLm7uJLu5dp5JvmaRzksc9OecDsOg9K+1yfIp4n97W0iaxVje17xNq3ia8N9q0zSnJ2rkbUHoAMAccdKxFKAdeD1qsSCd3f2+X9KXetfrtHD06UVCmtDrUkTEgdqQdKh3Z6VDJdQwAmV1jA6kmt1AftCzUvyetc5N4hsIchSZCOmBxWVJ4olb5YIB7EmtVQk+hLqHbDAPAz7ClxnsQa86k17Um+7IEHoAP8KpvqWoN96dvw4/litfqjF7U9P2YGefypuD7j8MV5eNQvgeJ5P++jTl1O+Ug/aGOPU5H5HitPqjD2p6mGIzgfUg0gKjO0dRjjqfxrziPX9Qix+9BA7EDB/IZqC88eraw+T5CvdHAG1vkU9ie9QsHNuyRDrpHpE0kVvGZLqRYETkljXnWsfEG2t8w6KnnOODJJwoP4dq8xvdY1TXbhPOkM7u21EQYBOcbVXGW9vevrb4Q/sv3OspB4g+IQktLQ4aKyUlXcY/5akY2j2GPyrPG1sJltP2mKfyOV4ic9IHhvg7wJ4/8Ai7fmLS4zJbA4muZcpbR56hSuA+B0A5zivvn4afs6+CvASxXt5F/bGqqAPtFwoKIcciOP7oA7Egn3r3LSNH0vRLGDTNJto7S2gACRRqAqgDjpxnjrWoBgnHX/AD/nFfimbcS4nGfu4e7DsiUrb6koRVxtUDHH0FS0UV8UMKKKKACiiigAooooAKKKKACiiigD/9P9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigDzj4n6KfEHgHW9KRcvLayGMdf3ifOnHf5lFfkgrMEUngEYwexGAR+YNftfIodCh71+Q3xN8NSeEfHOr6E0ZWJLh5YD2MMo3IB9ASPX17V8hnNK9pnwfEND4apxRJK1Hnp0O32HamFuOO1RlzXySgfn5aWaWFxPA7RSxncrxkq4Psw5HpwelfUfgf9ohptOfwr8ToTf6dKoiF5GoLAYwBIm0Z24zuAz35r5S3ZXrg1XdgRzz9a9DDYipRfus78Pi6lK9nofVvijwyNEEWq6Pcx6hoV6Qba7iO5AMcI4H3SOmT16cHgcgpyNw6dMe3qK8k8P+Ldf8Nb49KucWswxLat80DjuChyoPoQAQcHPFdrpvibT9SfYEFpL2jJ3Lj0U9ffnPFfV0cXTquzPnMbRXNz0tDpCzdqTLUmcqXz16Uzn1rtPDJGZgDzj6Vga/p3222FzAP3sIwcdSOlboJelOQSeORg8DpWkNGNM8LvNMsrtSLmIbhwSBg/pXG3vhq4UM1g4kUdjwRXr3iTTDaS/aol/dy+nb/PSuRZgjHAwa9eOqPRhUdvI8quYpbdysw8oj24qry/zLggV6zLFBOjLOgcH/ZGa5288O2Uh/0NvKJ7HpW1l2OyNZdjlrTVb2yIaKQkD+E8/wA6XV7u21LZdxr5c38Xv/n2qa50a+tWZljEij+7+XFZEgeM7Cvlkeo5r3sJmmIoaLYHSg3dFJzJnpmmCYhtg61bBLcEge1RGJOp6ivrKHEEX/FQOl2ZEGA6DFAkGOTtqNoTn5TtFRvuDbSP+BV9Th8bQqr3WYOD7EvmIeKcGB74+nFVix7Gmb29a7bMVi2spQh4sgjoRwfzrqdP8WapZMscmLmAdQTgge2MVxRZv4Til3s3U1MqcWthq6PctP8AEWmaouI28t/7jcH8K2XGCMcg/lXzqGBIPQ/wnoR+Irq9J8X3+nEW96vnxDgEdQK8+eFuvdOiMz2Bnz6nGMDPccgjPQ8cEc+lfVHwg/aHu9A8jw/42la507hIrvq8HGAr55IBwM8kD2r5BsNRs9Ri8+1lWUADIGOD71olnGEYAg45PI6+/tXh4vBQrLlqHrYTF1MPPmgftLYX9pqVtDe2M6y286hkZCCrAjIINaQavyz+EHxs1b4b3SWGolrzQJW/eQnO+Ak4Lxk9gOSvQgHAziv0r0HX9N8R6bBq2jTpc2twu5HQ5BHv6HsQeRX5ljMDUw0tVofrmX5jTxMdNzoSc0ZNQhyFycD9R/SvOfFHxP8ACXhRTHeXgluR0hhIdzjsQOB+OK4qdKdR8tNHtXPR2cRpuY4A5JOBxXzr8SPjLb6YkujeFZFnvMEPMOUi/wB09Ce38q8b8Z/GHX/FSmztT/Z9i2RsjOXcDkbmxkdOgIz0ryfcOMrkDt0/lX6XlXDErqpivuJc7F6WaeeV5rlzLLIdzsTnLE8kmoS23nGfr/T0/Cq+/YnzEDHIHArMvdYt7UEZ8w+g/wDrV+rQopLliSqptl9v3iKy7zW7W0O3O8+grj7rVbm8Jwdq+nFZgHX39ea6oYf+YtVDorrX7yXKoPKU9MAH+YrFkd5X3yMSfc8fl0qAcdKXJrsVNLZFcxJk00jNNyaMmr5DPnRIDijJqPJo3Y6ninyj9oPJPrimSSrHF5kuFUdT/LiqV5qEFkN0pB9AO9cXfapPeNyPLQA4HY4FdVPDOXoYTr2NW/1wy/uLXKKerDrx/j0qjo+jat4h1O30fRLRry9uGASOMZOT3Y9gByT2AOKk8M+G9b8Xaxb6D4ftzc3twQAqg7UBHLMewABJ9hX6sfBv4MaH8LtJXaBc6zMB9ouDnJOPuIOgUeoGT3r5nP8AP6OVU/ZQ+M54qVR+RxvwU/Z50v4frFrfiQR6jrrLjkbobfPO2IHjPuefQ4r6nKj0oCqBxxS9epr+aMXjK2KqurWd2eiopKyQ7aKWiiuIYUUUUAFFFFABRRRQAUUUUAFFFFABRRRQB//U/fyiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAjbG3B6V8f8A7RXhGzvb2x1S6QhZ1MDMo5DjDKSR7DFfYLgEYrzj4j+HR4j8L3doo/fRjzYjzkOnPGPUZGPevNx1H2tFpHj5ph/bYZxR+U+ueH9Q0dyzKXt2+7IBxj39K5sMGHUEHivpGQR3EQjuFAOMMrDgEcEYrznXfBCspuNGIDdTE3GPoetfm1OfR7n4op9JbnmDHAprNxxU11DNZv5F1G0Uo4KkcfhVP5q60joTJt+BwagDiN968HOeOP5UhbiojwPpW/L2Jsd1pXi+W1VYNTBaMcBwBkDt0AzXoNreQ3MQlt3WRD/dPT614ACRxVyx1K701xJaybMHocYPboeK9vD42ytLY8+rhE9Y6M973hehpQ4z1rgdM8aWU22PUx5DdNw6V2cNxbXMYltZBKp7g9K9+nUhPqeNOnKL1Q64t4Lu3e2nG6Nxj8eo6ehxXkOrWT6bdvbynIHT0Ir2FkZe3B71jazpUeq2piIAmXmJunI5x+PTnpmvSpS0FB29DyUSY6HbTGcdahuA9vK9vKmxkOCPQjsPaoC5xXoWOssbyOv8qrTW9pOh8+EPn25pPMJGKY0nA56fhVKBSM240PTpjmPML9vase40C5UHyHDgdjwP0rqSxApnnITnAFaW6GqnJHCSafqEGWaIkD+70qi8R+5KjD6jAr0bdht2f8PyqJtj8FQfwFXBSWsWbe17o81eHA+QgH0qk25eMZNelSWWnz53xgA9xkH9Ky5tDtiCInKj3HFfSYXNq1OyewrxOG8zHGMUGTFbt1oNwuXjw4Hoa52WK4tXZZUI9OK+6wmZUa+iJsSGQd+KeJR2IFVFcEfK2Mdqbu969hd0FjTtb66spRPaOUcfwjGDx3HQ8e1eoaD4st9VAt7nEVz0AP3Tgdj9K8c3KOD2pxIYgjII6FeCPpisKlFTRSbR9H7pMjc3HGOcjj68V658Ivi9qfwu1VVw1zolw3+kWoJBQnrIgPAIHJx1AxXyr4e8XZCWGqkEn5UlGMNx0Pb2r0Pkt854OCecjHQfpXz+IwqmnTqLQ9bDYiVKanDc/S/4mweIPHHhiy8WfDfUpLyzMQLWsblUnQkfMu3BEi91PGAcDdivittcWN3ju4pIp0YiVWyHyPVTz19a3Pgd8Y7r4ca2NP1aRm8Pag489WOfIcnaJEHYdNwHGMnGRmvvnxN8MvAPxGtkvr6zR3nQNHd252uQwBBDLwwI/vAj0rwsHmDymXsqsbxP13A42OLp36n51/8ACR2fZHH4YH6VWl8QnB8iI+xPQV9F+Mf2ZYdDsLnWNO8RCK1gUsRdoMAAcAspXknAHHUivkjcH4B3gZyRkKcHHGeor9Vy3McLjot0D0JJrc1rjU7m5+84APYVn7iucd/XmouQOMfkKNzetfQqKXQhMkCgU6odzetG5vWtB3JPmo+ao9zetG5vWncdyfJpCSah3npTWlWJd0smwevFTy66CcrFnJ9vxrB1DXYrUmCA75MdcDA/pWJqWvNcqYrX5EHDEd8f57VznmZJZuSe9enSwvVnHOvqXJrmadt8vU9z0H4CrGkabf61qdtpGmQtc3V4wWGMdWOcDjqB6nsKyjIuA5JAXqR1A74HrjoK/Sn9l74Lr4Y02Lx14kgH9q6hGDbxsMm3gPKkZ6Fhyc8jOK8LiHOqeWYbm+10RNODqPyPTPgd8G9O+F+io9yom1u8UNdSg8KcAiJRnAC+oAJxzxX0H0/CkCjr6DFLX8mYjE1MTUdWq7s9tKysiSiiiuUoKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP/V/fyiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAaSMVG+3DbumP0pzcDjr0FQq275eccgjjj2qboD4g+LHhJvDfiZ7yMH7FqZMiYGVSTjepJ9eo/SvMCyt1619+eNvClp4t0SbS5/3bHDRuOqOuMEfyPavgfUdPu9FvZ9I1NfKurYlGU8ZGeHH19uK+BzPBOnP2sNj8az3L3QqupHZmNqOl6dqsPlXsW/3HBH4jBrzXVfA17ab5NOPnrjIU8EV6mrD6GlLA9O9eNByR8pGbR83XMc9u3l3UZjf+6wxnHpVYuFxtGMdq+h7zTrLUUKXUSyZ7ngj6EYI/OuD1H4fwylpNMnKHsr9PwNehCaOmNaPU8vLc0gPY9K19Q8P6vpoP2m3OB0ZQSP0rDZgDtAxjrng/gK7k09jojJNCkqo4H4HkflU9pqN7ZN5lnMVI7Z4/I8fpVRgeTUDEge1b07rUGk1Y9Es/HVxCqpfReao6svUfQDiutsPFGj34Cxz7HPZ8DHFeGbsL8nH04phKk5IBx7CvTpYqa9DinhYvY9n8QaEuqwm/scG4UdE5DD69OBXlUpZcxSDZInDIeCPpVaDUNQtCHguXQDsCcfl0/Sm3ep3N6/m3LB39QoH8gK9qhmMUtTBYaS66EvmY6UGXis0yt2pPPJ9q9KOOpehXsZI0C+VziotxAqmZ3xyab559a6o4mjtzB7OReMmRzUfHfiqfnD/AD/+uk8zFdkXF7Mz5Wuha+0CmM4x96q+4UhbiteVDJS+Rj+VVpooJ02ToCP8+lHmAnbRvANODafusDmNQ0Erun0/GBzs9a5diyuUcFSOxFelMwK56Vl6hY298nzgBx0YcY/AcV9hgc2atCqWjhfMAFKHFF3b3Vm+2YYVujVVLnvX3tOUZR91l2LBOVAx+XGPf8K9C8L+KHJGl6i3tGxxzx0P4dK81DHGBTGDSY5KEdD6EdMU501NFRuj6UbBIBwwYAA9ePTHTnpX2V+zF8Yv7PuU+HHiSYiCYk6fK5B2HkmBieg4+X8h7fnx4S8Rf2jAdOujieIYBPG8dDjGMYHpXZpLJE4ZSY5Y2BDKcEFehBHOR618jjsDGtT9nM97BYp4epzx2R9pftEfFf8A4SHU28GaHKfsFgxW5ZTxLOhB2e4XGR2yK+X8jj26e30qlZ3f2tCX5lBJYnqSepPqffrVncTX6Hk+ApYTCqnTP0+GJVaKmmTZNGTVfJoya+i5TTnZYyaMmq+TRk0coe0ZOCe9KCfWoMkdDRvzUuGoKoSvJHEpZyAoHNcJqmrPeuYkO1F4I9al1vVNzfYovucbiO+OR/KsBc/SvWw+Ht7zOSrW7D8c4pCccnoP84qMs27rV7TtOvtWv7XSLBDJc3kqQxADPzuQAcY6AnJ9hXfVnGnB1JbHMu3Vn0b+zT8Jv+FgeLhrerxb9D0Rldwc4luRyqDHUKcMexxg5BxX6vJGsaqiDao4A6AADAAHp7V5z8LfAWn/AA48Hab4WsVH7iPdLIOryty7E5Pfp2x0r04Hv2r+OM/zeeY4uVV7dD6ejT5Ij6KKK+XOgKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD/9b9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigCBx8m3tXx38UfiT4h+GvxWEttuutMvbKCSW1JAzsZ0JTPQgDPHXHNfYzcjHSvif8Aav0T59D8QRrkAyW0h9jh0+mMN+f0r5jPZ1KeGdSk9TzMfKUaPNHc+lPBPxF8M+PdNW70W5BcD54WOJYz6FRz9CK5X4p/DOPxhaf2jpoCapbKSh6CRR/C34dCOc47V+cGnanf6JfR6jo00lndxkFZIjsOR0zjgj2IOelfWHgH9p/YI9P8fRDZ8oW9txlc+siADHOB8ox7V8/gOIKWJj7LFaM8JYyjiqfscQjxudJrWZ7a7iMNxASskbAgqRxj6elRMcDpX2F4t8F+F/ippy+IPCt9E16oGyeIgo4GDtlA56dCMEHHYYr5F1bS9Q8P376VrcBtrlSflIwCOxU9GUjpjn8K3rYVw96OqPzfMcsqYWXddCoWB70jMuMHmq7P36U0MGrkVM+ebJSRjHUe9ZF/omkagCLi2UkjqBgj3yMdKvg5PFBY9q2imluClY8j1jwoti5ETkofusRwfb2rmpdGulz5ZVhXvMsMU8JilGYz+n/6q4HVtMls3MpG63PRgP04r2aEoy0aNo1meZy2N1CDvjwB3FVCGReAR9RXd7wAOd4PXIqu3lMCzKMfSu/2C6HRGt5HC7yDtPNMPHAFdnLb2sgP7sfhx/KqzWNnt4jAP1P+NV9XZp7ZdUcn0FMZjjiumbT7ToBgexNV30y09Soq1QkP2sTnyRimFhjit46ZZDoSab/Z1qPvKfoeK6Fhw9rE50txTQXHSuiNhZj5tn6mmtY2m37n6muiNGS6h7RdjnfNYcnpS+b05rb+xWh/g/n/AI1XaztumMfQmvQhOpEhuHYyjIoGVGKYznsa0pLCIriI4btmqTafKF4OfavVp4q2k0ZWIPMFRb2/iHSmSxTQN844FRFuG7e1epGSewWaEuIobqEwyqCMfl+XpXFahZy2BHOYnPyN/SuwZ8c1BMkVzEbeUZD9unTkdOle/gcbKjLyGtDggD0xSKXXpU+o2k1m5Vlyh6H0rNy1fotKpGok4suxpW1xJaTJc27bZEORj19Px6V7ppWpx6pYxXcGAcAMO4cdRXz4HVTnO3A4/pXW+DNZOnaj5E/EFyMcngMOc/jjFZ4ilzRv2NouzPYZru9sopLmwVWlQZ2vwCB1Htx0xTtB8e6VrRFvPizvBwY26Z9ATTN4+bjOM8YzkY4rxPxTp5sNXZox5aTAMmOMHoRnr1rpy7FuPuPY+xyzENfu+h9TZdeHABIz+HbGKNxrwbwp8QZrAJp2unzYBwJOrIPX3H17V7jHKs0KTwOJIpACjDGGHqPf2r7KE4tbn1SncnyaUMahy4pN5rQpTJixA4rE1e/8iERRHDvx24H/AOqtRpliUyOcBRk/hXnl7cfa7l7nPDngegFd1Ck3K/QxqVOgwnJPc+tHTiq/mGjzDXt8hxXRKuQRtGT6evtX2l+x78ORrPiW58f38W610jMFruBAad1IZwOAQqsQOwOCBkAj4uiWeaaOCAF5ZWCRgDJLsQEAH1Ir9r/hF4KtvAHgHRvDsQxJDCGl9WlcbnJz3ByK/IuO80+rYRYaG8/yPVwUOapzHq2BS0gGKWv5jPpQooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD/9f9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigCM5Arxb44eFX8VfD7UbS3B+0Wyi5hx2aEgn8Sm5cdOfXFe0s1QSxo0RR8FSMEHpjvXHiaKq0nTaMqkOeDifjGJBJEj4AV+R2IPp+GCKDyDxjPpXovxa8HSeCPG1/paoRaTkXFs2OPKc5Kj3BOD/hXmm5iOK/navh3RqOk9D8srU3CThI2dE8Q654bu1vfD97LYSpg5iYgfin3Tx1BFe2w/HeHxBZppPxL0ZdUhH3buzISdD67PlGfUAgEdQRxXzqzk9cEehANRFBjoCPQjIr0cNjq9H4WJYiSXJe6PdLiw0O8BuPCerR6pB18iT9xdxZ7MrDa4H+z6Z6CsJmKuVcbHHbp/MHP4GvJjubbuJJT7pPJH0Pb8Kvw6tf2+B5rOo/hYkj9a9+nm13+8R8/iMGm7w0PSd4PHSmEqOjVydr4lhZQtyChHcdK2YL60nHySKSewPNfQ0qtGS5kzwp0KkTQ35qN0jlUxuMqw5B6cfy/CovlHzDketISpGa9CKXTc5TitX0aS1DXNkN0Pcelcv5g5BOCO1etFwQd3Q8EYGPyrkNZ8P5zc2PXuvrXs0KvSRvGXQ49mXb71AX4pJQ0RKOpUjggioPMwK9aMV8jUlLLUbyDg5phlyOlRMwxz0rfksWkKzEikZ+P/r1X8xcYDfpUTP8AwjmmuUqz7EzSjH3agLpzxUbHAPFQb9y9OK0Uojt5EvmHp0phfHeoPMVTwcVEz5O0kfhW6a2uOzRYZx61B5voKgY457UhcAVukMe77lOKzpokZWIGD2NTNJhagL1003YDLkDRnaegquzKK2WCuCHHBrIng2kuvQV6tOonoBTuYo7qExy8gj6fTpXE3UUtpOYZPujoa7FmZSUNZ1/At1CeNzgcH0r6vLsU6UknsarQ5XcBQ0pGHThwQQR6jkfyqswaMlH4K9aQyhRkdua+/wBGiz6C0DU11XToLwNl1UK3A+8PYVz/AIztVksY7kDJhPJ+pA/nXO+A9QEM1zphb5XxIo9+/wCld5rMKz6ZPDjIK9Pccj+VebCPJVR6uFnyyXkeLEkDOAT78DFd54J8Yy6FcCxvm32Up4yc+X6Y9ATxXAlsEIeuOfwNN9Qw69a+qpytsfaKR9jJIsiK0R3I43Bh3B6CnFV9MD/OK8l+G/iP7Tbvot45MtuN0ZOB8noPXAr1GSVY1MjHCqMn8K96l76RrzWOf1+8WKMWMZ5b72PQc/hXJc5HsMD6U67uWurh7jP3jwPbtVfc3rX0tOCjFaHK53J9xpoYgcnaB39qi3N60u4khScAkdhxWzJvofRP7Mfgo+MfirY/aVD2mjK19KQMj5DshHpkyFWx6D0yK/YJVHP8PPQ+lfGX7F3hEaT4Bu/FM8QSXXLgmM4ORbw/Ig+mc/Xv0FfaWB+Vfx5xdmDxeZTttHRH2WEpqNL1JaKKK+EPQCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP/Q/fyiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAQ9KacbfYU+kxxigD51+P3w2fxr4XF3pi/8AEz0nMsI/56pgb4yfoMj3AHevzblWSBjFMhjccFSMEHuCOwHSv2mkVWXaw4r4t+Lvw+0+z1ZrtrQNY35PKjb5cnUgkYOCeRn6DivzHibAWX1mCPj84wuntoo+KMcfLxUJ3c816dqPgDktpVzjPRZBgfgRXCahoOs6eT9qtm2j+NRla/Nqc4M+JU0Y5Y9qYSduKTAVwuST3zwR+FIXPrXakUI7jH07dvyqHfsPyEqR0wcfyqNmJphJxXVCNtUTZGjDqV9CBslIx64I/Wr6eI76P76q49en8q5wk9KQhh3r0YYiotmYSowe51aeKTx5sQA74JJp7eKrdvvRMB7VxRy1MBwcV6UcwrdzneDp72OlvtQ0fUVPmwsr9mAxj8Bx7Vy0iICfLJMfYEYNDMcdxTW469q745piLbkrCU1sMZBj/wDXTdmBSlkxULPj0xUvGV59ToVOPYUjHaonOBTsM5AwSB2qVbWUn5hipiqsuo/dS2Ku4n5f6CghsfdzV0Wu373NSeUg5x0rupYeozJzj2MlgW42DP0pjQMw5QD6DFaxKDoKiaX0NepToyj1M3K/QxmtAB0x+dVms3bIU4x61tNIp+XtVdpABt/SvZpSqR1uZNR7GFJbXUWeAcdhWe+5D0Kn0xXS7tpwP5VXk8t8lwK9yljHtJaGLpnPNMNpTFQ5XoTxWjc2Svnyjg9hWLOs8JKleB3Fe7Sqwl5EOPkV7q36mOsotglWHNbLOCBjjFZd0nO5TXt0paCRymrw7XF1GMDv/KsLfn5lrrpwJYmgk5BH0+lcVKZInMXcV+jZZXU48rNUbWhXx0/VrS5J+RZAG+h4I/I/hXvcpQxSR9Rgj6gg5H6ivmOVm2kKcYGfyr6HtLr7Rp0E+ch4wT9SADXdWVmpHZRR5HOqrO4AwASB+BqJmNTXf+vfHQMw/WqoGa+ijsj7VP3Tb0HUZdL1e1vYzgo4B4HKngj8ifp2r6F8QXyLbRwxn/XgMcdlOCBXzA5C5bpgGvXLTUTf2VvcEksIlXPsOntX0WWx5pWInK0TSDDGfbH4UZFUtzetG5vWvqzkuXdwqa3tZb+4isLTJnuXWKMAZO9yFXA+pFZyux+XOM8A+n/6q99/Zq8Kf8Jd8YNEhdM2+nb9QmGMhVg4iz9ZdvB47dOK8rNMWsJg6ld9EdNGPPNRP1v8CeHLfwn4S0nw3brhNMtoYSOxdVBYj6sc12mOtQoAD6EA8e2eKsdM1/C9SblJyfU/Q0rJLsOoooqCgooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD//R/fyiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAIdoIIFc34g8PWHiDS59MvULxSDt1BGCCPoQOOh6EEcV05OOKibhD/QZ/SsalOM4uEtiZRTXK0fAniXQNQ8L6kdK1Nc4JMT9pUzwwHQYHBHY9KwCwYYzkeh6flX3J4v8GaZ4w0/7Jegq8ZzHIvDI2O3qCOCD/MAj4z8T+GNV8I3pstVQiM/6uYf6twPQjnIHUGvwzN8inhZ89Je6fl2ZZZPDy54bHF32h6Tegi6tVfPUgbT+YrlrvwHpUmTC8lv+TAfnk1225W5GOmQRyCPxprFcbhx9OP5V81DnXU+cVRo8qn+HswP+jXasB0DDFZEvgTXUz5YjkHopwfwzxXs7MMc8/WoyUIztH5CvRhVkV7aR4a/g/xDH/y6E7f9oH9BWJdaRqdods8DKfpxX0ScY4GPpx/Kql1DDdxlJ0yDx6fyxXZTre9qtA9uz51Nnct91Me1L9hvPQV6jqHhlwWksDvHXbXGyiS2by51KN0x2r6GhSpz6j9szmvsF1/EuB79KDYSnqQB7VtuR90nioSQDivTjh12F7VmWtiF6tu9qmFpbr1UE/U1YYgHiqrOobNejCjDojJybFIRegApjNzxTSwFVHY544rsUEuhNyVmBNQM2O9QPMIxmQgCsubVbePJHJ9K2VWC30BI0mYZqq2M8dayJNWznamKiV9Ru/8AUgIPXj+tL61TWxXKzXyAeRg+1RM+OMHHrVRbVgM3EpY+nT+VOOB8ozj610QxSb2JYFxuqJnwaa+3tVWR+wrvhWiTcdv5quzLliwyKaz44xVVpvavSp1oXTDcpXVnlS8XA9Kx5CSdhHTiujabPtWdcQCQFj1HQ19Dh8Q72ZDSOXukCHep2r3rkdWiEcwlUY3V29yNoMcgznpXI6nCxiZD/B9z26197lte1RMI72OaZ+o9eD9Dwf0r2/w1dmTwrbOxyVR+f904H5V4SrAOAOx5r1TQbryfBkRU4yWUfQnkV+hVFdJHoUY+8jDkdmlJPck/rSsvTbUZJYg/lSmQAc9BXrpbI+tT2KtwwGUHcYr03QP+QPa5/un9DXks0peTr2OK9g0dPI0u0j6YTP519LlUXzM56r0RpZakyakBxTc+1fWL0OS7HKcEMTgZFfot+wz4T8qx1/xlcKd08i2Vu/PKJ80mO2C2O3GOMCvzmfIUt12AnHrgZx+OMV+3H7PvhAeC/hR4d0aZdt01ss03XmSX52yOgIyBj2r8c8Q8d7HArDreZ9BlVO9Xm7HuGBn6U6iiv5bR9sFFFFMAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD/9L9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAQnFZ15D9ptZ7ZSYzIhUMpwRkYyMdMVonpUDqpQrzg8ce/HHpUSV1YD4N0j9orxb4L1i58M+NLQauNPleJp4gIp/kJ25TAXpjkDkV7hp/wAXfhV8RLL+y728SAyHBgvB5JB/2W4AI7c89O9eE/tReA203VYPHmnpmC7Agu+uFkQAJIfTIAXA4z2zXyUwRl+YAngYIXHTIIr8JxGc43AVnhqvvR/Q+Or4ypQn7OeqPuPxN8Ir2yDX3hSQajaPyIywDoO2wgYYenevF5lMM72twjQyR/KY5FKOCOuQwBP4V4rpHiPxBoXy6Hqd1p65ziGdohn6DA6dse1dVc/FrxlfKsGuTQ6rGoAT7VAgdcekkSrIf++ue+RkV5VXG4Wq+ZR5X+B8viKVCr71PRncliv0ppfjFecQeO23H7faKAf+eTEY+gfJ/WtmDxbo9xgNL5RPZx/UcVnTqU31Pn5UpHU7wR0qMv6Vlx6rp0/Edyhz0wef51OZkI4ZSPbGf516EUn10MGn2LBZce/tWbd2Fpep5c0e7PpwR+WKmZgQfmx78VVNxFGPmlCgd8gY/Wu6MbWaZOpx2oeFpIyXsWDgfwnrXH3EM1qSsyFSPbivUJ9Y0mLPmXsS49wT+QrmtQ8W+HSdjk3JHZU5P06V7VPGKO7NVd9DhWc54ww/lUDTR4JfCYpuq65p85b+zrYwZ6ljz+RzXJzXLyHLEmu6WYwj8B0KHyNafU0iJA5NZM2oXEnCnCn2FVmLdBj8elRpBLcNiAE+vHFcEsVVqF8iRC8hJzI5xTobOa8b5E2r61vQ6UsWHuSGPp/+qreRGNsfA9BXRTot2uJszYbK3gG777Due34dKsF/YAdgBj+VSOw5LfLj2HaqbEB0VhkuRtCoSTnttByc9BgfpXs06XRGO4srL1xzVV5Mg9vpW/rnhjxP4Y0W21/xHpkulWF7kQNdYQybFUnYvBIJP4CvFr/xbczZFsoiUnAI56fUmvuss4exeNV4R0OpYWq+h3jSBfvcD1JwKyp760iOWmVfp/8ArrzWbULy5P72Vm/QfkMCqzHP3jn61+l4bgPT97M7YZe/tM9BOt6cp2FwR/n3qtJrOnHhW5/z71xA+g/KjAr348F4RK1zb6jTOx/ta0bjdn24qVb+JsAOMenFcSGx0NKCwOQcUpcH0or93IzlgI/ZZ2Uix3OemccGuR1OGRgysOVzz7Ui3U0e054FWpbn7WjJIAXIwO38q5P7JxOEd90efUwso6nmbHypX3dCeldzplw3/CO2VpnAy7Ee2cCuONjLdapJbxZ2RnLHtiuyiSKNBFGMKi7QPbOT196/SsP70FJndhaV5cz6D8fKMdulVbiQBCg4JxVssqjnpWNMwZycZA9K9Omj3NB9lbtd3qQqOGIz9Byf0Fe1xIscaxKMBAFA9AK4fwppnkxjULj77/cB4x/kV2fmc5r7jL6DjC7POrVCzk0ZNRbx60hf5T3wCceuBnH6V6/LoYXPQ/hV4Vl8c/EPw94ZjTcl3dI0g5AMEP7yTOMEAqpHGK/d23jW3hSOPG1QAMegGB/QV+Z/7Dngpb7xNrfjq5TdFpsSWVuTx+9cZdh06KSp+tfp0FA4HAHQV/JHH2YfWcx9lHamff5TR5aXMT0UnH50tflaPfCiiimAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQB/9P9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKQqDS0UAcx4n8P6f4m0O70PVIxJbXSFGB7ehHuDyK/Jvx14M1T4feJLnw1qYJCHdbykcSwdFYdgR0IFfsMSMZrx34s/CzTfiXoDWcn7i/t8ta3GOUf0OOqsOCDwM5AyBXw3EOTLGUvaQ+JHj5hhPbw03Pylk5YI4yKgcsMDrW94j8Pa74Y1W50XXbVrW6tm2EEHYwxkOhHVT2rm2cHG7r7Efy61+CeylGTjJan53OLjdNWY0uwzg8GqbMRxU5bnHH1/+tVVmPpit4ryMWIzEGq7OwPDEfTj+VDFs8GmEn0P4Y//AFV6EUZ6CNNLjG8/nVdsseSfzpzvgYx/IH9M05LS8nI8iB5D2CqST9OAK64PzI2KTBRxgZ9cDP51A+SCM4H6flWr/Y+qEjdF5J9H4/SrSaGEx9olyT2UcV6VOnKXoZ3OZdsn5Mkew4/KpYbS6m+6uB611cdnZw/ciz7mpXIHyrwPavapYbuS5GGmjQxYe5O8+nT+VXfkiXbGAo9AMU8ucEDvVRiuPmzj2x+HXt/SvZpU7bGLkMJVSSMe+cnH5VUZ04Ib5WIC56nPAwBzz0Fdx4J8BeK/iHqn9k+E7QXMqkCWU5FvCD1LN9Ow6ngV+jPwq/Zm8H+BFi1XWh/besgDM0wBhjOOkUfTA7FgT0Iwa9+hg5T6Hr4PLquI22PjL4bfs1ePviB5d9qMR0DSyQTNcITNIhHWKPIP4txX3Z4M+CXwu+FFi+sfY0nu7eMtLe3o82UKo5Kg5WPI4woBPSvfyqRp8oxjt0HH+e1fAf7Q3xb/ALb1CXwRoEpFnaMBeSo2A8oIPlHHUKQD9RX3eUZQ8TWVKmfqGV5HT5kkjyv473qfHq6RRMbbStNZxYjbkgnAaQjg/MFAxnAHQV8c6h8E/E1m7LbTW8oP3dxKsR7DGK+qtDQLpsXHXP8AMfp7VoSQrMhDDcOwr96w6WFgqNHZH47nGOrUMdUSeiPiC5+GPja1J/0DzQO6Op/TrWJN4P8AFNtxLplwcdliYj8xX2/cWj27Y2Ag9MAcfpUKsWGMbQOoFdizGa6HmLOattkfDZ8O6+v3tOuAfQxED86YdC13H/IOuPwjJP5V9y4UnPejZVLMZdjRZ3L+U+HY/DfiSQhE0u5Oe5iP+NbNt8PvGNzgppkmP9oBP5nivsleOV+Xb6UwqrHBUE/QVLzCfQTzqfRHy1b/AAg8XXIHneTaqepY5I/Kuy0z4K2sG19U1FnPpEABnHHJ4617rgD5SBj6VDM8VrbPO52xxguQeRheenTtXM8bN+6cUszrz91Ox8YeL9O0zSfEt9ZaSnlwxFUwSSSQOecnvXLgYAA7Vf1W6Ooand3oGTPM7dMd+P0rLkZgMRZdzwABX1dKD5VFH3tFclNdyK6nwpVPbNa2h6G904urhP3EfIzkFj26ehwat6V4eYsLrUOvUJ0z+XpXZKMAY4AGABwPyr6/B5ftKaOerX6D4woRRjGBgY46UtRFiDSbm9a+vS0t0ODmLC0qBtwCLvckBVA5LdgB7nAqBGbI9K+j/wBmD4az/EX4lWcl3GW0jQiLq5YcAyJkxIPX5wpI9Ac8V42bY+ngMJPEz2SOzD03VmoI/TT9nj4ff8K6+Fui6LIMXcsf2i4OOTLP83P+6MDAwBjpXvQGarJgBVUYCg4A7Dtx9KsjrX8HYmtKvVlVnuz9XhBQioj6KKK5jQKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP/9T9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACmEDj8KfRSYHmfj7wHp3jKxCToiXMZzFIygkHsDnqD6V8V6/4KsdNu207WtMiiuF4yFwGHYqwx1Hp2r9GSFK+ork/EvhDSfE9n9m1CPJH3XBIdT6g/0Nfm+f8ADMcb++oaTPDx2XquuaO5+c0ngPwpKdzWWD6q7gj6DdiqEvw58Nk/JHIF/wB817/4t+GviLw4zyQIb+zH3WiXMij/AGlJPHbivLxNFJ0wHU4K9CD7g1+D4jCYvCzcKyPzqvRq0naa2OLHw78Mrwbcsfd2A/QipB4D8Kxn/jyBI9Xcj8ixH6V1rFc471CzDtWUak+55rmzHh0HQrPb9nsIEI6EIuR9D1q+gSIeXEAg9Bx/KlZsniq7YroTbe9zFyKd1p9jeEpcQq+epxz/AI1zF94N0yU77Y+SfTkj9a60nDVETg9Tn2Gf04r2KNepD4TLnPMbrwRfKC1rOjgdFOQT/SuXu/D+r24Ie3Ygd1wR+Qr2x5k3+STljwAELH6YGTXd+Hvhf408SlZLKxNlAxH726OwY9QB8x9gB1x0FfV4PE4qo+WKudNGFaq+WEbnx7PbXUYPmQsm0HJIIA9yfb0/CvfPg3+zxrvxMdNY1kSaZ4dRh87DE1zjqI1PCqeASRnGcc4r7a8IfALw1orR3WvMdXugQR5o2xKQOgjBwwHbdn1r32G2htoRDCgREGAqjAAHQADt7V+o4HBT3rRsfcYDJH8WI+45vwr4P8P+DdIi0bw9YpZWyAAKvJOB1YkksfqTXVAAc9Men8qcygL8vGP6V5n8TPiDp/w98OT6rckGZ/kt48jMjnpgegzk+wr66jSc5KlDW599Rpf8u6aPJf2gPi4PC2mjwvoj51W9XLMmCYYSeW5yMt90d+cjBxX59fNs+ckuSWJPJJPOSTyT7mtDWNZ1LX9SuNY1WQyXV1IXkY9AT0VcY4A7DgelZo5PHev6KybKoYKhy9T9IwmF9hBHc6Cd2nxj+6SK2gF2kkc1z3h9v9EKnoDgVv4yD71z17KbsfyNxBR/26qvMQ4OOMrWZLp+f3kfA9K0+MZNGSF+lQkj8/l7rt2OWeKSN8Y49abk9McV1DKr8MvBqjJYoT8owPWsZQ1HzGJk0ZNajabJ1RwfY9Kb/Z1wPvFR9KSQcxQHAxXI+OtQOneEr+5hOZXQxqqjJJchePzr0JdNAw0zcCuL8bSW1taRWoVQN2/kA9OR1r0cvw0q1aMTuw1nVSPkvTvCGoXSfbLwfY7ZQMlvvHjsPc4/CtCDTrS0Y/ZUJ2dWPOe3+cV0ms6u1/L5URIijOQO2awt7V+4YXARopXR9y6z2LAx2pc+9Vt7Um5vWvU5djDmLXSkwBzVfcw4pQ7dP/1Aep9h1PtVL7guWoY555o7a1iM0s7BI4wMl3chVHHqSB7V+2n7Ovwpj+FHgG10+6GdVv8AFxeueD5jDhMDgBRxwB05r42/Y3+CDa9qcfxT8Rwn+zrJiunRuCBPKAQZiP7q5+UdMgHHFfqUpUdOAK/ljj7iH61W+o0H7sdz9DybB8kfbSJ9op1Jx+VLX4mfWBRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAf//V/fyiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKQgEYPSlooAhZVK7SOB2rzfxL8M/C3iQma8thFP/wA9Ivkcfkdp9OQa9KpGA246gVxYjC0q65asTGpShNWmro+UtW+AF9GC+iakHGeEuFI4/wB5Dxgf7PtXB3/wd+INqwjhsorof3op0UfgH2mvug5/Ck4xjPH04r5GrwngJ6xVjw6mTYaR8BP8KviEOujPn/ZmgP8A7PQnwj+IshA/skID3klhGPykP06V9+7M9R0pSoHYZrmjwjhF9o5P9X8P3Z8Q2XwC8a3JX7VNaWinry7kfgMD9f8ACvQNL/Zw0qIBtZ1Ge5J6rGBGv0zknFfT2M/epSFz2zXsUOHsFS+zc7KeS4WHQ8/8P/Dnwf4aAOlabFGwOd5BdwcYzuckjj0Nd6scYUBRgDoKf+NP46Zr6SlQp09IKx7dOnCGkI2GeWF+YDB9uM/WlbOOP0p56UxyFU10Gxi6tqdpo1hJqN/KIYIULMxIAUD6/kK/LP4p/EK9+IfihtRQkWEAMdrETwsYOC4AxyxxyeQOBgV7L+0X8UzrV1J4E0KX/Q7Rs3kin70oPEXHZeCcemOlfKWeTjAyQTgY6DA+gx2HFfsnDGT+zj9aqrV7H2+WYLkXtZoaOBgdBTj2FIDinE4r9Ptbc+ltodV4cceVKh7YIrpuByK4rw/JsufL/viu0/hr5jFwtNn8ocXYf2eZTYmOcCkVcsfen5FI21SvHFcSfQ/MMTT+0iInPWnAYpcUVaR5dxcmmbV9KdQeBz0FUkFwBXIHb3r5f+I/iM6lrstjA2Irf5SR0OK9917Vo9O0u5umO1YkJ/HGB+uK+Pp5muJpJ25MxMn0JOMflX6Fw1hLydbse3l8NebsQAlRt6AUu5vWj8aTBr9Ss+h9HzBk0uaZg+tO3BRknHYcfkPx6VNhtjgdrDGMZAOfT/PSvoP9nn4Har8ZvEgaZTB4bsHBvLgZAcg/6hDxksOGI5AJwRWX8DvgX4i+M+vCKFWtdAtGBu77b8gA5McJxhpDgA44AOe1ftL4M8G6B4G0G18M+HLZbSys0CqozuP+07HlmOMknnt0r8S4z4whhYfU8G/f/I+vyvLZVWqlRWRt6Ppmn6Jp9rpWlwLbWlpGIoolGAqJwAB9Px9a2uM9M0iinlfSv5Xbbbcj9HSSSS0HYxRRRSGFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQB//1v38ooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAoxmiigBMCjApaKACiiigAoxiiigBAMUtFITwaTYEEhKrlRkjtXz58efifH4E8NnT7Bh/a+ogxwrkfIpHzOfYdB74r17xV4k07wnoV1rmqyCOC2XOSQMk8BR7k8V+UPjLxZqHjbxHc+ItSbLz8JGeRFED8qgdAMY/nX2XD2UvGV+ea91Ht5fhXVnfocyzySFpZDvLnljyWJGSc9+e5po60Drn2x/+odqOfzr+gEuVJLSx+gL8hKKKKQy9p8hhvIpM4wcfh0r0NVH8PQgGvL+cjswIx+FejWUvnwQvnkDBrxsdHZn4Fx9g7ThiLaFvGAKXOcYNLkDINAIPXivEWjPw2SvoRnBIXpTuBVeYeWVNVmlPPPFac2tjy5Ya2q0LrSJGhHcVSeZpPlHANVS+4NmmH5Qc8Ac/TFdkYnBY8q+Kuri20yHSozh7lgXA/uLyB7cgdK8BVsde9dT441k614jubheYYj5KDsAOTj8RXH4I6V+65ThfYYdJo+sw0OSCRMrEcLSiRe9QAnpjPsBn/D+fH6V3ngT4Z+OPiTeCx8GaVLe4YK0wGLaLvlpjhQAB0AJPQckV34vF0cND2leSSR6VOnKpLlijiGmA5zgdM9ueB/8AqHXoK+vfgJ+yt4j+Jctvr3i5H0jw5n5SRsnuwAeI1PKKSBknnGcYPI+sfgl+x14X8DyQ6547dNf1qM71j2kWdu2CMKhP7wjP8eQDggAgGvtqKCKBFSJQioAAAMAADAAHYV/OPEviDKonhsu0T+0fe5fkdrTrnPeGfC2g+ENJtdB8O2S2VlZqBFGgwB2JPqx7k8n1rqAi8cdOlOVQOlPP5V/P0pSnJynqfcxSSskLRRRSKCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP/X/fyiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigCLAPNNZ9oLHoKcffivmv9oH4mnwZ4f/sTSpcarqqlY8f8s4v42OemeVHpnI5FdeGw08RVVKCN6NJznyRPnX9oX4l/8JdrZ8MaU+dM0x/nIIxJOBgn3C9AOnfGcV84Fuue5z+mP5dqTkhVY7iBuYjn5j15PNGOcV/SWX4GGEoqlA/S8PRhSgoRQlFFFemdQcdziqd5ew2Sq85xnoo61JdXUVjCZZSCR0H6CvP7y7e9mMrnI7egqW7Adimu6e5GWKDuSK7jwtrdlexywLICUOQMEHFeGnPatzw7qBsNVifdhG+Vh2IwcfkcVwV488bHxfE2A+t4GUF02PoHzosdcn6VG8+R8vBqurrKoYdMAg+tJu49hXzbXQ/kmWnutaiNIerGqzH5uOgpXYscDpTOg4pJmL1JFbCrxx3rj/G+vLoXh+dkIWecbY89skAnHsOa6sFcbQBk8DPA9APb+QqTwp8CvFHx51xLszHSfCGnN5f2vGZbhxuDCBT94A8bjxnp0r2KOKw2Hft8U7RRz4PA1MRXVOCPia0hu765FnYwy3dzKflihQyuc8khVGR754Ar6M8F/snfGnxikcx0xNGtXxiW+cJ8p7+WBuPoMd8dq/Wb4b/Bb4e/CyxjtPCulRxTgfPcSDzLlyRglpGyefQYGO1es+TGCDjJU5BPOM+leLmfiViZPkwMOVH7DheHopXrHwj8Ov2GvAugvFd+PLyXxJcrhjCAbe0BA4GEIZgDgj5h0GRjIr7a0bQtH0Cxj03RbOKytYwAsUKBEAHHRQBW0oUdgKcSB0Nfj+OzTGY2XPiJtn11DCUaKtTiO2gY46U7AoorxztCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA//0P38ooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigBAMUh4HWnVG5ATIx7Z6UvIDmPE/iLTvC2j3Os6jIIre0Tcx6DsAB7kkAfWvyf8Y+KtQ8beIbzxHqDc3LZjUn7kS8IoHQAD0HPU5Ne8/tI/En+39XXwRpkp+w6a265ZSNsk5HCnHZRnjpn6Cvl7qSWxzjt6cCv2zhfKvY0/rFRas+6yvDKnH2kkHAGBwKSiiv0U+iSD8cCo5ZfKhM0nyovJP8AKpHwM5IAHJJ9BXD6vqZvJDFFxCvAPrik3YCrqGoPfTF24Toq1m57UUVhJkscGIpc5OQcEdD6HtTRjvSOUiUmRsADP+FJIl7a7Ht/hfVF1DSkaVsyw/Kw4B+tbbMx+XPFfPXhjxSbDWUST5bWcBG6cHt+uK9/Vw4BHcAADp9a8LE0HTd+jP5K4my76pjJcvwseDmk44A6+n9KC3pXReH/AA9daxIXClYVIBIHJ9AB7nArzZTUVd6HxF9dDZ+HXgmbx34otdK8tvsaMGumUHYkagttJ6/Njb171+lel6dYaVZxafp0CQQW6iOKOMBVRR2AHQcfjXDfDDwZZ+EdAijiiCzzgSSHHOSOAT7V6dhVxgdOBX5LmuNeIqW6I/aMjy9YajztascqKAQAAM54qWmgd6dXgn1gUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAf/R/fyiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAI8ccdK8L+NfxKX4eeF5HtGB1O9zFbIccN3cj0AyRnjOBXsmoXtvp1lNfXDiOKBS7MeAFUZP6V+U/xT8ez/ABC8V3OsZP2SPMNqhxgQqcbserHn1/Cvq8hyx4zELmXuo9nLsL7Wd7HnkrvIzNO5eWQ7mbOdzHJJJPuf6dKj68UnX24x+FLyK/oVRSVlsfoUdhVobHc4FIDisDWtSEKfZoG+cjkjHA//AFU76DM/WdT8wGzgPH8RHfHP+cVzOMUUVhcli4OM0Y4zSUjNj7xwBSSFdDSwAO84Arnb6889yvYf0p9/fGZvLibCdCPXFY7eldUI2WxwVKmg/p04I6fXtX0B4B8QpqenfYro/wCk2owc9SO2PWvn09M9vbg49u2fTtX1v+zV+z/r3xBv18W6mZNM0CAkRyY+e6faQAgPBUEjLdMjAryM0r0KNDnqyPg+IsuhjMK11R2vhrwzcas6XE4KWoIyccsPT/8AVX1d8L/CK300d+0QWwtGPlgZG9xxz3IHX04rA03wTqTa6PDKxmNYj87YO1Yh0ORxkjpX1Tpel2mk2MVharsihUKB647+5r8azPM+ZcsD8TyTJ5zr89ZaRNgJ7Y//AFYqTApB/KnV8Qfr2wYxRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAf/0v38ooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAGcimdiM4NBOBnGa47xr4qsfBPh2+1/UGAjtoyVXuX6Ko+pIFXCDnJQj1KjFyaSW58zftOfEb7FZw+BNKlInugJLorjIhzkJnqCzAdMHHHQkV8OZ4A7Agj2wMfljt0rW1zWr/xDrN7repuXur1/Nkz/AAZ+4oAwAAOMDj8ayK/o/J8tWBw6h1P0vB4eNGlYKOO/AoqvcXKW0PnOAAB09fSveO8ranfrYR9ldx8oHOP8ivP3d5XaVhy/Wp7u5e7lM7nIJxj0FVuOPasWSxKKKKLEhxjrgDvWBf6gWJgiOF6HHfFSahfrk2sByB1NYTN2rojCxw1Zh1pccYXAOCeTgcDNNxge/T2z2z7evtX0v+zx8Ar74ua0mraqhh8MWMo85lyPtDryYoyewOMkcgdDnFc2MxlLCUvaVWcFSooRuzY/Zw/Z0vfinqMPibxIrW/he3cEDlXu3Tkqp7KCBkjtxX68aXpen6Rp8Gl6dbpbWtsgjiijACog4AAHbFQaLo+l6Fp1vpWlW621rbRiOOJBhVUcDgcdO/etsBcHHFfznmmaVcbV5pbHyGIrupLyIxbxBi+BkjBPcgepqTAHan9utIPf2rwr6nCopAFIqSm5A4NKDmgoWikBzS0AFFFFABRRRQAUUUUAFFFFABRRRQAUUVG0yJ944oAkoqsk8cn3AfxU/wCFWaACikyKMigBaKTIoyKAFooooAKKKKACiiigAooooAKKKKACiiigAooooA//0/38ooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKQE9DS0xuOaAIpGVYzu4Ffnd+0p8Qv+Eg8QR+EdPfNjpTbpSuMPcEY2n1Cgnjpn8K+r/jH4/TwF4OuL2I5vZ/3NsoxkyN3AP90ZPT0r8upZJZpXnuX3yuxZyeSXblj+f5duK/S+FMt9pU+tTWiPqcqwvNL2jGnpTKeelNAzxnFfs7PsxjFVUsxwAMk/SuD1TUWvZiqnEacAVp63qed1nCeOAxHfH+e1crjp7VmxMWiiiptcgKxNRv1Ba3tznHU/0p2o3oUNDGeTwSO1c2XJ47VrGBxVavRDg2aVeo3dM4P09vpTQO2OvHPb3/CvTfhV8Ltf+LHiqDw7oi7IQQ11cEEpbQDqxPdjjCjpkjtSxFenQpe1qaJHBKVld9Dq/gP8E9X+MniIW3zW+hWRze3YGBxyIkz1LYAPoCSMECv2k8M+HNG8KaJa6DoVstpZWaBI0UYGBxk+pPcnk1i/D/wPoHw88OWfhjw9B5UFsuCSPnd/4pHPck//AFuK76v53znNqmPrX+ytj5HE4h1ZeSHAAdBinUUV8ucJGAcUp+VfpTgc1XkUswHtTDoOXDdDmpfYUiIEGBT6GxJBRRRSGFFFFABRRRQAUUUUAFFFFABRRSYFAC1GI0Bzjk1JRQAgAFLRRQAUUUUAFFFFABRRRQAUUUUAFJ25paKACiiigAooooAKKKKACiiigD//1P38ooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAjPIxUMkgRC5IAxkn0FTPnHHWvnL9oT4gnwf4RbTrGQLqOq5hi7ER4/eN04+XIB7E8ciuvC4eVeqqcEb0aXtJKCPkT44+PW8c+MZY7Vz/Z+lF4IAMYZwcPIMep4HtXi+BxnnFLhgFyclVGSORn/P50YB46V/TGDwscLRjSifp1CmqcOVISsfVr8WsOyM4kcY+n+RWhc3UdnCZ5T90cD1PSvOrm5lupXnkOST6AcfhXabkTHc31ptB4pq0EscOKydQvhGDHDwTxnjinX9+IVMcLYc9+uPw6dK5lmJJyck9aaRx1aqSshc5yc9etNKgD0x6UYIHBAPbI4H5VasrO71S7g0/TYGmubmRY4Y0GWdzwBjrgnAJ7DJqnPl9Dguram14Q8J63438RWXhfw9b/aL69YKAAcIDyXY9AFAJP0r9s/g18JNB+EvhKDw/pwE13IN11cEfPPL3J9FHQAYA9Aa4H9m74EWnwm8Orf6siy+I9RUNdP18kEcQoc4wo6kDJ7nFfUYVchscjvX4JxBnTxlX2VP4EfKYvEub5I7EmFDcDmn0UV8OeWFFFFABSYGc0tFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFAH//1f38ooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigApM84paifodvXHH17UAVLu7t7O1kuZmCxxqWYngAAZJ/Kvyj+K3jiXx54yvNUyfscBMNqpxgRIeoGO55z17dOK+wv2lfH7eHfDS+GrCQre6v8rFcZjtx94/8AAiNv4nHSvz2AwAo6AAD8OK/XeEst3xc/kfZZThbL2rDgLtA2ig4wSTwBn8qBg9DXMa7qYUfZbY4J+9j2r9V0PrHbqY+s6gb6fCDEUXGP0rIU/pTTyaVc+349Kkz6jjx7Vm3t9Hb/ACIck/pUl7epbRjBy0gymeDgcE4+vA9q5RpC7F261SOSrVWw5nMjF269qavSmk5oOVHGM9s9KpI86+o4+nI+nX8P6V+mn7JXwA/saGL4n+MLYfb548WMDjPkxEY8wjP3mBIAI4zkc4rw/wDZT+An/CwNaTxv4kjI8PadJ+4Rsqbm4QHg4IO1DhuODgA5BIr9b4YYoUVYlCooAUDgAAdAOgr8i4mzu7eEoM8DG4r/AJdwLgUDpTsdqKK/KDwAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD/9b9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAj9qz728trCxmvrlhHDChkdj2RRknj0FXicKe1fJ/wC034+bRNBTwlYvsu9VBEm0jKQKRn6biMfTNd+Dwk8TXjRidVCi601BHxx8RvGE/jnxff68xPkGQx26n+GJBhAPZgN31riKBhcDuMD8AMD9Ka8ixIXY4C81/TeGoQo0o0qfQ/T6dNQioFPUL5LGAtn5yMAfXivOpXZpGdzl3PJ/+tWjf3bXs5lJ+Rfuj07Vn7Q+Wwc+3f0Fbu179C2vvEUDAGMnI4/pXsPwm+Et78Q7qbVNRkNh4Z05WkvLvGF2ICWjjJ74GCewyRggVnfCb4Wat8VfEyaJYkw2UJDXd0BxChByFPQscYHua+wP2n9Y0b4QfB60+HfhWNbM6232RFTqII/mmYk5JLYCknnDHB4FfF5nmcvarB4f43+B4eKxfK/ZQ3Pza8XazZa74ivtQ0yAW9g8m21jx922T5YvckgZJOSc8muY/pS7QoAXoowPYccfTjihRk19tSg4Rt2Jd9AOF55xx0r174K/CfVvi/4xh0K3Bi06DEt9cAZEUI/gB/vNjA7jOeMV514d0DU/FetWXh3QoGnvtSkEcMYHPJwWOOigZJPoDX7c/BT4T6R8JfB9todpiS/kAku5hn97NjBIz0VegA474zXxXEGcrCUeSHxs83F1+SOnU9J8NeH9J8L6PaaFotuttaWSLFHGvYKOCc8kkcknmul2+tNC+lKRivwJtyd5PU+TbvqPxiiiikAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQB//9f9/KKKKACiiigAooooAKKKKACiiigAooooAKKK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qMAAdhitXGPevxrMcdPGVnWmfGYrEOtPmY7GKKKK8o4xjDgCvHfiv4aufHel2fgQbl0/VblG1CRcjFlAfMZARzmSRUjOCCFY17GcYA7UhReuKcJOMk0UnZ3KVnaW9nbxWttGIooVCIgGAqgAAAdhgdK0KQKBn3paRIUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFMVWH3jmn0UAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAf/9X9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAj24Fcf401O50TwvqWoWaNJPDC3kooGWkPCAfUkCu0rntciW4iEBGR1P9K1pW50zSnpJH5Eaj8MviP4o1yGwttMkaa4mJLPjG+UgsTjjagyT24r9PPhP8OdO+GPhKz8PWI3yqC9xL3llP3mPtngAdOOK7XRdCt7H/Sdg81hgewrpsCvps1zupjIqltFHpYrGyqrk2QgUDHtTqKK+UPJCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA//1v38ooooAKKKKACiiigAoppOD7U6gAooooAKKKKACiiigAopMijIoAWikyKMigAPSstYzcXDSMPkQ4HvitF+VIXqaERYlCjgCmmO48dKWk3CjIpCFopMijIoAWikyKMigBaKTIoyKAFopMijcKAFopNwo3CgBaKTcKMigBaKKKACiiigAooooAKKKKACiiigAoopOgoAWim7jRuNADqKbuNG6gB1FFFABRTdxo3GgB1FN3GjcaAHUUUUAFFFNLelADqKbuNOHNABRRRQAUUhOKTcaAHUU3caN1ADqKTcKWgAoopOgoAWim7jRuNADqKbuNKDmgBaKKbuNADqKbuNG40AOopu6nUAf//X/fyiiigAooooAKRulLTCTg+1ADM9u1SjpVZj82TU6mgB9FFFABRRRQAUUUUAFJtFLRQA3bRtp1FADdpo2mnUUAN2mjaadRQA3aaNpp1FADdpo2mnUUAN2mjaadRQA3bRtp1FACbRRgUtFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABSHpS0h6UAMpQM0lPHSgBNpptSVHQA5fSnUwdafQAw9aSlPWgdaAF2mjaadRQAUUUUAFR05qbQAU5fSkIxSDjpQBJRRRQA1qbTmptADtppMGn0UAR0oOKUjvTaAJKQ9KRaU9KAGUoGaSnjpQAm00AYp1FABUdSVHQAoGaXaaFp1AEdFKetJQB//9D9/KKKKACiiigBD0qM9KlqMjg+1AEKjJ5qyBimAelSUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFIelLSHpQAylBxSUuDQAE5pKKcD2oAUDFLRRQAw9aSlPWgDNABk0ZNLto20AOoopOgoAaeTSr1ptKDigBx6UynbhTaAHjpS01adQA1qbTmptAElFFFABUdPPSmUAOWlPSkWlPSgBlLk0lKBmgAyacDmk20oGKAFqOpKjoAUHFLupAM0EYoASilBxT6AP/R/fyiiigAooooAKa3WnU0j0oAFp1IOlLQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUh6UtIelADKeOlMp46UAIR6U2pKYRigBQe1OqOpKAGHrQOtB60lAElFR0UASU1vSlHSmHnrQAUuDQOtPoAZg0mMcVJSN0oAZUlR08dKAEam05qbQBJRUdFACk5pKKcBigBQMCg9KWkPSgBlPHSmUUASUVHSjrQA+o6kqOgBy0pGaRadQBHRTiO9NoA//9L9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigBMCloooAKMZoooATApcYoooATAowKWigBMCjApaKADHakwKWigAxiiiigAooooATApcYoooAMZpMClooATAowKWigAooooAKKKKAEwKMClooATAowKWigApMClooAMYooooAKTApaKAP/2Q==" alt="SwiftReader" style="width:44px;height:44px;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,0.12);object-fit:contain;background:white;flex-shrink:0;">
                     <div class="brand-text">
-                        <h1>SwiftReader</h1>
+                        <h1>SwiftsReader</h1>
                         <p>Academic Reader</p>
                     </div>
                 </div>
@@ -2159,6 +1959,14 @@
                     <button class="button button-primary" id="addPaperBtn">
                         <span>+ Add Paper</span>
                     </button>
+                    <button class="button" onclick="openContactModal()" aria-label="Contact Us" style="background:transparent;border:1.5px solid var(--border-light);color:var(--text-secondary);border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border-light)';this.style.color='var(--text-secondary)'">Contact Us</button>
+                    <!-- User account info -->
+                    <div id="userInfoBar" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);">
+                        <span id="userTierBadge" style="padding:3px 10px;border-radius:20px;font-weight:700;font-size:11px;background:var(--primary-pale);color:var(--primary-dark);">FREE</span>
+                        <span id="userEmailDisplay" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                        <button id="upgradeBtn" onclick="openUpgradeModal()" style="display:none;padding:4px 10px;background:var(--primary);color:white;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Upgrade</button>
+                        <button id="logoutBtn" title="Sign out" style="background:none;border:1px solid var(--border-light);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:var(--text-secondary);">Sign out</button>
+                    </div>
                     <!-- Audio Reader Controls -->
                     <div class="audio-controls" id="audioControls">
                         <button class="audio-btn" id="audioPlayBtn" title="Play Audio">▶️</button>
@@ -2174,6 +1982,7 @@
         <main class="app-main">
             <!-- Library Panel -->
             <aside class="library-panel">
+              <div class="library-panel-inner">
                 <!-- Library -->
                 <div class="control-panel">
                     <div class="panel-title">
@@ -2297,6 +2106,7 @@
                         </button>
                     </div>
                 </div>
+              </div><!-- /.library-panel-inner -->
             </aside>
 
             <!-- Reader Container -->
@@ -2321,7 +2131,7 @@
                         <div class="reader-display">
                             <div class="reader-placeholder">
                                 <div class="reader-placeholder-icon">📖</div>
-                                <h3>Welcome to SwiftReader</h3>
+                                <h3>Welcome to SwiftsReader</h3>
                                 <p>Add a paper to your library or paste text to begin reading. Designed for academics with ADHD and dyslexia support.</p>
                             </div>
                         </div>
@@ -2463,61 +2273,10 @@
         </main>
     </div>
 
-    <!-- Bottom Navigation Bar (mobile only) -->
-    <nav class="bottom-nav" id="bottomNav">
-        <div class="bottom-nav-inner">
-            <button class="nav-tab active" id="navRead" onclick="mobileNavSwitch('read')">
-                <span class="nav-icon">📖</span>
-                Read
-            </button>
-            <button class="nav-tab" id="navLibrary" onclick="mobileNavSwitch('library')">
-                <span class="nav-icon">📚</span>
-                Library
-            </button>
-            <button class="nav-tab" id="navSettings" onclick="mobileNavSwitch('settings')">
-                <span class="nav-icon">⚙️</span>
-                Settings
-            </button>
-            <button class="nav-tab" id="navNotes" onclick="mobileNavSwitch('notes')">
-                <span class="nav-icon">📝</span>
-                Notes
-            </button>
-        </div>
-    </nav>
-
-    <!-- Slide-up Drawer (mobile only) -->
-    <div class="mobile-drawer" id="mobileDrawer">
-        <div class="drawer-backdrop" id="drawerBackdrop" onclick="closeDrawer()"></div>
-        <div class="drawer-sheet" id="drawerSheet">
-            <div class="drawer-handle"></div>
-            <div class="drawer-title" id="drawerTitle">Library</div>
-            <div class="drawer-body" id="drawerBody">
-                <!-- Content injected by JS -->
-            </div>
-        </div>
-    </div>
-
     <!-- Focus Mode Toggle -->
     <button class="focus-toggle" id="focusToggle" title="Toggle Focus Mode (F)">
         <span>🎯</span>
     </button>
-
-    <!-- Focus Music Player -->
-    <div class="music-player" id="musicPlayer">
-        <div class="music-pill" id="musicPill">
-            <span class="pill-title">432Hz</span> · Deep Focus
-        </div>
-        <div class="music-vol" id="musicVol">
-            <span class="music-vol-icon">🔊</span>
-            <input type="range" id="musicVolSlider" min="0" max="100" value="40">
-        </div>
-        <button class="music-btn" id="musicBtn" title="Focus Music (432Hz)">
-            <span id="musicIcon">🎵</span>
-        </button>
-    </div>
-
-    <!-- Hidden YouTube player -->
-    <div id="ytPlayer"></div>
 
     <script>
         // Configure PDF.js worker
@@ -2548,10 +2307,6 @@
         let isPlaying = false;
         let wpm = 300;
         let chunkSize = 1;
-
-        // Dyslexia phrase mode state
-        let dyslexiaPhrases = [];    // pre-built phrase chunks for dyslexia mode
-        let dyslexiaPhraseIndex = 0; // current phrase index
         let fontSize = 48;
         let fontFamily = 'Inter';
         let highlightMode = 'none';
@@ -2629,7 +2384,39 @@
         const mapSectionDisplay = document.getElementById('mapSectionDisplay');
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Auth first — redirects to /login if not authenticated
+            const authed = await initAuth();
+            if (!authed) return;
+
+            // Wire logout button
+            document.getElementById('logoutBtn')?.addEventListener('click', () => {
+                if (confirm('Sign out of SwiftsReader?')) logout();
+            });
+
+            // Handle post-checkout redirect
+            const params = new URLSearchParams(location.search);
+            if (params.get('checkout') === 'success') {
+                showNotification('🎉 Subscription activated! Enjoy unlimited summaries.', 'success');
+                history.replaceState({}, '', '/app');
+                // Refresh user data — Stripe webhook may take a moment, retry a few times
+                let attempts = 0;
+                const pollUpgrade = () => {
+                    fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${getAuthToken()}` } })
+                        .then(r => r.json())
+                        .then(u => {
+                            currentUser = u;
+                            updateUserUI();
+                            updateSummariesUI();
+                            // Retry up to 5 times if still on free (webhook may be in-flight)
+                            if (u.tier === 'free' && attempts++ < 5) setTimeout(pollUpgrade, 2000);
+                        }).catch(() => {});
+                };
+                pollUpgrade();
+            } else if (params.get('checkout') === 'cancelled') {
+                history.replaceState({}, '', '/app');
+            }
+
             loadSettings();
             loadLibrary();
             loadStreak();
@@ -2821,7 +2608,10 @@
         // Event Listeners
         function setupEventListeners() {
             // Add paper button
-            addPaperBtn.addEventListener('click', showAddPaperModal);
+            addPaperBtn.addEventListener('click', () => {
+                if (!canAddPaper()) return; // checks free tier paper limit
+                showAddPaperModal();
+            });
 
             // Library search
             librarySearch.addEventListener('input', (e) => {
@@ -2850,12 +2640,7 @@
             // Navigation
             prevBtn.addEventListener('click', () => {
                 pause();
-                if (isDyslexic && dyslexiaPhrases.length > 0) {
-                    dyslexiaPhraseIndex = Math.max(0, dyslexiaPhraseIndex - 1);
-                    syncWordIndexToPhraseIndex();
-                } else {
-                    currentIndex = Math.max(0, currentIndex - chunkSize);
-                }
+                currentIndex = Math.max(0, currentIndex - chunkSize);
                 updateDisplay();
                 updateStats();
                 updateMapViewport();
@@ -2864,12 +2649,7 @@
 
             nextBtn.addEventListener('click', () => {
                 pause();
-                if (isDyslexic && dyslexiaPhrases.length > 0) {
-                    dyslexiaPhraseIndex = Math.min(dyslexiaPhrases.length - 1, dyslexiaPhraseIndex + 1);
-                    syncWordIndexToPhraseIndex();
-                } else {
-                    currentIndex = Math.min(contentItems.length - 1, currentIndex + chunkSize);
-                }
+                currentIndex = Math.min(contentItems.length - 1, currentIndex + chunkSize);
                 updateDisplay();
                 updateStats();
                 updateMapViewport();
@@ -2913,9 +2693,6 @@
                     document.querySelectorAll('[data-dyslexia]').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     isDyslexic = btn.dataset.dyslexia === 'true';
-                    if (isDyslexic && contentItems.length > 0) {
-                        rebuildDyslexiaPhrases();
-                    }
                     updateDisplay();
                     saveSettings();
                 });
@@ -3272,127 +3049,191 @@
             }
         }
 
-        // Load PDF text with figures and tables
+        // Load PDF text with figures, tables, and equations
         async function loadPDFText(file) {
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
             let fullText = '';
             let figureCount = 0;
             let tableCount = 0;
+            let equationCount = 0;
             const mediaItems = [];
-            const pageImages = [];
 
-            // First pass: render all pages as images
+            // ── Pass 1: render each page to a canvas so we can crop figure regions ──
+            console.log('[PDF] Rendering', pdf.numPages, 'pages...');
+            const pageCanvases = []; // indexed by pageNum-1
             for (let i = 1; i <= pdf.numPages; i++) {
                 try {
                     const page = await pdf.getPage(i);
-                    const viewport = page.getViewport({ scale: 2.0 });
+                    const viewport = page.getViewport({ scale: 1.5 }); // lower scale = faster
                     const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
-                    canvas.width = viewport.width;
+                    canvas.width  = viewport.width;
                     canvas.height = viewport.height;
-                    
-                    await page.render({
-                        canvasContext: context,
-                        viewport: viewport
-                    }).promise;
-                    
-                    const imageData = canvas.toDataURL('image/png');
-                    pageImages.push({
-                        pageNumber: i,
-                        image: imageData
-                    });
+                    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                    pageCanvases.push({ pageNumber: i, canvas, viewport });
                 } catch (err) {
                     console.warn('[PDF] Could not render page', i, err);
+                    pageCanvases.push(null);
                 }
             }
 
-            // Second pass: extract text and detect figures/tables
+            // ── Pass 2: extract text and detect media ──────────────────────────────
+            console.log('[PDF] Extracting text and detecting media...');
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
-                const pageText = textContent.items.map(item => item.str).join(' ');
-                
-                // Split into lines for better detection
-                const lines = pageText.split(/\n|\.  /);
-                
-                for (let line of lines) {
-                    const trimmedLine = line.trim();
-                    
-                    // Detect figure captions - more patterns
-                    const figurePatterns = [
-                        /^(Figure|Fig\.?|FIG\.?)\s+(\d+)[:\.\-–—]?\s*(.*)$/i,
-                        /^(\d+)\.\s+(Figure|Fig\.?)[:\.\-–—]?\s*(.*)$/i
-                    ];
-                    
-                    for (let pattern of figurePatterns) {
-                        const figureMatch = trimmedLine.match(pattern);
-                        if (figureMatch) {
+
+                // Collect items with position data
+                const items = textContent.items.map(item => ({
+                    str:  item.str,
+                    x:    item.transform[4],
+                    y:    item.transform[5],
+                    w:    item.width,
+                    h:    item.height || 0,
+                    font: item.fontName || ''
+                }));
+
+                const pageText = items.map(it => it.str).join(' ');
+                const canvasData = pageCanvases[i - 1];
+
+                // Split page text into lines for caption matching
+                const rawLines = pageText.split(/(?<=\.)\s{2,}|\n/);
+                const lines = rawLines.map(l => l.trim()).filter(l => l.length > 0);
+
+                // --- Figure captions ---
+                const figPatterns = [
+                    /^(Figure|Fig\.?|FIG\.?)\s*(\d+)[:\.\-–—\s]\s*(.*)/i,
+                    /^(\d+)\s*\.\s*(Figure|Fig\.?)[:\.\-–—\s]\s*(.*)/i,
+                    /^(Figure|Fig\.?)\s*(\d+[a-z]?)[:\.\-–—\s]/i
+                ];
+
+                for (const line of lines) {
+                    let matched = false;
+                    for (const pat of figPatterns) {
+                        const m = line.match(pat);
+                        if (m) {
                             figureCount++;
-                            const caption = figureMatch[3] || figureMatch[0];
-                            
-                            // Get the page image for this figure
-                            const pageImg = pageImages.find(p => p.pageNumber === i);
-                            
+                            const caption = (m[3] || m[2] || line).trim();
+
+                            // Try to find the caption text items to get a bounding box
+                            // so we can crop just the figure area from the page canvas.
+                            let figImage = null;
+                            if (canvasData) {
+                                // Find items that match the start of this caption
+                                const captionPrefix = line.slice(0, 20).toLowerCase();
+                                const captionItems = items.filter(it =>
+                                    it.str && line.toLowerCase().includes(it.str.toLowerCase().slice(0, 8))
+                                );
+
+                                if (captionItems.length > 0) {
+                                    // Caption Y in PDF coords (bottom-up). The figure is above the caption.
+                                    const captionY = Math.max(...captionItems.map(it => it.y));
+                                    const pageH = canvasData.viewport.height;
+                                    const scale = canvasData.viewport.scale;
+                                    // Convert PDF y (bottom-up) to canvas y (top-down)
+                                    const captionCanvasY = pageH - (captionY * scale);
+
+                                    // Crop the region above the caption (figure body)
+                                    const figTop    = Math.max(0, captionCanvasY - 350);
+                                    const figHeight = Math.min(350, captionCanvasY - figTop);
+
+                                    if (figHeight > 30) {
+                                        const cropCanvas = document.createElement('canvas');
+                                        cropCanvas.width  = canvasData.canvas.width;
+                                        cropCanvas.height = figHeight;
+                                        const ctx = cropCanvas.getContext('2d');
+                                        ctx.drawImage(canvasData.canvas, 0, figTop, cropCanvas.width, figHeight,
+                                                                          0,    0, cropCanvas.width, figHeight);
+                                        figImage = cropCanvas.toDataURL('image/png');
+                                    }
+                                }
+
+                                // Fallback: whole page
+                                if (!figImage) figImage = canvasData.canvas.toDataURL('image/png');
+                            }
+
                             fullText += `\n[FIGURE_${figureCount}]\n`;
-                            
-                            mediaItems.push({
-                                type: 'figure',
-                                number: figureCount,
-                                caption: caption.trim(),
-                                image: pageImg ? pageImg.image : null,
-                                pageNumber: i
-                            });
-                            break;
-                        }
-                    }
-                    
-                    // Detect table captions
-                    const tablePatterns = [
-                        /^Table\s+(\d+)[:\.\-–—]?\s*(.*)$/i,
-                        /^(\d+)\.\s+Table[:\.\-–—]?\s*(.*)$/i
-                    ];
-                    
-                    for (let pattern of tablePatterns) {
-                        const tableMatch = trimmedLine.match(pattern);
-                        if (tableMatch) {
-                            tableCount++;
-                            const caption = tableMatch[2] || tableMatch[0];
-                            
-                            fullText += `\n[TABLE_${tableCount}]\n`;
-                            
-                            mediaItems.push({
-                                type: 'table',
-                                number: tableCount,
-                                caption: caption.trim(),
-                                content: '', // Tables are hard to extract from PDFs
-                                pageNumber: i
-                            });
+                            mediaItems.push({ type: 'figure', number: figureCount,
+                                              caption, image: figImage, pageNumber: i });
+                            matched = true;
                             break;
                         }
                     }
                 }
-                
+
+                // --- Table captions ---
+                const tablePatterns = [
+                    /^Table\s*(\d+)[:\.\-–—\s]\s*(.*)/i,
+                    /^(\d+)\s*\.\s*Table[:\.\-–—\s]\s*(.*)/i
+                ];
+                for (const line of lines) {
+                    for (const pat of tablePatterns) {
+                        const m = line.match(pat);
+                        if (m) {
+                            tableCount++;
+                            const caption = (m[2] || line).trim();
+                            fullText += `\n[TABLE_${tableCount}]\n`;
+                            mediaItems.push({ type: 'table', number: tableCount,
+                                              caption, content: '', pageNumber: i });
+                            break;
+                        }
+                    }
+                }
+
+                // --- Equation / formula detection ---
+                // Equations often appear as: "Equation N", "(N)", or lines dense with math symbols
+                const equationPatterns = [
+                    /^(Equation|Eq\.?)\s*(\d+)[:\.\-–—\s]/i,
+                    /^\(\s*(\d+)\s*\)\s*$/,       // standalone "(N)" = numbered equation
+                ];
+                const mathSymbolDensity = (s) => {
+                    const mathChars = (s.match(/[=∑∫∂∇×·÷√∞±≈≤≥α-ωΑ-Ω\^_{}\\]/g) || []).length;
+                    return s.length > 0 ? mathChars / s.length : 0;
+                };
+
+                for (const line of lines) {
+                    let isEquation = false;
+                    let eqCaption = line;
+
+                    for (const pat of equationPatterns) {
+                        if (line.match(pat)) { isEquation = true; break; }
+                    }
+                    // Also flag lines that are purely mathematical (>25% special chars, short)
+                    if (!isEquation && line.length < 120 && mathSymbolDensity(line) > 0.25) {
+                        isEquation = true;
+                    }
+
+                    if (isEquation) {
+                        equationCount++;
+                        fullText += `\n[EQUATION_${equationCount}]\n`;
+                        mediaItems.push({
+                            type: 'equation',
+                            number: equationCount,
+                            caption: `Equation ${equationCount}`,
+                            latex: line,          // store raw text for display
+                            pageNumber: i
+                        });
+                    }
+                }
+
                 fullText += pageText + '\n\n';
             }
 
-            // If we found figures but they don't have specific page images, 
-            // try to match them with nearby pages
-            mediaItems.forEach(item => {
-                if (item.type === 'figure' && !item.image) {
-                    const pageImg = pageImages.find(p => p.pageNumber === item.pageNumber);
-                    if (pageImg) {
-                        item.image = pageImg.image;
+            // ── Pass 3: attempt structured table extraction ─────────────────────────
+            try {
+                const structuredTables = await extractTablesFromPDF(pdf);
+                // Merge with caption-detected tables (avoid duplicates by page)
+                const existingTablePages = new Set(mediaItems.filter(m => m.type === 'table').map(m => m.pageNumber));
+                for (const tbl of structuredTables) {
+                    if (!existingTablePages.has(tbl.pageNumber)) {
+                        mediaItems.push(tbl);
                     }
                 }
-            });
-
-            if (mediaItems.length > 0) {
-                console.log('[PDF] Extracted', mediaItems.length, 'media items:', 
-                    mediaItems.filter(m => m.type === 'figure').length, 'figures,',
-                    mediaItems.filter(m => m.type === 'table').length, 'tables');
+            } catch (e) {
+                console.warn('[PDF] Structured table extraction failed:', e);
             }
 
+            console.log(`[PDF] Extracted: ${figureCount} figures, ${tableCount} tables, ${equationCount} equations`);
             return { text: fullText, media: mediaItems };
         }
 
@@ -3897,209 +3738,255 @@
 
         console.log('📊 Enhanced table detection loaded');
 
-        // Generate section summary using Backend API
-        // Updated function that calls YOUR Vercel backend (not Anthropic directly)
-        // silent=true suppresses per-section notifications (used when batch-generating)
-        async function generateSectionSummary(sectionIndex, silent = false) {
+        // ============================================
+        // AUTH & SUBSCRIPTION SYSTEM
+        // ============================================
+
+        // Current user state (loaded on init)
+        let currentUser = null;
+
+        const PAPER_LIMITS    = { free: 3,        student: Infinity, pro: Infinity };
+        const SUMMARY_LIMITS  = { free: 5,        student: Infinity, pro: Infinity };
+
+        function getAuthToken() {
+            return localStorage.getItem('sr_token') || '';
+        }
+
+        function logout() {
+            localStorage.removeItem('sr_token');
+            localStorage.removeItem('sr_user');
+            window.location.href = '/login';
+        }
+
+        // Load and verify auth on startup
+        async function initAuth() {
+            const token = getAuthToken();
+            if (!token) {
+                window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+                return false;
+            }
+            try {
+                const r = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!r.ok) {
+                    localStorage.removeItem('sr_token');
+                    window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+                    return false;
+                }
+                currentUser = await r.json();
+                updateUserUI();
+                return true;
+            } catch {
+                // Network issue — allow offline use but summaries won't work
+                const cached = localStorage.getItem('sr_user');
+                if (cached) currentUser = JSON.parse(cached);
+                return true;
+            }
+        }
+
+        function updateUserUI() {
+            if (!currentUser) return;
+            const emailEl = document.getElementById('userEmailDisplay');
+            const badgeEl = document.getElementById('userTierBadge');
+            const upgradeBtn = document.getElementById('upgradeBtn');
+            if (emailEl) emailEl.textContent = currentUser.email;
+            if (badgeEl) {
+                const labels = { free: 'FREE', student: 'STUDENT', pro: 'PRO', beta: 'BETA' };
+                const colors = {
+                    free:    'background:#F3E5F5;color:#7B1FA2',
+                    student: 'background:#E8F5E9;color:#2E7D32',
+                    pro:     'background:#E3F2FD;color:#1565C0',
+                    beta:    'background:#FFF3E0;color:#E65100'
+                };
+                const tier = currentUser.tier || 'free';
+                badgeEl.textContent = labels[tier] || tier.toUpperCase();
+                badgeEl.setAttribute('style', `padding:3px 10px;border-radius:20px;font-weight:700;font-size:11px;${colors[tier] || 'background:#eee;color:#333'}`);
+            }
+            if (upgradeBtn) upgradeBtn.style.display = (currentUser.tier === 'free') ? '' : 'none';
+        }
+
+        // Open upgrade modal (Stripe checkout)
+        async function openUpgradeModal(reason) {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = `
+                <div class="modal" style="max-width:520px;">
+                    <div class="modal-header">
+                        <h2 class="modal-title">✨ Upgrade SwiftsReader</h2>
+                        <button class="modal-close" id="upgModalClose">×</button>
+                    </div>
+                    <div class="modal-content">
+                        ${reason ? `<div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#F57F17;">${reason}</div>` : ''}
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div style="border:2px solid var(--primary);border-radius:12px;padding:20px;text-align:center;">
+                                <div style="font-size:22px;font-weight:800;margin-bottom:4px;">$12<span style="font-size:14px;font-weight:500;">/mo</span></div>
+                                <div style="font-weight:700;font-size:15px;margin-bottom:10px;">Pro</div>
+                                <ul style="text-align:left;font-size:13px;color:var(--text-secondary);list-style:none;padding:0;margin:0 0 16px;">
+                                    <li>✅ Unlimited papers</li>
+                                    <li>✅ Unlimited AI summaries</li>
+                                    <li>✅ All reading features</li>
+                                    <li>✅ Priority support</li>
+                                </ul>
+                                <button id="checkoutPro" class="button button-primary" style="width:100%;">Subscribe to Pro</button>
+                            </div>
+                            <div style="border:1px solid var(--border-light);border-radius:12px;padding:20px;text-align:center;">
+                                <div style="font-size:22px;font-weight:800;margin-bottom:4px;">$6<span style="font-size:14px;font-weight:500;">/mo</span></div>
+                                <div style="font-weight:700;font-size:15px;margin-bottom:10px;">Student</div>
+                                <ul style="text-align:left;font-size:13px;color:var(--text-secondary);list-style:none;padding:0;margin:0 0 16px;">
+                                    <li>✅ Everything in Pro</li>
+                                    <li>✅ 50% off</li>
+                                    <li>✅ Requires .edu email</li>
+                                </ul>
+                                <button id="checkoutStudent" class="button button-secondary" style="width:100%;">Student Plan</button>
+                            </div>
+                        </div>
+                        <p style="font-size:12px;color:var(--text-tertiary);margin-top:12px;text-align:center;">Billed monthly · Cancel anytime · Secure payment via Stripe</p>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+
+            const close = () => overlay.remove();
+            overlay.querySelector('#upgModalClose').onclick = close;
+            overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+            async function startCheckout(plan) {
+                const btn = overlay.querySelector(`#checkout${plan.charAt(0).toUpperCase() + plan.slice(1)}`);
+                btn.textContent = 'Redirecting…'; btn.disabled = true;
+                try {
+                    const r = await fetch('/api/stripe/checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
+                        body: JSON.stringify({ plan })
+                    });
+                    const data = await r.json();
+                    if (!r.ok) throw new Error(data.error || 'Checkout failed');
+                    window.location.href = data.url;
+                } catch (err) {
+                    showNotification('❌ ' + err.message, 'error');
+                    btn.textContent = plan === 'pro' ? 'Subscribe to Pro' : 'Student Plan';
+                    btn.disabled = false;
+                }
+            }
+
+            overlay.querySelector('#checkoutPro').onclick     = () => startCheckout('pro');
+            overlay.querySelector('#checkoutStudent').onclick = () => startCheckout('student');
+        }
+        window.openUpgradeModal = openUpgradeModal;
+
+        // Check paper limit before adding a paper
+        function canAddPaper() {
+            // If auth hasn't loaded yet, allow optimistically — initAuth will gate the app anyway
+            if (!currentUser) return true;
+            const tier  = currentUser.tier || 'free';
+            const limit = PAPER_LIMITS[tier] ?? 3;
+            if (!isFinite(limit)) return true; // pro / student / beta = unlimited
+            if (library.length >= limit) {
+                openUpgradeModal(`📚 Free plan includes up to ${limit} papers. Upgrade to Pro for unlimited papers.`);
+                return false;
+            }
+            return true;
+        }
+
+        // ============================================
+        // AI SUMMARY — Secure server-side proxy
+        // ============================================
+
+
+        async function generateSectionSummary(sectionIndex) {
             console.log(`[AI] Generating summary for section ${sectionIndex}...`);
-            
-            if (!currentPaperId) {
-                if (!silent) showNotification('❌ No document loaded', 'error');
-                return null;
-            }
 
+            if (!currentPaperId) { showNotification('❌ No document loaded', 'error'); return null; }
             const paper = library.find(p => p.id === currentPaperId);
-            if (!paper) {
-                if (!silent) showNotification('❌ Document not found', 'error');
-                return null;
-            }
-
+            if (!paper) { showNotification('❌ Document not found', 'error'); return null; }
             const section = documentSections[sectionIndex];
-            if (!section) {
-                if (!silent) showNotification('❌ Section not found', 'error');
+            if (!section) { showNotification('❌ Section not found', 'error'); return null; }
+
+            const minWords = 100;
+            if (!section.words || section.words.length < minWords) {
+                showNotification(`⚠️ Section too short (${section.words?.length || 0}/${minWords} words minimum).`, 'warning');
                 return null;
             }
 
-            // Check if section has at least 400 words before generating summary
-            if (!section.words || section.words.length < 400) {
-                console.log(`[AI] Section ${sectionIndex} has only ${section.words?.length || 0} words. Minimum 400 words required for summary.`);
-                if (!silent) showNotification(`⚠️ Section too short (${section.words?.length || 0}/400 words). Need 400+ words for summary.`, 'warning');
-                return null;
-            }
+            const content = section.words.slice(0, 6000).join(' ');
 
             try {
-                // Use section.words array to build content text
-                const content = section.words ? section.words.join(' ') : '';
-                
-                if (!content || content.trim().length < 50) {
-                    console.warn('[AI] Section content too short:', content.length, 'characters');
-                    if (!silent) showNotification('⚠️ Section too short to summarize', 'warning');
-                    return null;
-                }
-
-                console.log('[AI] Sending request to backend...');
-                console.log('[AI] Content length:', content.length, 'characters');
-
-                // Call YOUR Vercel backend (not Anthropic directly)
-                const response = await fetch('/api/summarize', {
+                const response = await fetch('/api/summarise', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getAuthToken()}`
                     },
-                    body: JSON.stringify({
-                        text: content,
-                        sectionTitle: section.title
-                    })
+                    body: JSON.stringify({ sectionTitle: section.title, content })
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    console.error('[AI] API Error:', response.status, errorData);
-                    
-                    if (errorData.rawResponse) console.error('[AI] Raw API response:', errorData.rawResponse);
-                    if (errorData.cleanedResponse) console.error('[AI] Cleaned API response:', errorData.cleanedResponse);
-                    
-                    if (!silent) {
-                        if (response.status === 429) {
-                            showNotification('⚠️ Rate limit reached. Please wait a moment', 'warning');
-                        } else if (response.status === 400) {
-                            showNotification('❌ Invalid request: ' + (errorData.error || 'Unknown error'), 'error');
-                        } else if (response.status === 500) {
-                            showNotification('❌ ' + (errorData.error || 'Server error'), 'error');
-                        } else {
-                            showNotification(`❌ Error: ${errorData.error || 'Unknown error'}`, 'error');
-                        }
-                    }
-                    return null;
-                }
-
                 const data = await response.json();
-                console.log('[AI] Received response from backend:', data);
-                
-                if (!data || !data.success) {
-                    console.error('[AI] Invalid response format:', data);
-                    if (!silent) showNotification('❌ ' + (data?.error || data?.message || 'Unknown server error'), 'error');
+
+                if (!response.ok) {
+                    // Limit reached → offer upgrade
+                    if (data.code === 'LIMIT_REACHED') {
+                        openUpgradeModal(`🤖 You've used all ${data.limit} free AI summaries this month. Upgrade for unlimited summaries.`);
+                        return null;
+                    }
+                    if (response.status === 401) {
+                        window.location.href = '/login';
+                        return null;
+                    }
+                    showNotification(`❌ ${data.error || 'AI error'}`, 'error');
                     return null;
                 }
-                
-                if (!data.summary) {
-                    console.error('[AI] No summary in response:', data);
-                    if (!silent) showNotification('❌ Invalid response from server', 'error');
-                    return null;
+
+                // Update cached user usage count
+                if (data.usage && currentUser) {
+                    currentUser.summariesUsed = data.usage.used;
+                    currentUser.summariesLimit = data.usage.limit;
                 }
 
-                const summary = data.summary;
-
-                console.log('[AI] ✅ Summary generated successfully');
-                console.log('[AI] Summary object:', summary);
-                console.log(`[AI] Usage: ${data.usage?.inputTokens || 0} input tokens, ${data.usage?.outputTokens || 0} output tokens`);
-                
-                // Only show success toast when generating a single summary, not in batch
-                if (!silent) showNotification('✅ Summary generated!', 'success');
-
+                showNotification('✅ Summary generated!', 'success');
                 return {
                     sectionIndex,
-                    sectionTitle: summary.sectionTitle || 'Untitled',
-                    overview: summary.overview || 'No overview available',
-                    keyPoints: summary.keyPoints || [],
-                    importance: summary.importance || 'Important for understanding this section',
-                    timestamp: summary.timestamp || Date.now()
+                    sectionTitle: section.title || 'Untitled',
+                    overview:    data.overview   || 'No overview available',
+                    keyPoints:   Array.isArray(data.keyPoints) ? data.keyPoints : [],
+                    importance:  data.importance || '',
+                    timestamp:   Date.now()
                 };
 
             } catch (error) {
-                console.error('[AI] Error generating summary:', error);
-                if (!silent) {
-                    if (error.message.includes('fetch')) {
-                        showNotification('❌ Network error. Check your connection.', 'error');
-                    } else {
-                        showNotification('❌ Error: ' + error.message, 'error');
-                    }
-                }
+                console.error('[AI] Error:', error);
+                showNotification('❌ AI summary failed: ' + error.message, 'error');
                 return null;
             }
         }
 
-        // Test the API endpoint
-        async function testSummarizeAPI() {
-            console.log('🧪 Testing /api/summarize endpoint...');
-            
-            const testText = `
-                Machine learning is a subset of artificial intelligence that focuses on 
-                developing algorithms that can learn from and make predictions on data. 
-                Unlike traditional programming where rules are explicitly coded, machine 
-                learning systems improve their performance through experience. Common 
-                applications include image recognition, natural language processing, and 
-                recommendation systems. The field has grown rapidly with the availability 
-                of large datasets and increased computational power.
-            `;
-            
-            try {
-                const response = await fetch('/api/summarize', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        text: testText,
-                        sectionTitle: 'Introduction to Machine Learning'
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    console.log('✅ API test successful!');
-                    console.log('Summary:', data.summary);
-                    console.log('Usage:', data.usage);
-                } else {
-                    console.error('❌ API test failed:', data);
-                }
-                
-                return data;
-            } catch (error) {
-                console.error('❌ API test error:', error);
-                return { error: error.message };
-            }
-        }
-
-        // Make test function available in console
-        window.testSummarizeAPI = testSummarizeAPI;
-
-        console.log('✅ Updated frontend code loaded');
-        console.log('💡 Test the API by typing: testSummarizeAPI()');
-        console.log('🔑 No user API keys needed - backend handles everything!');
+        console.log('✅ AI Summary module loaded — secure server-side proxy active');
 
         // Display section summary
         async function showSectionSummary(sectionIndex) {
             if (summaryGenerating) return;
-
             summaryGenerating = true;
             currentSectionIndex = sectionIndex;
 
             const displayEl = document.querySelector('.reader-display');
             const section = documentSections[sectionIndex];
 
-            // Check if section is large enough for summary
-            if (!section.words || section.words.length < 400) {
+            // Check section has enough words
+            if (!section || !section.words || section.words.length < 100) {
                 summaryGenerating = false;
                 displayEl.innerHTML = `
                     <div class="section-summary-display">
                         <div class="section-summary-header">
                             <div class="section-summary-icon">📚</div>
                             <div class="section-summary-title">
-                                <h3>${section.title}</h3>
-                                <p>${section.words?.length || 0} / 400 words</p>
+                                <h3>${section?.title || 'Section'}</h3>
+                                <p>${section?.words?.length || 0} words — too short to summarise</p>
                             </div>
-                        </div>
-                        <div class="summary-error">
-                            This section needs <strong>${400 - (section.words?.length || 0)} more words</strong> before AI summary can be generated (minimum 400 words).
                         </div>
                         <div class="section-summary-actions">
                             <button class="button button-secondary" onclick="prevBtn.click()">← Previous</button>
                             <button class="button button-primary" onclick="nextBtn.click()">Continue Reading →</button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
                 return;
             }
 
@@ -4235,51 +4122,86 @@
 
         // Update summaries UI in tab
         function updateSummariesUI() {
-            const summariesList = document.getElementById('summariesList');
+            const summariesList  = document.getElementById('summariesList');
             const summariesCount = document.getElementById('summariesCount');
-            
+
             if (!currentPaperId) {
-                summariesList.innerHTML = '<p style="text-align: center; color: var(--text-tertiary); padding: var(--space-2xl);">No paper selected</p>';
+                summariesList.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:var(--space-2xl);">No paper selected</p>';
                 summariesCount.textContent = '(0)';
                 return;
             }
 
-            const paper = library.find(p => p.id === currentPaperId);
-            const summaries = paper?.summaries || [];
-
-            if (summaries.length === 0) {
-                summariesList.innerHTML = '<p style="text-align: center; color: var(--text-tertiary); padding: var(--space-2xl);">No summaries yet. Click "Generate All Summaries" or summaries will be created automatically as you read through sections.</p>';
-                summariesCount.textContent = '(0)';
-                return;
-            }
+            const paper      = library.find(p => p.id === currentPaperId);
+            const summaries  = paper?.summaries || [];
+            const sectionCount = documentSections.length;
+            const wordCount    = documentSections.reduce((n, s) => n + (s.words?.length || 0), 0);
 
             summariesCount.textContent = `(${summaries.length})`;
 
-            // Sort by section index
-            summaries.sort((a, b) => a.sectionIndex - b.sectionIndex);
+            // ── Usage status bar ──────────────────────────────────────────────
+            let statusHtml = '';
+            if (currentUser) {
+                const tier   = currentUser.tier || 'free';
+                const used   = currentUser.summariesUsed  || 0;
+                const limit  = currentUser.summariesLimit;  // null = unlimited
+                const isUnlimited = tier !== 'free';
 
-            summariesList.innerHTML = summaries.map(summary => {
-                const keyPointsHTML = summary && summary.keyPoints && Array.isArray(summary.keyPoints) && summary.keyPoints.length > 0 ?
-                    `<ul style="margin-top: var(--space-sm); padding-left: var(--space-lg); font-size: 13px;">
-                        ${summary.keyPoints.slice(0, 3).map(p => `<li>${String(p).replace(/^- /, '')}</li>`).join('')}
-                    </ul>` : '';
+                if (isUnlimited) {
+                    statusHtml = `<div style="font-size:12px;color:var(--success);font-weight:600;margin-bottom:var(--space-md);">
+                        ✅ ${tier === 'student' ? 'Student' : 'Pro'} plan — unlimited AI summaries
+                    </div>`;
+                } else {
+                    const left = Math.max(0, (limit || 5) - used);
+                    const pct  = Math.min(100, (used / (limit || 5)) * 100);
+                    const barColor = left === 0 ? 'var(--error)' : left <= 1 ? 'var(--warning)' : 'var(--primary)';
+                    statusHtml = `
+                    <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:var(--space-sm) var(--space-md);margin-bottom:var(--space-md);">
+                        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px;">
+                            <span style="font-weight:600;">${used} / ${limit || 5} AI summaries used this month</span>
+                            ${left === 0
+                                ? `<button onclick="openUpgradeModal()" style="background:var(--primary);color:white;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;">Upgrade for more ✨</button>`
+                                : `<span style="color:var(--text-tertiary)">${left} remaining</span>`}
+                        </div>
+                        <div style="background:var(--border-light);border-radius:4px;height:4px;overflow:hidden;">
+                            <div style="width:${pct}%;height:100%;background:${barColor};transition:width .3s;"></div>
+                        </div>
+                    </div>`;
+                }
+            }
 
-                return `
-                    <div class="summary-item">
-                        <div class="summary-item-header">
-                            <div class="summary-item-title">${summary.sectionTitle}</div>
-                            <div class="summary-item-badge">Section ${summary.sectionIndex + 1}</div>
-                        </div>
-                        <div class="summary-block-content" style="margin-bottom: var(--space-sm);">
-                            ${summary.overview}
-                        </div>
-                        ${keyPointsHTML}
-                        <button class="toggle-summary" onclick="jumpToSectionSummary(${summary.sectionIndex})">
-                            📍 Jump to Section
-                        </button>
-                    </div>
-                `;
-            }).join('');
+            const debugHtml = sectionCount > 0
+                ? `<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:var(--space-md);">${sectionCount} section${sectionCount !== 1 ? 's' : ''} detected · ~${wordCount.toLocaleString()} words</div>`
+                : '';
+
+            if (summaries.length === 0) {
+                summariesList.innerHTML = statusHtml + debugHtml +
+                    `<p style="text-align:center;color:var(--text-tertiary);padding:var(--space-xl);">
+                        No summaries yet.<br>Click <strong>✨ Generate All Summaries</strong> above.
+                    </p>`;
+            } else {
+                summariesList.innerHTML = statusHtml + debugHtml + summaries
+                    .slice().sort((a, b) => a.sectionIndex - b.sectionIndex)
+                    .map(s => {
+                        const kpHTML = s.keyPoints?.length
+                            ? `<ul style="margin-top:var(--space-sm);padding-left:var(--space-lg);font-size:13px;">${s.keyPoints.slice(0, 4).map(p => `<li>${String(p).replace(/^- /, '')}</li>`).join('')}</ul>` : '';
+                        return `
+                            <div class="summary-item">
+                                <div class="summary-item-header">
+                                    <div class="summary-item-title">${s.sectionTitle}</div>
+                                    <div class="summary-item-badge">Section ${s.sectionIndex + 1}</div>
+                                </div>
+                                <div class="summary-block-content" style="margin-bottom:var(--space-sm);">${s.overview || 'No overview'}</div>
+                                ${kpHTML}
+                                ${s.importance ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:var(--space-sm);font-style:italic;">💡 ${s.importance}</div>` : ''}
+                                <button class="toggle-summary" data-jump="${s.sectionIndex}" style="margin-top:var(--space-sm);">📍 Jump to Section</button>
+                            </div>`;
+                    }).join('');
+            }
+
+            // Jump buttons
+            summariesList.querySelectorAll('[data-jump]').forEach(btn => {
+                btn.addEventListener('click', () => jumpToSectionSummary(parseInt(btn.dataset.jump)));
+            });
         }
 
         // Jump to section summary
@@ -4296,71 +4218,63 @@
 
         // Generate all summaries
         document.getElementById('generateAllSummariesBtn')?.addEventListener('click', async () => {
-            if (!currentPaperId || documentSections.length === 0) {
-                showNotification('⚠️ No paper loaded', 'warning');
-                return;
-            }
+            if (!currentPaperId) { showNotification('⚠️ No paper loaded', 'warning'); return; }
+            if (documentSections.length === 0) { showNotification('⚠️ No sections detected', 'warning'); return; }
 
             const paper = library.find(p => p.id === currentPaperId);
-            
-            // Count sections eligible for summary (400+ words and not already summarized)
-            let eligibleSections = 0;
-            let alreadySummarized = 0;
-            
-            for (let i = 0; i < documentSections.length; i++) {
-                const section = documentSections[i];
-                const existing = paper.summaries?.find(s => s.sectionIndex === i);
-                
-                if (section.words && section.words.length >= 400) {
-                    if (existing) {
-                        alreadySummarized++;
-                    } else {
-                        eligibleSections++;
-                    }
-                }
-            }
+            const MIN_WORDS = 100;
+            const eligible  = documentSections.filter((sec, i) =>
+                sec.words && sec.words.length >= MIN_WORDS && !paper.summaries?.find(s => s.sectionIndex === i)
+            );
+            const alreadyDone = documentSections.filter((_, i) => paper.summaries?.find(s => s.sectionIndex === i)).length;
 
-            if (eligibleSections === 0) {
-                if (alreadySummarized > 0) {
-                    showNotification('✅ All eligible sections already have summaries', 'success');
-                } else {
-                    showNotification('⚠️ No sections with 400+ words found', 'warning');
-                }
+            if (eligible.length === 0) {
+                showNotification(alreadyDone > 0 ? `✅ All sections already summarised` : `⚠️ No sections with ${MIN_WORDS}+ words`, 'info');
                 return;
             }
 
-            if (!confirm(`Generate summaries for ${eligibleSections} sections (${alreadySummarized} already done)? Sections must have 400+ words.\n\nThis may take a minute.`)) {
+            // Warn free users about quota
+            const tier  = currentUser?.tier || 'free';
+            const limit = currentUser?.summariesLimit;
+            const used  = currentUser?.summariesUsed || 0;
+            const remaining = limit != null ? Math.max(0, limit - used) : Infinity;
+
+            if (tier === 'free' && remaining === 0) {
+                openUpgradeModal(`🤖 You've used all your free AI summaries this month. Upgrade for unlimited summaries.`);
                 return;
             }
 
-            showNotification(`🤖 Summarising ${eligibleSections} sections in the background…`);
+            const toGenerate = tier === 'free' ? Math.min(eligible.length, remaining) : eligible.length;
+            const msg = tier === 'free' && toGenerate < eligible.length
+                ? `Generate ${toGenerate} of ${eligible.length} summaries (${remaining} free uses remaining)?`
+                : `Generate AI summaries for ${eligible.length} section(s)${alreadyDone ? ` (${alreadyDone} already done)` : ''}?`;
 
-            let generatedCount = 0;
-            let errorCount = 0;
+            if (!confirm(msg)) return;
+
+            const summariesList = document.getElementById('summariesList');
+            summariesList.innerHTML = `<div style="text-align:center;padding:var(--space-2xl);">
+                <div class="summary-spinner"></div>
+                <p id="summaryProgress" style="margin-top:var(--space-md);color:var(--text-secondary);">Generating… 0 / ${toGenerate}</p>
+            </div>`;
+
+            let generated = 0;
             for (let i = 0; i < documentSections.length; i++) {
-                const section = documentSections[i];
-                const existing = paper.summaries?.find(s => s.sectionIndex === i);
-                
-                // Only generate for sections with 400+ words that don't have summaries yet
-                if (section.words && section.words.length >= 400 && !existing) {
-                    const summary = await generateSectionSummary(i, true); // silent=true
-                    if (summary) {
-                        if (!paper.summaries) paper.summaries = [];
-                        paper.summaries.push(summary);
-                        generatedCount++;
-                        saveLibrary();
-                        updateSummariesUI();
-                    } else {
-                        errorCount++;
-                    }
-                    // Small delay to avoid rate limits
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                if (generated >= toGenerate) break;
+                const sec = documentSections[i];
+                if (!sec.words || sec.words.length < MIN_WORDS) continue;
+                if (paper.summaries?.find(s => s.sectionIndex === i)) continue;
+                document.getElementById('summaryProgress').textContent = `Generating… ${generated} / ${toGenerate} — "${sec.title}"`;
+                const summary = await generateSectionSummary(i);
+                if (summary) {
+                    if (!paper.summaries) paper.summaries = [];
+                    paper.summaries.push(summary);
+                    saveLibrary();
+                    generated++;
                 }
+                await new Promise(r => setTimeout(r, 600));
             }
-
-            const errorNote = errorCount > 0 ? ` (${errorCount} skipped)` : '';
-            showNotification(`✅ ${generatedCount} of ${eligibleSections} summaries ready${errorNote}`, 'success');
             updateSummariesUI();
+            showNotification(`✅ Generated ${generated} / ${toGenerate} summaries`, 'success');
         });
 
         // Parse text into content items
@@ -4453,13 +4367,6 @@
             });
 
             console.log('[Parse] Loaded', contentItems.length, 'items');
-            // Rebuild dyslexia phrase chunks for the new content
-            if (isDyslexic) {
-                rebuildDyslexiaPhrases();
-            } else {
-                dyslexiaPhrases = buildDyslexiaPhrases(contentItems);
-                dyslexiaPhraseIndex = 0;
-            }
         }
 
         // Update display
@@ -4472,7 +4379,7 @@
                     displayEl.innerHTML = `
                         <div class="reader-placeholder">
                             <div class="reader-placeholder-icon">📖</div>
-                            <h3>Welcome to SwiftReader</h3>
+                            <h3>Welcome to SwiftsReader</h3>
                             <p>Add a paper to your library or paste text to begin reading. Designed for academics with ADHD and dyslexia support.</p>
                         </div>
                     `;
@@ -4547,41 +4454,6 @@
             }
 
             // Display regular text
-            // ── Dyslexia Phrase Mode ────────────────────────────────────────
-            if (isDyslexic && dyslexiaPhrases.length > 0) {
-                const phrase = dyslexiaPhrases[dyslexiaPhraseIndex] || '';
-                const total  = dyslexiaPhrases.length;
-                const current = dyslexiaPhraseIndex;
-
-                // Dots: show up to 20 for long docs
-                const MAX_DOTS = 20;
-                let dotsHtml = '';
-                if (total <= MAX_DOTS) {
-                    for (let i = 0; i < total; i++) {
-                        const cls = i < current ? 'done' : i === current ? 'current' : '';
-                        dotsHtml += `<div class="phrase-dot ${cls}"></div>`;
-                    }
-                } else {
-                    // Compressed: show window of 20 dots around current
-                    const half = 10;
-                    const start = Math.max(0, Math.min(current - half, total - MAX_DOTS));
-                    const end   = Math.min(total, start + MAX_DOTS);
-                    for (let i = start; i < end; i++) {
-                        const cls = i < current ? 'done' : i === current ? 'current' : '';
-                        dotsHtml += `<div class="phrase-dot ${cls}"></div>`;
-                    }
-                }
-
-                const bioHtml = applyBionicReading(phrase);
-                displayEl.innerHTML = `
-                    <div class="phrase-display">${bioHtml}</div>
-                    <div class="phrase-progress">${dotsHtml}</div>
-                    <div class="phrase-nav-hint">tap → or click Next to advance</div>
-                `;
-                return;
-            }
-
-            // ── Standard RSVP mode ──────────────────────────────────────────
             const chunk = [];
             for (let i = 0; i < chunkSize && currentIndex + i < contentItems.length; i++) {
                 const item = contentItems[currentIndex + i];
@@ -4609,86 +4481,6 @@
             html += '</div>';
             
             displayEl.innerHTML = html;
-        }
-
-        // ── Dyslexia Phrase Mode helpers ─────────────────────────────────
-
-        // Apply bionic reading: bold first ~55% of each word
-        function applyBionicReading(text) {
-            return text.split(/(\s+)/).map(token => {
-                if (/^\s+$/.test(token)) return token; // preserve whitespace
-                // Strip surrounding punctuation for length calc but keep it
-                const match = token.match(/^([^a-zA-Z0-9]*)([a-zA-Z0-9'-]+)([^a-zA-Z0-9]*)$/);
-                if (!match) return `<span class="bio-word"><span class="bio-bold">${token}</span></span>`;
-                const [, pre, word, post] = match;
-                const boldLen = Math.max(1, Math.ceil(word.length * 0.55));
-                const bold = word.slice(0, boldLen);
-                const tail = word.slice(boldLen);
-                return `<span class="bio-word">${pre}<span class="bio-bold">${bold}</span><span class="bio-tail">${tail}</span>${post}</span>`;
-            }).join('');
-        }
-
-        // Build phrase chunks from contentItems (text only, ~10 words per phrase)
-        // Splits preferentially at sentence boundaries, then by word count
-        function buildDyslexiaPhrases(items) {
-            const PHRASE_TARGET = 10; // target words per phrase
-            const PHRASE_MAX    = 14; // hard max before forced split
-            const phrases = [];
-            let buffer = [];
-
-            function flush() {
-                if (buffer.length > 0) {
-                    phrases.push(buffer.join(' '));
-                    buffer = [];
-                }
-            }
-
-            items.forEach(item => {
-                if (item.type !== ContentType.TEXT) {
-                    flush();
-                    return; // skip non-text items (pauses, figures, tables)
-                }
-                const word = item.content;
-                buffer.push(word);
-
-                // Split at sentence boundaries (word ends with . ! ? or has , ; : if long enough)
-                const endsWithSentence = /[.!?]$/.test(word);
-                const endsWithClause  = /[,;:]$/.test(word) && buffer.length >= PHRASE_TARGET - 2;
-
-                if (endsWithSentence && buffer.length >= 4) {
-                    flush();
-                } else if (endsWithClause && buffer.length >= PHRASE_TARGET - 2) {
-                    flush();
-                } else if (buffer.length >= PHRASE_MAX) {
-                    flush();
-                }
-            });
-            flush();
-            return phrases;
-        }
-
-        // Call whenever content is loaded or dyslexia mode toggled
-        function rebuildDyslexiaPhrases() {
-            dyslexiaPhrases = buildDyslexiaPhrases(contentItems);
-            // Sync phrase index to approximately match current word position
-            const wordsFar = currentIndex;
-            let count = 0;
-            dyslexiaPhraseIndex = 0;
-            for (let i = 0; i < dyslexiaPhrases.length; i++) {
-                const wc = dyslexiaPhrases[i].split(/\s+/).length;
-                if (count + wc > wordsFar) { dyslexiaPhraseIndex = i; break; }
-                count += wc;
-                dyslexiaPhraseIndex = i;
-            }
-        }
-
-        // Sync currentIndex (word-level) to match the phrase we're on
-        function syncWordIndexToPhraseIndex() {
-            let wordCount = 0;
-            for (let i = 0; i < dyslexiaPhraseIndex && i < dyslexiaPhrases.length; i++) {
-                wordCount += dyslexiaPhrases[i].split(/\s+/).length;
-            }
-            currentIndex = Math.min(wordCount, contentItems.length - 1);
         }
 
         // Zoom image
@@ -4757,39 +4549,6 @@
             if (!isPlaying) return;
 
             const elapsed = timestamp - lastUpdate;
-
-            // ── Dyslexia phrase mode: advance phrase-by-phrase ──
-            if (isDyslexic && dyslexiaPhrases.length > 0) {
-                // ~3 seconds per phrase (enough time to read 10 words comfortably)
-                const phraseDelay = 3000;
-                if (elapsed >= phraseDelay) {
-                    dyslexiaPhraseIndex++;
-                    if (dyslexiaPhraseIndex >= dyslexiaPhrases.length) {
-                        dyslexiaPhraseIndex = dyslexiaPhrases.length - 1;
-                        syncWordIndexToPhraseIndex();
-                        pause();
-                        if (currentPaperId) {
-                            const paper = library.find(p => p.id === currentPaperId);
-                            if (paper && !paper.completed) {
-                                paper.completed = true;
-                                weeklyGoal.current++;
-                                saveGoals(); saveLibrary(); updateLibraryUI(); updateHeaderStats();
-                                showNotification('🎉 Paper completed!');
-                            }
-                        }
-                        return;
-                    }
-                    syncWordIndexToPhraseIndex();
-                    updateDisplay();
-                    updateStats();
-                    updateMapViewport();
-                    lastUpdate = timestamp;
-                }
-                animationFrame = requestAnimationFrame(animate);
-                return;
-            }
-
-            // ── Standard RSVP mode ──
             const item = contentItems[currentIndex];
 
             let delay;
@@ -5032,50 +4791,53 @@
             mediaCountEl.textContent = `(${mediaItems.length})`;
 
             mediaGrid.innerHTML = mediaItems.map((item, index) => {
-                const isFigure = item.type === 'figure';
-                const label = isFigure ? `Figure ${item.number}` : `Table ${item.number}`;
-                const hasImage = isFigure && item.image;
-                
+                const typeLabel = item.type === 'figure' ? `Figure ${item.number}`
+                                : item.type === 'table'   ? `Table ${item.number}`
+                                : item.type === 'equation' ? `Equation ${item.number}`
+                                : `Item ${item.number}`;
+                const icon = item.type === 'figure' ? '📊' : item.type === 'table' ? '📋' : '∑';
+                const hasImage = item.type === 'figure' && item.image;
+
+                const previewContent = hasImage
+                    ? `<img src="${item.image}" alt="${item.caption}" style="max-width:100%;max-height:160px;object-fit:contain;">`
+                    : item.type === 'equation'
+                        ? `<div style="font-family:monospace;font-size:13px;padding:8px;word-break:break-all;color:var(--text-primary);">${item.latex || item.caption}</div>`
+                        : `<div style="font-size:40px;color:var(--text-tertiary);">${icon}</div>`;
+
                 return `
-                    <div class="media-item" data-index="${index}" style="${!hasImage && isFigure ? 'opacity: 0.7;' : ''}">
-                        <div class="media-item-preview ${isFigure ? '' : 'table-preview'}">
-                            ${hasImage ? 
-                                `<img src="${item.image}" alt="${item.caption}">` : 
-                                `<div style="font-size: 48px; color: var(--text-tertiary);">${isFigure ? '📊' : '📋'}</div>`
-                            }
+                    <div class="media-item" data-index="${index}">
+                        <div class="media-item-preview ${item.type !== 'figure' ? 'table-preview' : ''}" style="min-height:80px;display:flex;align-items:center;justify-content:center;">
+                            ${previewContent}
                         </div>
-                        <div class="media-item-label">${label}${!hasImage && isFigure ? ' (page render)' : ''}</div>
-                        <div class="media-item-caption">${item.caption || 'No caption'}</div>
+                        <div class="media-item-label">${typeLabel}</div>
+                        <div class="media-item-caption">${(item.caption || '').slice(0, 120)}</div>
+                        ${item.pageNumber ? `<div style="font-size:10px;color:var(--text-tertiary);margin-top:4px;">Page ${item.pageNumber}</div>` : ''}
                     </div>
                 `;
             }).join('');
 
-            // Add click handlers to jump to media in reading
-            document.querySelectorAll('.media-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const index = parseInt(item.dataset.index);
+            // Click handlers to jump to this item in the reader
+            document.querySelectorAll('.media-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const index = parseInt(el.dataset.index);
                     const mediaItem = mediaItems[index];
-                    
-                    // Find this media item in contentItems
-                    const mediaIndex = contentItems.findIndex(c => 
-                        (c.type === ContentType.FIGURE && c.number === mediaItem.number && mediaItem.type === 'figure') ||
-                        (c.type === ContentType.TABLE && c.number === mediaItem.number && mediaItem.type === 'table')
+
+                    const mediaIndex = contentItems.findIndex(c =>
+                        (c.type === ContentType.FIGURE   && c.number === mediaItem.number && mediaItem.type === 'figure') ||
+                        (c.type === ContentType.TABLE     && c.number === mediaItem.number && mediaItem.type === 'table') ||
+                        (c.type === 'equation'            && c.number === mediaItem.number && mediaItem.type === 'equation')
                     );
-                    
+
                     if (mediaIndex >= 0) {
                         currentIndex = mediaIndex;
-                        updateDisplay();
-                        updateStats();
-                        updateMapViewport();
-                        
-                        // Switch to read tab
+                        updateDisplay(); updateStats(); updateMapViewport();
                         document.querySelectorAll('.reader-tab').forEach(t => t.classList.remove('active'));
                         document.querySelector('[data-tab="read"]').classList.add('active');
                         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                         document.querySelector('[data-tab-content="read"]').classList.add('active');
-                        
-                        const label = mediaItem.type === 'figure' ? `Figure ${mediaItem.number}` : `Table ${mediaItem.number}`;
-                        showNotification(`📍 Jumped to ${label}`);
+                        showNotification(`📍 Jumped to ${el.querySelector('.media-item-label').textContent}`);
+                    } else {
+                        showNotification(`📄 ${el.querySelector('.media-item-label').textContent} on page ${mediaItem.pageNumber || '?'}`);
                     }
                 });
             });
@@ -5247,89 +5009,98 @@
             showNotification('🗑️ Paper deleted');
         }
 
-        // Detect document sections
+        // Detect document sections — robust version for real PDF/DOCX text
         function detectDocumentSections() {
             documentSections = [];
-            
             if (contentItems.length === 0) return;
 
             const textItems = contentItems.filter(i => i.type === ContentType.TEXT);
-            const fullText = textItems.map(i => i.content).join(' ');
-            
-            const sectionKeywords = [
-                'abstract', 'introduction', 'background', 'literature review',
-                'methods', 'methodology', 'materials and methods',
-                'results', 'findings', 'analysis',
-                'discussion', 'conclusion', 'conclusions',
-                'references', 'bibliography', 'appendix'
-            ];
+            if (textItems.length === 0) return;
 
-            let currentSection = {
-                title: 'Beginning',
-                startIndex: 0,
-                endIndex: 0,
-                words: []
-            };
+            const allWords = textItems.map(i => i.content);
+            const fullText = allWords.join(' ');
 
-            let sectionNumber = 1;
-            let wordIndex = 0;
+            // ── Strategy 1: detect named section headings ──────────────────
+            const HEADING_RE = /(?:^|\s)((?:(?:\d+\.?\s+)?(?:abstract|introduction|background|related work|literature review|methods?|methodology|materials?\s+and\s+methods?|experimental|results?|findings?|analysis|evaluation|discussion|limitations?|future\s+work|conclusion|conclusions?|references?|bibliography|appendix|acknowledgements?))(?:\s|$))/gi;
 
-            const paragraphs = fullText.split(/\.\s+/).filter(p => p.trim().length > 0);
+            const wordStarts = [];
+            let pos = 0;
+            for (const word of allWords) {
+                while (pos < fullText.length && fullText[pos] === ' ') pos++;
+                wordStarts.push(pos);
+                pos += word.length;
+            }
 
-            for (let para of paragraphs) {
-                const words = para.trim().split(/\s+/);
-                const paraWordCount = words.length;
-
-                const paraLower = para.toLowerCase();
-                const isHeader = sectionKeywords.some(keyword => 
-                    paraLower.startsWith(keyword) || 
-                    (para.length < 50 && paraLower.includes(keyword))
-                ) || 
-                para.match(/^\d+\.?\s*[A-Z]/) ||
-                para.match(/^(Chapter|Section|Part)/i);
-
-                if (isHeader || currentSection.words.length > 400) {
-                    if (currentSection.words.length > 0) {
-                        currentSection.endIndex = wordIndex - 1;
-                        documentSections.push(currentSection);
-                        sectionNumber++;
-                    }
-
-                    let title;
-                    if (isHeader) {
-                        title = para.substring(0, 40);
-                        if (para.length > 40) title += '...';
-                    } else {
-                        title = `Section ${sectionNumber}`;
-                    }
-
-                    currentSection = {
-                        title: title,
-                        startIndex: wordIndex,
-                        endIndex: wordIndex,
-                        words: []
-                    };
+            function charToWordIdx(charIdx) {
+                let lo = 0, hi = wordStarts.length - 1;
+                while (lo < hi) {
+                    const mid = (lo + hi + 1) >> 1;
+                    if (wordStarts[mid] <= charIdx) lo = mid; else hi = mid - 1;
                 }
-
-                currentSection.words.push(...words);
-                wordIndex += paraWordCount;
+                return lo;
             }
 
-            if (currentSection.words.length > 0) {
-                currentSection.endIndex = wordIndex - 1;
-                documentSections.push(currentSection);
+            const headings = [];
+            let m;
+            HEADING_RE.lastIndex = 0;
+            while ((m = HEADING_RE.exec(fullText)) !== null) {
+                const wIdx = charToWordIdx(m.index);
+                const raw = m[1].trim().replace(/^\d+\.?\s*/, '');
+                const title = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+                if (!headings.find(h => Math.abs(h.wordIndex - wIdx) < 10)) {
+                    headings.push({ wordIndex: wIdx, title });
+                }
+            }
+            headings.sort((a, b) => a.wordIndex - b.wordIndex);
+
+            // ── Strategy 2: chunk by word count if no headings found ────────
+            const CHUNK_SIZE = 600;
+            if (headings.length < 2) {
+                const numChunks = Math.ceil(allWords.length / CHUNK_SIZE);
+                for (let i = 0; i < numChunks; i++) {
+                    const start = i * CHUNK_SIZE;
+                    const end = Math.min(start + CHUNK_SIZE - 1, allWords.length - 1);
+                    documentSections.push({
+                        title: i === 0 ? 'Document (Part 1)' : `Document (Part ${i + 1})`,
+                        startIndex: start, endIndex: end,
+                        words: allWords.slice(start, end + 1)
+                    });
+                }
+                console.log(`[Sections] No headings — split into ${documentSections.length} chunks`);
+                return;
             }
 
-            if (documentSections.length === 0) {
+            // ── Build sections from headings ────────────────────────────────
+            if (headings[0].wordIndex > 50) {
                 documentSections.push({
-                    title: 'Document',
-                    startIndex: 0,
-                    endIndex: textItems.length - 1,
-                    words: textItems.map(i => i.content)
+                    title: 'Preamble', startIndex: 0, endIndex: headings[0].wordIndex - 1,
+                    words: allWords.slice(0, headings[0].wordIndex)
                 });
             }
+            for (let i = 0; i < headings.length; i++) {
+                const start = headings[i].wordIndex;
+                const end = i + 1 < headings.length ? headings[i + 1].wordIndex - 1 : allWords.length - 1;
+                const words = allWords.slice(start, end + 1);
+                if (words.length > 0) documentSections.push({ title: headings[i].title, startIndex: start, endIndex: end, words });
+            }
 
-            console.log('[Map] Detected', documentSections.length, 'sections');
+            // ── Split any oversized sections ────────────────────────────────
+            const expanded = [];
+            for (const sec of documentSections) {
+                if (sec.words.length <= 1500) { expanded.push(sec); continue; }
+                const parts = Math.ceil(sec.words.length / 700);
+                for (let p = 0; p < parts; p++) {
+                    const s = p * 700, e = Math.min(s + 699, sec.words.length - 1);
+                    expanded.push({
+                        title: `${sec.title} (${p + 1}/${parts})`,
+                        startIndex: sec.startIndex + s, endIndex: sec.startIndex + e,
+                        words: sec.words.slice(s, e + 1)
+                    });
+                }
+            }
+            documentSections = expanded;
+
+            console.log(`[Sections] ${documentSections.length} sections:`, documentSections.map(s => `"${s.title}" (${s.words.length}w)`));
         }
 
         // Build document map
@@ -5849,502 +5620,372 @@
         console.log('💡 Type swiftsDebug() in console to see detection info');
 
         // ============================================
-        // AUDIO READER (Text-to-Speech)
+        // AUDIO READER — Smart Human Voice Selection
         // ============================================
+        // No ElevenLabs needed! Modern browsers ship high-quality neural voices
+        // (e.g. Google Wavenet voices in Chrome, Microsoft Neural in Edge, 
+        //  Siri voices on Safari/macOS). We just pick the best one available.
 
-        let audioSpeech = null;
-        let audioUtterance = null;
+        let audioSpeech = 'speechSynthesis' in window ? window.speechSynthesis : null;
         let audioSpeed = 1.0;
         let audioSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
-        let currentSpeedIndex = 2; // Start at 1.0x
+        let currentSpeedIndex = 2;
         let isAudioPlaying = false;
-        let audioText = '';
-        let audioWords = [];
-        let currentWordIndex = 0;
+        let audioFullText = '';
+        let audioCharOffset = 0;
+        let audioKeepAliveTimer = null;
+        let selectedVoice = null;   // user-chosen or auto-selected voice
+        let availableVoices = [];
 
-        // Check if browser supports speech synthesis
-        if ('speechSynthesis' in window) {
-            audioSpeech = window.speechSynthesis;
-            console.log('✅ Text-to-speech supported');
-        } else {
-            console.warn('❌ Text-to-speech not supported in this browser');
+        if (audioSpeech) console.log('✅ Text-to-speech supported');
+        else console.warn('❌ Text-to-speech not supported');
+
+        // ── Voice quality scoring ───────────────────────────────────────────
+        // Higher = better / more human-sounding
+        const VOICE_QUALITY = {
+            // Google Neural voices (best in Chrome)
+            'google uk english female': 100,
+            'google uk english male': 95,
+            'google us english': 90,
+            // Microsoft Neural voices (best in Edge / Windows)
+            'microsoft aria online (natural)': 100,
+            'microsoft jenny online (natural)': 98,
+            'microsoft guy online (natural)': 95,
+            'microsoft natasha online (natural)': 97,
+            // macOS / iOS built-in (good quality)
+            'karen': 88, 'moira': 85, 'samantha': 82, 'tessa': 80,
+            'alex': 78, 'victoria': 75, 'kate': 80,
+            // Other decent voices
+            'zira': 70, 'david': 68,
+        };
+
+        function scoreVoice(voice) {
+            const name = voice.name.toLowerCase();
+            for (const [key, score] of Object.entries(VOICE_QUALITY)) {
+                if (name.includes(key)) return score;
+            }
+            // Prefer local voices over remote (more reliable)
+            if (voice.localService) return 40;
+            return 30;
         }
 
-        // Initialize audio controls
-        function initAudioControls() {
-            const audioControls = document.getElementById('audioControls');
-            const audioPlayBtn = document.getElementById('audioPlayBtn');
-            const audioPauseBtn = document.getElementById('audioPauseBtn');
-            const audioStopBtn = document.getElementById('audioStopBtn');
-            const audioSpeedBtn = document.getElementById('audioSpeed');
-
-            if (!audioSpeech) {
-                console.warn('Text-to-speech not available');
-                return;
-            }
-
-            // Play button
-            audioPlayBtn.addEventListener('click', () => {
-                if (currentPaperId) {
-                    playAudio();
-                } else {
-                    showNotification('⚠️ Please open a document first', 'warning');
-                }
-            });
-
-            // Pause button
-            audioPauseBtn.addEventListener('click', () => {
-                pauseAudio();
-            });
-
-            // Stop button
-            audioStopBtn.addEventListener('click', () => {
-                stopAudio();
-            });
-
-            // Speed button
-            audioSpeedBtn.addEventListener('click', () => {
-                cycleAudioSpeed();
-            });
-
-            console.log('🎤 Audio controls initialized');
+        function getBestVoice(lang = 'en') {
+            const englishVoices = availableVoices.filter(v => v.lang.startsWith(lang));
+            if (englishVoices.length === 0) return availableVoices[0] || null;
+            englishVoices.sort((a, b) => scoreVoice(b) - scoreVoice(a));
+            return englishVoices[0];
         }
 
-        // Play audio
-        function playAudio() {
-            if (!audioSpeech) {
-                showNotification('❌ Text-to-speech not supported', 'error');
-                return;
+        function loadVoices() {
+            availableVoices = audioSpeech ? audioSpeech.getVoices() : [];
+            if (availableVoices.length === 0) return;
+
+            if (!selectedVoice) {
+                selectedVoice = getBestVoice();
+                console.log('[Audio] Auto-selected voice:', selectedVoice?.name);
             }
 
+            // Populate voice selector if it exists
+            const sel = document.getElementById('voiceSelector');
+            if (!sel) return;
+            const englishVoices = availableVoices.filter(v => v.lang.startsWith('en'));
+            englishVoices.sort((a, b) => scoreVoice(b) - scoreVoice(a));
+            sel.innerHTML = englishVoices.map(v => {
+                const score = scoreVoice(v);
+                const tag = score >= 90 ? ' ⭐ Neural' : score >= 75 ? ' ✓ Natural' : '';
+                return `<option value="${v.name}" ${selectedVoice?.name === v.name ? 'selected' : ''}>${v.name}${tag}</option>`;
+            }).join('');
+        }
+
+        if (audioSpeech) {
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = loadVoices;
+            }
+            // Also load immediately (Safari fires synchronously)
+            setTimeout(loadVoices, 300);
+        }
+
+        // ── Voice selector UI ───────────────────────────────────────────────
+        // Injected into the audio controls bar
+        function buildVoiceSelectorUI() {
             const audioControls = document.getElementById('audioControls');
-            const audioPlayBtn = document.getElementById('audioPlayBtn');
-            const audioPauseBtn = document.getElementById('audioPauseBtn');
+            if (!audioControls || document.getElementById('voiceSelector')) return;
 
-            // Show audio controls
-            audioControls.style.display = 'flex';
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = 'display:flex;align-items:center;gap:6px;margin-left:4px;';
+            wrapper.innerHTML = `
+                <select id="voiceSelector" title="Choose voice"
+                    style="font-size:11px;border:1px solid var(--border-light);border-radius:6px;
+                           padding:3px 6px;background:var(--bg-surface);color:var(--text-primary);
+                           cursor:pointer;max-width:160px;height:28px;">
+                    <option>Loading voices…</option>
+                </select>
+            `;
+            audioControls.appendChild(wrapper);
 
-            // Get text to read
-            if (!audioText || currentWordIndex >= audioWords.length) {
-                // Get all text from document
-                audioText = extractTextForAudio();
-                if (!audioText) {
-                    showNotification('⚠️ No text to read', 'warning');
-                    return;
+            wrapper.querySelector('#voiceSelector').addEventListener('change', (e) => {
+                selectedVoice = availableVoices.find(v => v.name === e.target.value) || null;
+                console.log('[Audio] Voice changed to:', selectedVoice?.name);
+                showNotification('🎤 Voice: ' + (selectedVoice?.name || 'default'), 'info');
+                if (isAudioPlaying) speakFrom(audioCharOffset); // restart with new voice
+            });
+
+            loadVoices(); // populate now
+        }
+
+        // ── Text extraction ─────────────────────────────────────────────────
+        function extractTextForAudio() {
+            if (currentPaperId) {
+                const paper = library.find(p => p.id === currentPaperId);
+                if (paper && paper.text) {
+                    return paper.text
+                        .replace(/\[(FIGURE|TABLE|EQUATION)_\d+\]/gi, '')
+                        .replace(/\s{3,}/g, ' ')
+                        .trim();
                 }
-                audioWords = audioText.split(/\s+/);
-                currentWordIndex = 0;
             }
+            if (typeof contentItems !== 'undefined' && contentItems.length > 0) {
+                return contentItems
+                    .filter(i => i.type === 'text' || i.type === 'TEXT')
+                    .map(i => i.content || i.word || '')
+                    .join(' ');
+            }
+            return '';
+        }
 
-            // Create or resume utterance
-            if (!audioUtterance || currentWordIndex === 0) {
-                audioUtterance = new SpeechSynthesisUtterance(audioText);
-                audioUtterance.rate = audioSpeed;
-                audioUtterance.pitch = 1.0;
-                audioUtterance.volume = 1.0;
+        // ── Core speech engine ──────────────────────────────────────────────
+        function speakFrom(charOffset) {
+            if (!audioSpeech) return;
+            audioSpeech.cancel();
+            clearInterval(audioKeepAliveTimer);
 
-                // Track word being spoken
-                audioUtterance.onboundary = (event) => {
-                    if (event.name === 'word') {
-                        highlightCurrentWord(event.charIndex);
-                    }
-                };
+            const slice = audioFullText.slice(charOffset);
+            if (!slice.trim()) { stopAudio(); showNotification('✅ Finished reading', 'success'); return; }
 
-                audioUtterance.onend = () => {
+            const utter = new SpeechSynthesisUtterance(slice);
+            utter.rate   = audioSpeed;
+            utter.pitch  = 1.0;
+            utter.volume = 1.0;
+            if (selectedVoice) utter.voice = selectedVoice;
+
+            utter.onboundary = (e) => {
+                if (e.name === 'word') {
+                    audioCharOffset = charOffset + e.charIndex;
+                    syncReaderToAudio(audioCharOffset);
+                }
+            };
+
+            utter.onend = () => {
+                if (isAudioPlaying) {
+                    audioCharOffset = audioFullText.length;
                     stopAudio();
                     showNotification('✅ Finished reading', 'success');
-                };
+                }
+            };
 
-                audioUtterance.onerror = (event) => {
-                    console.error('Speech error:', event);
-                    showNotification('❌ Audio error: ' + event.error, 'error');
-                    stopAudio();
-                };
+            utter.onerror = (e) => {
+                if (e.error === 'interrupted' || e.error === 'canceled') return;
+                console.error('[Audio] error:', e.error);
+                showNotification('❌ Audio error: ' + e.error, 'error');
+                stopAudio();
+            };
+
+            audioSpeech.speak(utter);
+
+            // Chrome 15-second silence bug workaround
+            audioKeepAliveTimer = setInterval(() => {
+                if (!isAudioPlaying) { clearInterval(audioKeepAliveTimer); return; }
+                if (audioSpeech.speaking) { audioSpeech.pause(); audioSpeech.resume(); }
+            }, 10000);
+        }
+
+        function syncReaderToAudio(charOffset) {
+            if (typeof contentItems === 'undefined') return;
+            const textItems = contentItems.filter(i => i.type === 'text' || i.type === 'TEXT');
+            if (!textItems.length) return;
+            let charCount = 0, targetWord = 0;
+            for (let idx = 0; idx < textItems.length; idx++) {
+                charCount += ((textItems[idx].content || textItems[idx].word || '').length + 1);
+                if (charCount >= charOffset) { targetWord = idx; break; }
             }
+            let wordsSeen = 0;
+            for (let idx = 0; idx < contentItems.length; idx++) {
+                const item = contentItems[idx];
+                if (item.type === 'text' || item.type === 'TEXT') {
+                    if (wordsSeen === targetWord) {
+                        if (typeof currentIndex !== 'undefined') {
+                            currentIndex = idx;
+                            if (typeof updateDisplay === 'function') updateDisplay();
+                            if (typeof updateStats === 'function') updateStats();
+                        }
+                        break;
+                    }
+                    wordsSeen++;
+                }
+            }
+        }
 
-            // Resume or start
-            if (audioSpeech.paused) {
-                audioSpeech.resume();
-            } else {
-                audioSpeech.speak(audioUtterance);
+        function setAudioUIState(playing) {
+            const audioControls = document.getElementById('audioControls');
+            const audioPlayBtn  = document.getElementById('audioPlayBtn');
+            const audioPauseBtn = document.getElementById('audioPauseBtn');
+            if (!audioControls) return;
+            audioControls.style.display = 'flex';
+            audioControls.classList.toggle('active', playing);
+            if (audioPlayBtn)  audioPlayBtn.style.display  = playing ? 'none' : 'flex';
+            if (audioPauseBtn) audioPauseBtn.style.display = playing ? 'flex' : 'none';
+        }
+
+        // ── Public controls ─────────────────────────────────────────────────
+        function playAudio() {
+            if (!audioSpeech) { showNotification('❌ Text-to-speech not supported in this browser', 'error'); return; }
+            if (!currentPaperId) { showNotification('⚠️ Please open a document first', 'warning'); return; }
+            if (isAudioPlaying) return;
+
+            if (!audioFullText) {
+                audioFullText = extractTextForAudio();
+                audioCharOffset = 0;
+                if (!audioFullText) { showNotification('⚠️ No text to read', 'warning'); return; }
             }
 
             isAudioPlaying = true;
-            audioControls.classList.add('active');
-            audioPlayBtn.style.display = 'none';
-            audioPauseBtn.style.display = 'flex';
-
-            showNotification('🎤 Audio playing at ' + audioSpeed + 'x speed', 'info');
+            setAudioUIState(true);
+            speakFrom(audioCharOffset);
+            showNotification(`🎤 Reading with "${selectedVoice?.name || 'default voice'}" at ${audioSpeed}x`, 'info');
         }
 
-        // Pause audio
         function pauseAudio() {
             if (!audioSpeech || !isAudioPlaying) return;
-
-            const audioPlayBtn = document.getElementById('audioPlayBtn');
-            const audioPauseBtn = document.getElementById('audioPauseBtn');
-            const audioControls = document.getElementById('audioControls');
-
-            audioSpeech.pause();
+            audioSpeech.cancel(); // cancel is more reliable than pause() cross-browser
+            clearInterval(audioKeepAliveTimer);
             isAudioPlaying = false;
-            audioControls.classList.remove('active');
-            audioPlayBtn.style.display = 'flex';
-            audioPauseBtn.style.display = 'none';
-
+            setAudioUIState(false);
             showNotification('⏸️ Audio paused', 'info');
         }
 
-        // Stop audio
         function stopAudio() {
             if (!audioSpeech) return;
-
-            const audioPlayBtn = document.getElementById('audioPlayBtn');
-            const audioPauseBtn = document.getElementById('audioPauseBtn');
-            const audioControls = document.getElementById('audioControls');
-
             audioSpeech.cancel();
-            audioUtterance = null;
+            clearInterval(audioKeepAliveTimer);
             isAudioPlaying = false;
-            currentWordIndex = 0;
-            audioText = '';
-            
-            audioControls.classList.remove('active');
-            audioPlayBtn.style.display = 'flex';
-            audioPauseBtn.style.display = 'none';
-
-            // Remove word highlighting
-            document.querySelectorAll('.reading-word').forEach(el => {
-                el.classList.remove('reading-word');
-            });
+            audioFullText = '';
+            audioCharOffset = 0;
+            setAudioUIState(false);
         }
 
-        // Cycle through audio speeds
         function cycleAudioSpeed() {
             currentSpeedIndex = (currentSpeedIndex + 1) % audioSpeeds.length;
             audioSpeed = audioSpeeds[currentSpeedIndex];
-            
-            const audioSpeedBtn = document.getElementById('audioSpeed');
-            audioSpeedBtn.textContent = audioSpeed.toFixed(1) + 'x';
-
-            // Update current utterance if playing
-            if (audioUtterance && isAudioPlaying) {
-                audioSpeech.cancel();
-                audioUtterance.rate = audioSpeed;
-                audioSpeech.speak(audioUtterance);
-            }
-
+            const btn = document.getElementById('audioSpeed');
+            if (btn) btn.textContent = audioSpeed.toFixed(1) + 'x';
             showNotification('⚡ Speed: ' + audioSpeed + 'x', 'info');
+            if (isAudioPlaying) speakFrom(audioCharOffset);
         }
 
-        // Extract text for audio reading
-        function extractTextForAudio() {
-            const displayEl = document.querySelector('.reader-display');
-            if (!displayEl) return '';
-
-            // Get all text content from the reader display
-            let text = displayEl.textContent.trim();
-            
-            // Remove common UI text
-            text = text.replace(/Previous|Next|Continue|←|→|⏮|⏭|⏸|⏹|▶|⏴/g, '');
-            
-            return text.trim();
-        }
-
-        // Highlight word being read
-        function highlightCurrentWord(charIndex) {
-            // Remove previous highlighting
-            document.querySelectorAll('.reading-word').forEach(el => {
-                el.classList.remove('reading-word');
-            });
-
-            // Scroll the reader display to keep current position visible
-            const displayEl = document.querySelector('.reader-display');
-            if (displayEl) {
-                displayEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(initAudioControls, 500);
-        });
-
-        // Stop audio when changing documents
         function stopAudioOnDocumentChange() {
             stopAudio();
+            audioFullText = '';
+            audioCharOffset = 0;
         }
 
-        console.log('🎤 Audio reader module loaded.');
+        // ── Init ────────────────────────────────────────────────────────────
+        function initAudioControls() {
+            const audioPlayBtn  = document.getElementById('audioPlayBtn');
+            const audioPauseBtn = document.getElementById('audioPauseBtn');
+            const audioStopBtn  = document.getElementById('audioStopBtn');
+            const audioSpeedBtn = document.getElementById('audioSpeed');
+            if (!audioSpeech) return;
+
+            audioPlayBtn?.addEventListener('click',  playAudio);
+            audioPauseBtn?.addEventListener('click', pauseAudio);
+            audioStopBtn?.addEventListener('click',  stopAudio);
+            audioSpeedBtn?.addEventListener('click', cycleAudioSpeed);
+
+            buildVoiceSelectorUI();
+            console.log('[Audio] Controls initialised. Voice:', selectedVoice?.name || 'pending');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => setTimeout(initAudioControls, 600));
+
+        console.log('🎤 Audio reader v3 loaded — smart human voice selection active');
+        console.log('💡 Best voices: Google UK English Female (Chrome), Microsoft Neural (Edge), Karen/Moira (Safari)');
+
     </script>
 
+    <!-- Contact Us Modal -->
+    <div id="contactModalOverlay" class="contact-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="appContactModalTitle">
+        <div class="contact-modal">
+            <button class="contact-modal-close-btn" onclick="closeContactModal()" aria-label="Close contact form">✕</button>
+            <div id="appContactForm">
+                <h2 id="appContactModalTitle">Contact Us</h2>
+                <p class="contact-sub">Have a question or feedback? We'd love to hear from you.</p>
+                <form id="appContactFormEl">
+                    <div class="contact-field">
+                        <label for="appContactEmail">Your Email</label>
+                        <input type="email" id="appContactEmail" name="email" placeholder="you@example.com" required>
+                    </div>
+                    <div class="contact-field">
+                        <label for="appContactMessage">Message</label>
+                        <textarea id="appContactMessage" name="message" placeholder="Tell us how we can help…" required></textarea>
+                    </div>
+                    <button type="submit" id="appContactSubmitBtn" class="contact-submit-btn">Send Message</button>
+                </form>
+            </div>
+            <div id="appContactSuccess" class="contact-modal-success">
+                <div class="success-icon">✅</div>
+                <h3>Message Sent!</h3>
+                <p>Thanks for reaching out. We'll get back to you as soon as possible.</p>
+            </div>
+        </div>
+    </div>
     <script>
-    // ── Mobile Bottom Nav & Slide-up Drawer ──────────────────────────────
-
-    const drawer     = document.getElementById('mobileDrawer');
-    const drawerBody = document.getElementById('drawerBody');
-    const drawerTitle= document.getElementById('drawerTitle');
-    const libraryPanel = document.querySelector('.library-panel');
-
-    // Panels to clone into drawer
-    const DRAWER_PANELS = {
-        library: {
-            label: 'Library',
-            selectors: ['.control-panel:has(#libraryList)', '.control-panel:has(#librarySearch)']
-        },
-        settings: {
-            label: 'Settings',
-            selectors: [
-                '.control-panel:has([data-size])',     // Appearance
-                '.control-panel:has(#wpmSlider)',      // Reading Settings
-                '.control-panel:has(#goalsBtn)'        // Quick Actions
-            ]
+        /* ── Contact Us Modal ── placed after modal HTML so elements exist immediately ── */
+        function openContactModal() {
+            document.getElementById('contactModalOverlay').classList.add('open');
+            document.getElementById('appContactEmail').focus();
         }
-    };
-
-    function openDrawer(type) {
-        drawerTitle.textContent = type === 'library' ? '📚 Library' : '⚙️ Settings';
-        drawerBody.innerHTML = '';
-
-        // Clone all matching panels from the sidebar into the drawer
-        const panels = libraryPanel ? libraryPanel.querySelectorAll('.control-panel') : [];
-        const panelArr = Array.from(panels);
-
-        if (type === 'library') {
-            // First panel = Library (has libraryList)
-            const p = panelArr.find(el => el.querySelector('#libraryList'));
-            if (p) drawerBody.appendChild(p.cloneNode(true));
-        } else {
-            // All panels except Library
-            panelArr.forEach(p => {
-                if (!p.querySelector('#libraryList')) {
-                    drawerBody.appendChild(p.cloneNode(true));
-                }
-            });
-            // Re-attach setting button listeners on cloned elements
-            rebindDrawerSettings();
+        function closeContactModal() {
+            document.getElementById('contactModalOverlay').classList.remove('open');
+            document.getElementById('appContactFormEl').reset();
+            document.getElementById('appContactForm').style.display = '';
+            document.getElementById('appContactSuccess').style.display = 'none';
+            const btn = document.getElementById('appContactSubmitBtn');
+            if (btn) { btn.disabled = false; btn.textContent = 'Send Message'; }
         }
-
-        drawer.classList.add('open');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeDrawer() {
-        drawer.classList.remove('open');
-        document.body.style.overflow = '';
-        // Reset nav tabs to Read
-        setActiveNavTab('navRead');
-    }
-
-    function setActiveNavTab(id) {
-        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-        const el = document.getElementById(id);
-        if (el) el.classList.add('active');
-    }
-
-    function mobileNavSwitch(tab) {
-        if (tab === 'read') {
-            closeDrawer();
-            setActiveNavTab('navRead');
-        } else if (tab === 'library') {
-            setActiveNavTab('navLibrary');
-            openDrawer('library');
-        } else if (tab === 'settings') {
-            setActiveNavTab('navSettings');
-            openDrawer('settings');
-        } else if (tab === 'notes') {
-            setActiveNavTab('navNotes');
-            closeDrawer();
-            // Switch to Notes tab in reader
-            const notesTab = document.querySelector('.reader-tab[data-tab="notes"]');
-            if (notesTab) notesTab.click();
-        }
-    }
-
-    // Re-bind interactive setting controls inside drawer (they're clones so events are lost)
-    function rebindDrawerSettings() {
-        // WPM slider
-        const wpmSlider = drawerBody.querySelector('#wpmSlider');
-        const wpmValue  = drawerBody.querySelector('#wpmValue');
-        if (wpmSlider) {
-            wpmSlider.addEventListener('input', e => {
-                document.getElementById('wpmSlider').value = e.target.value;
-                document.getElementById('wpmSlider').dispatchEvent(new Event('input'));
-                if (wpmValue) wpmValue.textContent = e.target.value + ' WPM';
-            });
-        }
-
-        // Chunk slider
-        const chunkSlider = drawerBody.querySelector('#chunkSlider');
-        if (chunkSlider) {
-            chunkSlider.addEventListener('input', e => {
-                document.getElementById('chunkSlider').value = e.target.value;
-                document.getElementById('chunkSlider').dispatchEvent(new Event('input'));
-            });
-        }
-
-        // All select-button groups (font, size, dyslexia, highlight, theme, template)
-        drawerBody.querySelectorAll('.select-button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                // Find the matching real button in the sidebar and click it
-                const attrs = ['data-size','data-font','data-dyslexia','data-highlight','data-theme','data-template'];
-                for (const attr of attrs) {
-                    if (btn.hasAttribute(attr)) {
-                        const val = btn.getAttribute(attr);
-                        const real = document.querySelector(`.library-panel [${attr}="${val}"]`);
-                        if (real) real.click();
-                        // Update active state inside drawer
-                        drawerBody.querySelectorAll(`[${attr}]`).forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        break;
-                    }
-                }
-            });
+        // Elements exist now — attach listeners directly (no event wrapper needed)
+        document.getElementById('contactModalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeContactModal();
         });
-
-        // Quick action buttons
-        ['goalsBtn','exportAllBtn','shortcutsBtn','generateAllSummariesBtn'].forEach(id => {
-            const btn = drawerBody.querySelector('#' + id);
-            if (btn) {
-                btn.addEventListener('click', () => {
-                    const real = document.getElementById(id);
-                    if (real) { real.click(); closeDrawer(); }
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('contactModalOverlay').classList.contains('open')) {
+                closeContactModal();
+            }
+        });
+        document.getElementById('appContactFormEl').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('appContactSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Sending…';
+            try {
+                const resp = await fetch('https://formspree.io/f/xaqdyvjn', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: new FormData(this)
                 });
-            }
-        });
-    }
-
-    // Swipe down on drawer handle to close
-    let touchStartY = 0;
-    document.getElementById('drawerSheet').addEventListener('touchstart', e => {
-        touchStartY = e.touches[0].clientY;
-    }, { passive: true });
-    document.getElementById('drawerSheet').addEventListener('touchmove', e => {
-        const delta = e.touches[0].clientY - touchStartY;
-        if (delta > 60) closeDrawer();
-    }, { passive: true });
-
-    console.log('📱 Mobile drawer loaded');
-    </script>
-
-    <!-- YouTube IFrame API (loaded async, no tracking until user hits play) -->
-    <script>
-    // ── Focus Music Player — YouTube IFrame API ───────────────────────────
-    // VIDEO ID: paste the YouTube video ID here (the part after ?v= in the URL)
-    // e.g. for https://www.youtube.com/watch?v=ABC123 → set VIDEO_ID = 'ABC123'
-    const FOCUS_VIDEO_ID = '0w80F8FffQ4';
-
-    let ytPlayer   = null;
-    let ytReady    = false;
-    let ytWantsPlay= false;
-    let musicPlaying = false;
-
-    const musicBtn    = document.getElementById('musicBtn');
-    const musicIcon   = document.getElementById('musicIcon');
-    const musicPill   = document.getElementById('musicPill');
-    const musicVol    = document.getElementById('musicVol');
-    const volSlider   = document.getElementById('musicVolSlider');
-
-    // Load YouTube IFrame API lazily on first click
-    function loadYouTubeAPI() {
-        if (document.getElementById('yt-api-script')) return;
-        const tag = document.createElement('script');
-        tag.id  = 'yt-api-script';
-        tag.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(tag);
-    }
-
-    // Called automatically by YouTube API when ready
-    window.onYouTubeIframeAPIReady = function() {
-        ytPlayer = new YT.Player('ytPlayer', {
-            height: '1',
-            width:  '1',
-            videoId: FOCUS_VIDEO_ID,
-            playerVars: {
-                autoplay:       0,
-                controls:       0,
-                disablekb:      1,
-                fs:             0,
-                iv_load_policy: 3,
-                modestbranding: 1,
-                rel:            0,
-                showinfo:       0,
-                origin:         window.location.origin
-            },
-            events: {
-                onReady: (e) => {
-                    ytReady = true;
-                    e.target.setVolume(parseInt(volSlider.value));
-                    if (ytWantsPlay) startMusic();
-                },
-                onStateChange: (e) => {
-                    // If video ends, loop it
-                    if (e.data === YT.PlayerState.ENDED) {
-                        ytPlayer.seekTo(0);
-                        ytPlayer.playVideo();
-                    }
-                },
-                onError: (e) => {
-                    console.warn('[Music] YouTube error:', e.data);
-                    showNotification('⚠️ Music unavailable — check video ID or connection', 'warning');
-                    setMusicStopped();
+                if (resp.ok) {
+                    document.getElementById('appContactForm').style.display = 'none';
+                    document.getElementById('appContactSuccess').style.display = 'block';
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = 'Send Message';
+                    alert('Something went wrong. Please try again.');
                 }
+            } catch {
+                btn.disabled = false;
+                btn.textContent = 'Send Message';
+                alert('Network error. Please try again.');
             }
         });
-    };
-
-    function startMusic() {
-        if (!ytReady || !ytPlayer) return;
-        ytPlayer.playVideo();
-        setMusicPlaying();
-    }
-
-    function stopMusic() {
-        if (ytPlayer && ytReady) ytPlayer.pauseVideo();
-        setMusicStopped();
-    }
-
-    function setMusicPlaying() {
-        musicPlaying = true;
-        musicBtn.classList.add('playing');
-        musicIcon.textContent = '⏸';
-        musicPill.classList.add('visible');
-        musicVol.classList.add('visible');
-    }
-
-    function setMusicStopped() {
-        musicPlaying = false;
-        musicBtn.classList.remove('playing');
-        musicIcon.textContent = '🎵';
-        musicPill.classList.remove('visible');
-        musicVol.classList.remove('visible');
-    }
-
-    musicBtn.addEventListener('click', () => {
-        if (FOCUS_VIDEO_ID === 'PASTE_VIDEO_ID_HERE') {
-            showNotification('🎵 Paste the YouTube video ID into app.html to enable focus music', 'warning');
-            return;
-        }
-
-        if (musicPlaying) {
-            stopMusic();
-        } else {
-            if (!ytReady) {
-                ytWantsPlay = true;
-                loadYouTubeAPI();
-                musicIcon.textContent = '⏳';
-                showNotification('🎵 Loading 432Hz focus music…');
-            } else {
-                startMusic();
-            }
-        }
-    });
-
-    // Volume control
-    volSlider.addEventListener('input', () => {
-        if (ytPlayer && ytReady) ytPlayer.setVolume(parseInt(volSlider.value));
-    });
-
-    console.log('🎵 Focus music player loaded');
     </script>
 </body>
 </html>

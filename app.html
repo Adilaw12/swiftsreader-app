@@ -6058,5 +6058,114 @@
             }
         });
     </script>
+
+    <!-- ═══ 432Hz Focus Music Widget ═══ -->
+    <style>
+        .hz-player {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(20,20,35,0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 50px;
+            padding: 10px 18px 10px 12px;
+            cursor: pointer;
+            z-index: 9999;
+            transition: background 0.2s, border-color 0.2s;
+            user-select: none;
+        }
+        .hz-player:hover { background: rgba(30,30,50,0.97); border-color: rgba(255,255,255,0.2); }
+        .hz-player.playing { border-color: rgba(0,212,200,0.5); }
+        .hz-icon-wrap { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+        .hz-rings { position: absolute; inset: 0; border-radius: 50%; }
+        .hz-rings::before, .hz-rings::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 1.5px solid rgba(0,212,200,0.5);
+            opacity: 0;
+        }
+        .hz-player.playing .hz-rings::before { animation: hz-ring1 2s ease-out infinite; }
+        .hz-player.playing .hz-rings::after  { animation: hz-ring2 2s ease-out 1s infinite; }
+        @keyframes hz-ring1 { 0%{transform:scale(1);opacity:.6} 100%{transform:scale(2.2);opacity:0} }
+        @keyframes hz-ring2 { 0%{transform:scale(1);opacity:.4} 100%{transform:scale(2.2);opacity:0} }
+        .hz-text { line-height: 1.2; }
+        .hz-title { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.9); }
+        .hz-sub   { font-size: 10px; color: rgba(255,255,255,0.4); }
+        .hz-player.playing .hz-sub { color: #00d4c8; }
+        .hz-bars { display: flex; align-items: flex-end; gap: 2px; height: 14px; margin-left: 4px; }
+        .hz-bar  { width: 3px; background: rgba(0,212,200,0.7); border-radius: 2px; height: 5px; }
+        .hz-player.playing .hz-bar:nth-child(1) { animation: hz-eq 1.1s ease-in-out infinite; }
+        .hz-player.playing .hz-bar:nth-child(2) { animation: hz-eq 0.9s ease-in-out infinite 0.15s; }
+        .hz-player.playing .hz-bar:nth-child(3) { animation: hz-eq 1.3s ease-in-out infinite 0.05s; }
+        .hz-player.playing .hz-bar:nth-child(4) { animation: hz-eq 0.8s ease-in-out infinite 0.25s; }
+        @keyframes hz-eq { 0%,100%{height:4px} 50%{height:14px} }
+    </style>
+
+    <!-- Hidden YouTube player -->
+    <div id="ytPlayerContainer" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;bottom:0;left:0;" aria-hidden="true">
+        <div id="ytPlayer"></div>
+    </div>
+
+    <!-- Floating widget -->
+    <div class="hz-player" id="hzPlayer" title="Focus music — click to toggle" onclick="toggleMusic()" role="button" aria-label="Toggle focus music">
+        <div class="hz-icon-wrap">
+            <div class="hz-rings"></div>
+            <span id="hzIcon" style="font-size:16px;">🎵</span>
+        </div>
+        <div class="hz-text">
+            <div class="hz-title">Focus Music</div>
+            <div class="hz-sub" id="hzSub">Ambient focus music</div>
+        </div>
+        <div class="hz-bars">
+            <div class="hz-bar"></div>
+            <div class="hz-bar"></div>
+            <div class="hz-bar"></div>
+            <div class="hz-bar"></div>
+        </div>
+    </div>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        let ytPlayer   = null;
+        let ytReady    = false;
+        let isMuted    = true;
+        let pendingPlay = false;
+
+        function onYouTubeIframeAPIReady() {
+            ytPlayer = new YT.Player('ytPlayer', {
+                videoId: '3q8thydY9bI',
+                playerVars: { autoplay:0, controls:0, disablekb:1, fs:0, iv_load_policy:3, loop:1, playlist:'3q8thydY9bI', modestbranding:1, rel:0 },
+                events: {
+                    onReady: function(e) {
+                        ytReady = true;
+                        e.target.setVolume(60);
+                        if (pendingPlay) { e.target.playVideo(); pendingPlay = false; }
+                    }
+                }
+            });
+        }
+
+        function toggleMusic() {
+            const hzPlayer = document.getElementById('hzPlayer');
+            const hzSub    = document.getElementById('hzSub');
+            const hzIcon   = document.getElementById('hzIcon');
+            isMuted = !isMuted;
+            if (!isMuted) {
+                if (ytReady) ytPlayer.playVideo(); else pendingPlay = true;
+            } else {
+                if (ytReady) ytPlayer.pauseVideo();
+                pendingPlay = false;
+            }
+            if (hzPlayer) hzPlayer.classList.toggle('playing', !isMuted);
+            if (hzSub)    hzSub.textContent  = isMuted ? 'Ambient focus music' : '♪ Playing...';
+            if (hzIcon)   hzIcon.textContent = isMuted ? '🎵' : '🎶';
+        }
+    </script>
 </body>
 </html>

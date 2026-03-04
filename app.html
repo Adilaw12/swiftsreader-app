@@ -5676,33 +5676,44 @@
             return englishVoices[0];
         }
 
-        function loadVoices() {
-            availableVoices = audioSpeech ? audioSpeech.getVoices() : [];
-            if (availableVoices.length === 0) return;
+        let voiceLoadAttempts = 0;
 
-            if (!selectedVoice) {
-                selectedVoice = getBestVoice();
-                console.log('[Audio] Auto-selected voice:', selectedVoice?.name);
-            }
-
-            // Populate voice selector if it exists
+        function populateVoiceSelector() {
             const sel = document.getElementById('voiceSelector');
             if (!sel) return;
             const englishVoices = availableVoices.filter(v => v.lang.startsWith('en'));
             englishVoices.sort((a, b) => scoreVoice(b) - scoreVoice(a));
-            sel.innerHTML = englishVoices.map(v => {
+            const voiceList = englishVoices.length > 0 ? englishVoices : availableVoices;
+            sel.innerHTML = voiceList.map(v => {
                 const score = scoreVoice(v);
-                const tag = score >= 90 ? ' ⭐ Neural' : score >= 75 ? ' ✓ Natural' : '';
-                return `<option value="${v.name}" ${selectedVoice?.name === v.name ? 'selected' : ''}>${v.name}${tag}</option>`;
-            }).join('');
+                const tag = score >= 90 ? ' ⭐' : score >= 75 ? ' ✓' : '';
+                const net = v.localService ? '' : ' 🌐';
+                return `<option value="${v.name}" ${selectedVoice?.name === v.name ? 'selected' : ''}>${v.name}${tag}${net}</option>`;
+            }).join('') || '<option>No voices found</option>';
+        }
+
+        function loadVoices() {
+            availableVoices = audioSpeech ? audioSpeech.getVoices() : [];
+            if (availableVoices.length === 0) {
+                voiceLoadAttempts++;
+                if (voiceLoadAttempts < 10) setTimeout(loadVoices, voiceLoadAttempts * 300);
+                return;
+            }
+            if (!selectedVoice) {
+                selectedVoice = getBestVoice();
+                console.log('[Audio] Auto-selected voice:', selectedVoice?.name, '| Total:', availableVoices.length);
+            }
+            populateVoiceSelector();
         }
 
         if (audioSpeech) {
             if (speechSynthesis.onvoiceschanged !== undefined) {
                 speechSynthesis.onvoiceschanged = loadVoices;
             }
-            // Also load immediately (Safari fires synchronously)
-            setTimeout(loadVoices, 300);
+            loadVoices();
+            setTimeout(loadVoices, 200);
+            setTimeout(loadVoices, 800);
+            setTimeout(loadVoices, 2000);
         }
 
         // ── Voice selector UI ───────────────────────────────────────────────
@@ -5727,10 +5738,10 @@
                 selectedVoice = availableVoices.find(v => v.name === e.target.value) || null;
                 console.log('[Audio] Voice changed to:', selectedVoice?.name);
                 showNotification('🎤 Voice: ' + (selectedVoice?.name || 'default'), 'info');
-                if (isAudioPlaying) speakFrom(audioCharOffset); // restart with new voice
+                if (isAudioPlaying) { pauseAudio(); setTimeout(playAudio, 200); }
             });
 
-            loadVoices(); // populate now
+            populateVoiceSelector(); // populate with whatever is loaded
         }
 
         // ── Text extraction ─────────────────────────────────────────────────
@@ -5754,6 +5765,81 @@
         }
 
         // ── Core speech engine ──────────────────────────────────────────────
+        // Sentence-chaining approach: splits text into sentences and queues them
+        // one-by-one via onend. This avoids the iOS/Safari 15-second limit that
+        // pauses long utterances and demands a tap to continue.
+        let audioSentences = [];
+        let audioSentenceIndex = 0;
+        let audioSentenceOffset = 0; // char offset of current sentence in full text
+
+        function splitIntoSentences(text) {
+            // Split on sentence boundaries, keeping the delimiter attached
+            const raw = text.match(/[^.!?]+[.!?]+["']?|[^.!?]+$/g) || [text];
+            // Group into ~200 char chunks for reliable TTS (avoids iOS word-limit bugs)
+            const chunks = [];
+            let buf = '';
+            let bufOffset = 0;
+            let charPos = 0;
+            for (const s of raw) {
+                if (buf.length + s.length > 220 && buf.length > 0) {
+                    chunks.push({ text: buf.trim(), offset: bufOffset });
+                    buf = '';
+                    bufOffset = charPos;
+                }
+                if (!buf) bufOffset = charPos;
+                buf += s;
+                charPos += s.length;
+            }
+            if (buf.trim()) chunks.push({ text: buf.trim(), offset: bufOffset });
+            return chunks;
+        }
+
+        function speakSentence(idx) {
+            if (!isAudioPlaying || idx >= audioSentences.length) {
+                if (isAudioPlaying) {
+                    stopAudio();
+                    showNotification('✅ Finished reading', 'success');
+                }
+                return;
+            }
+
+            const { text, offset } = audioSentences[idx];
+            audioSentenceIndex = idx;
+            audioSentenceOffset = offset;
+            audioCharOffset = offset;
+            syncReaderToAudio(offset);
+
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.rate   = audioSpeed;
+            utter.pitch  = 1.0;
+            utter.volume = 1.0;
+            if (selectedVoice) utter.voice = selectedVoice;
+
+            utter.onboundary = (e) => {
+                if (e.name === 'word') {
+                    const abs = offset + e.charIndex;
+                    audioCharOffset = abs;
+                    syncReaderToAudio(abs);
+                }
+            };
+
+            utter.onend = () => {
+                if (isAudioPlaying) {
+                    // Small delay prevents iOS from requiring a tap between sentences
+                    setTimeout(() => speakSentence(idx + 1), 50);
+                }
+            };
+
+            utter.onerror = (e) => {
+                if (e.error === 'interrupted' || e.error === 'canceled') return;
+                console.error('[Audio] error:', e.error, 'sentence:', idx);
+                // Try to continue with next sentence rather than stopping
+                if (isAudioPlaying) setTimeout(() => speakSentence(idx + 1), 100);
+            };
+
+            audioSpeech.speak(utter);
+        }
+
         function speakFrom(charOffset) {
             if (!audioSpeech) return;
             audioSpeech.cancel();
@@ -5762,41 +5848,25 @@
             const slice = audioFullText.slice(charOffset);
             if (!slice.trim()) { stopAudio(); showNotification('✅ Finished reading', 'success'); return; }
 
-            const utter = new SpeechSynthesisUtterance(slice);
-            utter.rate   = audioSpeed;
-            utter.pitch  = 1.0;
-            utter.volume = 1.0;
-            if (selectedVoice) utter.voice = selectedVoice;
+            // Build sentence queue from current offset
+            audioSentences = splitIntoSentences(slice).map(s => ({
+                text: s.text,
+                offset: charOffset + s.offset
+            }));
+            audioSentenceIndex = 0;
 
-            utter.onboundary = (e) => {
-                if (e.name === 'word') {
-                    audioCharOffset = charOffset + e.charIndex;
-                    syncReaderToAudio(audioCharOffset);
-                }
-            };
+            // Begin chained playback
+            speakSentence(0);
 
-            utter.onend = () => {
-                if (isAudioPlaying) {
-                    audioCharOffset = audioFullText.length;
-                    stopAudio();
-                    showNotification('✅ Finished reading', 'success');
-                }
-            };
-
-            utter.onerror = (e) => {
-                if (e.error === 'interrupted' || e.error === 'canceled') return;
-                console.error('[Audio] error:', e.error);
-                showNotification('❌ Audio error: ' + e.error, 'error');
-                stopAudio();
-            };
-
-            audioSpeech.speak(utter);
-
-            // Chrome 15-second silence bug workaround
+            // Keep-alive for Chrome (prevents silence-bug stalling)
             audioKeepAliveTimer = setInterval(() => {
                 if (!isAudioPlaying) { clearInterval(audioKeepAliveTimer); return; }
-                if (audioSpeech.speaking) { audioSpeech.pause(); audioSpeech.resume(); }
-            }, 10000);
+                // Only nudge if stuck (speaking but no onboundary events)
+                if (audioSpeech.speaking && !audioSpeech.paused) {
+                    audioSpeech.pause();
+                    requestAnimationFrame(() => audioSpeech.resume());
+                }
+            }, 12000);
         }
 
         function syncReaderToAudio(charOffset) {
@@ -5856,10 +5926,11 @@
 
         function pauseAudio() {
             if (!audioSpeech || !isAudioPlaying) return;
-            audioSpeech.cancel(); // cancel is more reliable than pause() cross-browser
+            audioSpeech.cancel();
             clearInterval(audioKeepAliveTimer);
             isAudioPlaying = false;
             setAudioUIState(false);
+            // audioCharOffset is kept so playAudio() resumes from right place
             showNotification('⏸️ Audio paused', 'info');
         }
 

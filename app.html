@@ -18,6 +18,9 @@
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
     
     <style>
         :root {
@@ -1271,7 +1274,7 @@
         /* Focus Mode Toggle */
         .focus-toggle {
             position: fixed;
-            bottom: var(--space-xl);
+            bottom: 100px;
             left: var(--space-xl);
             width: 56px;
             height: 56px;
@@ -2133,7 +2136,7 @@
                             <div class="reader-placeholder">
                                 <div class="reader-placeholder-icon">🐦</div>
                                 <h3>Ready when you are</h3>
-                                <p>Add a paper from your library to start reading. Supports PDF, Word, DOI links, and URLs.</p>
+                                <p>Add a paper from your library to start reading. Supports PDF and Word documents.</p>
                                 <div style="display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap;">
                                     <div style="padding:8px 16px;border-radius:20px;background:rgba(0,188,212,0.08);border:1px solid rgba(0,188,212,0.2);font-size:12px;font-weight:600;color:var(--primary-dark);">⚡ RSVP Reading</div>
                                     <div style="padding:8px 16px;border-radius:20px;background:rgba(0,188,212,0.08);border:1px solid rgba(0,188,212,0.2);font-size:12px;font-weight:600;color:var(--primary-dark);">🎧 AudioReader</div>
@@ -2298,6 +2301,7 @@
             PAUSE: 'pause',
             FIGURE: 'figure',
             TABLE: 'table',
+            EQUATION: 'equation',
             SECTION_START: 'section_start'
         };
 
@@ -2938,7 +2942,7 @@
                     <input type="text" id="paperJournal" placeholder="Nature, ICML, etc.">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">DOI / URL</label>
+                    <label class="form-label">DOI / URL <span style="font-weight:400;color:var(--text-tertiary);font-size:11px;">(for reference only)</span></label>
                     <input type="text" id="paperDoi" placeholder="https://doi.org/...">
                 </div>
                 <div class="form-group">
@@ -3756,7 +3760,7 @@
         let currentUser = null;
 
         const PAPER_LIMITS    = { free: 3,        student: Infinity, pro: Infinity };
-        const SUMMARY_LIMITS  = { free: 5,        student: Infinity, pro: Infinity };
+        const SUMMARY_LIMITS  = { free: 20,       student: Infinity, pro: Infinity };
 
         function getAuthToken() {
             return localStorage.getItem('sr_token') || '';
@@ -4161,8 +4165,8 @@
                         ✅ ${tier === 'student' ? 'Student' : 'Pro'} plan — unlimited AI summaries
                     </div>`;
                 } else {
-                    const left = Math.max(0, (limit || 5) - used);
-                    const pct  = Math.min(100, (used / (limit || 5)) * 100);
+                    const left = Math.max(0, (limit || 20) - used);
+                    const pct  = Math.min(100, (used / (limit || 20)) * 100);
                     const barColor = left === 0 ? 'var(--error)' : left <= 1 ? 'var(--warning)' : 'var(--primary)';
                     statusHtml = `
                     <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:var(--space-sm) var(--space-md);margin-bottom:var(--space-md);">
@@ -4303,8 +4307,8 @@
             const paper = library.find(p => p.id === currentPaperId);
             const mediaItems = paper?.media || [];
             
-            // Split into sentences and words, handling figure/table markers
-            const segments = text.split(/(\[FIGURE_\d+\]|\[TABLE_\d+\])/);
+            // Split into sentences and words, handling figure/table/equation markers
+            const segments = text.split(/(\[FIGURE_\d+\]|\[TABLE_\d+\]|\[EQUATION_\d+\])/);
             
             segments.forEach((segment) => {
                 // Check if this is a figure marker
@@ -4345,6 +4349,26 @@
                     contentItems.push({
                         type: ContentType.PAUSE,
                         duration: 2000 // 2 second pause to view table
+                    });
+                    return;
+                }
+
+                // Check if this is an equation marker
+                const eqMatch = segment.match(/\[EQUATION_(\d+)\]/);
+                if (eqMatch) {
+                    const eqNum = parseInt(eqMatch[1]);
+                    const eq = mediaItems.find(m => m.type === 'equation' && m.number === eqNum);
+                    
+                    contentItems.push({
+                        type: ContentType.EQUATION,
+                        number: eqNum,
+                        latex: eq?.latex || '',
+                        content: eq?.latex || `Equation ${eqNum}`
+                    });
+                    
+                    contentItems.push({
+                        type: ContentType.PAUSE,
+                        duration: 2500
                     });
                     return;
                 }
@@ -4460,6 +4484,46 @@
                 html += '</div>';
                 
                 displayEl.innerHTML = html;
+                return;
+            }
+
+            // Display equation
+            if (currentItem && currentItem.type === ContentType.EQUATION) {
+                let html = '<div class="figure-display" style="text-align:center;">';
+                html += `<div class="figure-caption" style="margin-bottom:12px;"><span class="figure-number">Equation ${currentItem.number}</span></div>`;
+                
+                if (currentItem.latex) {
+                    // Render LaTeX with KaTeX if available
+                    const eqContainer = document.createElement('div');
+                    eqContainer.style.cssText = 'font-size:1.4em;padding:20px;overflow-x:auto;';
+                    try {
+                        if (typeof katex !== 'undefined') {
+                            katex.render(currentItem.latex, eqContainer, { displayMode: true, throwOnError: false });
+                        } else {
+                            eqContainer.textContent = currentItem.latex;
+                        }
+                    } catch(e) {
+                        eqContainer.textContent = currentItem.latex;
+                    }
+                    html += '<div class="eq-placeholder"></div>';
+                    html += '<div class="pause-indicator">⏸ Reading paused for equation</div>';
+                    html += '<div class="media-controls">';
+                    html += '<button class="media-button" onclick="prevBtn.click()">← Previous</button>';
+                    html += '<button class="media-button" onclick="nextBtn.click()">Continue →</button>';
+                    html += '</div>';
+                    html += '</div>';
+                    displayEl.innerHTML = html;
+                    displayEl.querySelector('.eq-placeholder').replaceWith(eqContainer);
+                } else {
+                    html += `<div style="padding:20px;font-size:1.1em;font-family:monospace;background:var(--bg-secondary);border-radius:8px;">${currentItem.content || '[Equation]'}</div>`;
+                    html += '<div class="pause-indicator">⏸ Reading paused for equation</div>';
+                    html += '<div class="media-controls">';
+                    html += '<button class="media-button" onclick="prevBtn.click()">← Previous</button>';
+                    html += '<button class="media-button" onclick="nextBtn.click()">Continue →</button>';
+                    html += '</div>';
+                    html += '</div>';
+                    displayEl.innerHTML = html;
+                }
                 return;
             }
 
@@ -4894,7 +4958,7 @@
                     <input type="text" id="editPaperJournal" value="${paper.journal || ''}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">DOI / URL</label>
+                    <label class="form-label">DOI / URL <span style="font-weight:400;color:var(--text-tertiary);font-size:11px;">(for reference only)</span></label>
                     <input type="text" id="editPaperDoi" value="${paper.doi || ''}">
                 </div>
                 <div class="form-group">
@@ -6475,7 +6539,7 @@
         {
             targetId: 'addPaperBtn',
             title: 'Add your first paper',
-            desc: 'Click here to upload a PDF, paste a DOI, or enter a URL. SwiftsReader handles all academic document formats.',
+            desc: 'Click here to upload a PDF or Word document. SwiftsReader extracts the full text for RSVP reading and AI summaries.',
             position: 'bottom-left'
         },
         {

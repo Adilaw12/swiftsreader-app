@@ -1398,6 +1398,8 @@
             .library-panel {
                 position: static;
                 max-height: none;
+                height: auto;
+                display: flex; /* visible on tablet, hidden on mobile via JS */
             }
 
             .header-stats {
@@ -1405,33 +1407,7 @@
             }
         }
 
-        @media (max-width: 640px) {
-            .app-header {
-                padding: var(--space-md) 0;
-            }
-
-            .brand-text h1 {
-                font-size: 18px;
-            }
-
-            .brand-icon {
-                width: 40px;
-                height: 40px;
-                font-size: 20px;
-            }
-
-            .app-main {
-                padding: var(--space-lg);
-            }
-
-            .reader-area {
-                padding: var(--space-lg);
-            }
-
-            .word-display {
-                font-size: 32px;
-            }
-        }
+        /* (mobile styles now handled in the dedicated mobile section below) */
 
         /* Template Badge */
         .template-badge {
@@ -1926,6 +1902,261 @@
         .contact-modal-success .success-icon { font-size: 48px; margin-bottom: 12px; }
         .contact-modal-success h3 { font-size: 20px; font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
         .contact-modal-success p  { font-size: 14px; color: var(--text-secondary); }
+
+        /* ═══════════════════════════════════════════════
+           MOBILE RESPONSIVENESS
+        ═══════════════════════════════════════════════ */
+
+        /* Mobile hamburger button — hidden on desktop */
+        .mobile-menu-btn {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            gap: 5px;
+            background: none;
+            border: 1.5px solid var(--border-light);
+            border-radius: 8px;
+            padding: 8px 10px;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+        }
+        .mobile-menu-btn span {
+            display: block;
+            width: 18px;
+            height: 2px;
+            background: var(--text-primary);
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+        .mobile-menu-btn.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .mobile-menu-btn.open span:nth-child(2) { opacity: 0; }
+        .mobile-menu-btn.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+        /* Header secondary — desktop: always visible */
+        .header-secondary {
+            display: contents; /* renders children as if they were direct flex children */
+        }
+
+        /* Mobile library toggle bar — hidden on desktop */
+        .mobile-lib-bar {
+            display: none;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border-light);
+            padding: 0 var(--space-lg);
+        }
+        .mobile-lib-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: none;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 12px 0;
+            width: 100%;
+            font-family: inherit;
+        }
+        .mobile-lib-chevron {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            transition: transform 0.2s;
+        }
+        .mobile-lib-chevron.open { transform: rotate(180deg); }
+
+        /* Safe-area padding for bottom fixed elements on iOS */
+        .hz-player {
+            bottom: max(24px, calc(env(safe-area-inset-bottom) + 16px));
+        }
+        .focus-toggle {
+            bottom: max(100px, calc(env(safe-area-inset-bottom) + 90px));
+        }
+
+        /* ─── Tablet (≤768px) ─────────────────────────── */
+        @media (max-width: 768px) {
+
+            /* Show hamburger, hide secondary items by default */
+            .mobile-menu-btn { display: flex; }
+
+            .header-secondary {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--bg-surface);
+                border-bottom: 1px solid var(--border-light);
+                padding: var(--space-md) var(--space-xl);
+                flex-direction: column;
+                gap: var(--space-md);
+                box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+                z-index: 99;
+            }
+            .header-secondary.open {
+                display: flex;
+            }
+
+            /* Make audio controls full-width in mobile menu */
+            .header-secondary .audio-controls {
+                width: 100%;
+                justify-content: center;
+            }
+
+            /* Streak + userInfoBar full width */
+            .header-secondary #userInfoBar {
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+
+            /* App header: position relative so dropdown anchors correctly */
+            .app-header {
+                position: sticky;
+                overflow: visible;
+            }
+
+            /* Show mobile library toggle */
+            .mobile-lib-bar { display: block; }
+
+            /* Library panel: collapsible on mobile */
+            .library-panel {
+                display: none;
+                position: static;
+                height: auto;
+                max-height: 70vh;
+                overflow-y: auto;
+            }
+            .library-panel.mobile-open {
+                display: flex;
+            }
+
+            /* Main grid: single column, no padding waste */
+            .app-main {
+                padding: var(--space-md);
+                gap: var(--space-md);
+            }
+
+            /* Reader tabs: scrollable, no wrap */
+            .reader-tabs {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                gap: 0;
+            }
+            .reader-tabs::-webkit-scrollbar { display: none; }
+
+            .reader-tab {
+                white-space: nowrap;
+                flex-shrink: 0;
+                padding: var(--space-sm) var(--space-md);
+                font-size: 12px;
+            }
+
+            /* Reader display: comfortable mobile size */
+            .word-display {
+                font-size: 36px !important;
+            }
+
+            .reader-display {
+                min-height: 240px;
+                padding: var(--space-lg);
+            }
+
+            /* Control buttons: slightly smaller */
+            .control-button { width: 44px; height: 44px; font-size: 18px; }
+            .control-button.primary { width: 56px; height: 56px; font-size: 22px; }
+
+            /* Modal: full-width bottom sheet feel */
+            .modal {
+                width: 100%;
+                max-width: 100%;
+                margin: auto var(--space-md) 0;
+                border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+                max-height: 90vh;
+            }
+            .modal-overlay {
+                align-items: flex-end;
+            }
+
+            /* Upgrade modal: stack plans */
+            .modal div[style*="grid-template-columns:1fr 1fr"] {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Hz music pill: smaller on mobile */
+            .hz-player {
+                left: 12px;
+                padding: 8px 14px 8px 10px;
+            }
+            .hz-title { font-size: 11px; }
+
+            /* Focus toggle */
+            .focus-toggle {
+                left: 12px;
+                width: 48px;
+                height: 48px;
+                font-size: 20px;
+            }
+        }
+
+        /* ─── Phone (≤480px) ─────────────────────────── */
+        @media (max-width: 480px) {
+
+            /* Header: tighter */
+            .header-content {
+                padding: 0 var(--space-md);
+                gap: var(--space-sm);
+            }
+            .brand-text p { display: none; }
+            .brand-text h1 { font-size: 18px; }
+            .brand-logo-img { width: 36px; height: 36px; }
+
+            /* Add Paper button: icon only */
+            #addPaperBtn span::before { content: '+ '; }
+
+            /* Reader area: minimal padding */
+            .reader-area {
+                padding: var(--space-lg) var(--space-md);
+            }
+
+            /* Word display */
+            .word-display {
+                font-size: 30px !important;
+                line-height: 1.3;
+            }
+
+            .reader-display {
+                min-height: 200px;
+                padding: var(--space-md);
+            }
+
+            /* Progress bar */
+            .progress-info {
+                font-size: 11px;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+
+            /* Reader controls: center tightly */
+            .reader-controls {
+                gap: var(--space-sm);
+            }
+
+            /* Tabs: even more compact */
+            .reader-tab {
+                font-size: 11px;
+                padding: 6px 10px;
+            }
+
+            /* Library: take full viewport height when open */
+            .library-panel.mobile-open {
+                max-height: 80vh;
+            }
+        }
     </style>
   <!-- Vercel Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
@@ -1943,49 +2174,64 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <div id="streakDisplay" class="streak-badge" style="display: none;">
-                        🔥 <span id="streakCount">0</span> day streak
-                    </div>
-                    <div class="header-stats">
-                        <div class="stat">
-                            <div class="stat-value" id="headerWpmDisplay">300</div>
-                            <div class="stat-label">WPM</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value" id="headerProgressDisplay">0%</div>
-                            <div class="stat-label">Progress</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value" id="headerPapersDisplay">0</div>
-                            <div class="stat-label">Papers</div>
-                        </div>
-                    </div>
+                    <!-- Mobile: hamburger button -->
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menu" aria-expanded="false">
+                        <span></span><span></span><span></span>
+                    </button>
+                    <!-- Primary actions always visible -->
                     <button class="button button-primary" id="addPaperBtn">
                         <span>+ Add Paper</span>
                     </button>
-                    <button class="button" onclick="openContactModal()" aria-label="Contact Us" style="background:transparent;border:1.5px solid var(--border-light);color:var(--text-secondary);border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border-light)';this.style.color='var(--text-secondary)'">Contact Us</button>
-                    <!-- User account info -->
-                    <div id="userInfoBar" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);">
-                        <span id="userTierBadge" style="padding:3px 10px;border-radius:20px;font-weight:700;font-size:11px;background:var(--primary-pale);color:var(--primary-dark);">FREE</span>
-                        <span id="userEmailDisplay" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-                        <button id="upgradeBtn" onclick="openUpgradeModal()" style="display:none;padding:4px 10px;background:var(--primary);color:white;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Upgrade</button>
-                        <button id="logoutBtn" title="Sign out" style="background:none;border:1px solid var(--border-light);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:var(--text-secondary);">Sign out</button>
-                    </div>
-                    <!-- Audio Reader Controls -->
-                    <div class="audio-controls" id="audioControls">
-                        <button class="audio-btn" id="audioPlayBtn" title="Play Audio">▶️</button>
-                        <button class="audio-btn" id="audioPauseBtn" title="Pause Audio" style="display: none;">⏸️</button>
-                        <button class="audio-btn" id="audioStopBtn" title="Stop Audio">⏹️</button>
-                        <div class="audio-speed" id="audioSpeed" title="Click to change speed">1.0x</div>
+                    <!-- Secondary actions — hidden on mobile behind hamburger -->
+                    <div class="header-secondary" id="headerSecondary">
+                        <div id="streakDisplay" class="streak-badge" style="display: none;">
+                            🔥 <span id="streakCount">0</span> day streak
+                        </div>
+                        <div class="header-stats">
+                            <div class="stat">
+                                <div class="stat-value" id="headerWpmDisplay">300</div>
+                                <div class="stat-label">WPM</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value" id="headerProgressDisplay">0%</div>
+                                <div class="stat-label">Progress</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value" id="headerPapersDisplay">0</div>
+                                <div class="stat-label">Papers</div>
+                            </div>
+                        </div>
+                        <button class="button" onclick="openContactModal()" aria-label="Contact Us" style="background:transparent;border:1.5px solid var(--border-light);color:var(--text-secondary);border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border-light)';this.style.color='var(--text-secondary)'">Contact Us</button>
+                        <!-- User account info -->
+                        <div id="userInfoBar" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);">
+                            <span id="userTierBadge" style="padding:3px 10px;border-radius:20px;font-weight:700;font-size:11px;background:var(--primary-pale);color:var(--primary-dark);">FREE</span>
+                            <span id="userEmailDisplay" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                            <button id="upgradeBtn" onclick="openUpgradeModal()" style="display:none;padding:4px 10px;background:var(--primary);color:white;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Upgrade</button>
+                            <button id="logoutBtn" title="Sign out" style="background:none;border:1px solid var(--border-light);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:var(--text-secondary);">Sign out</button>
+                        </div>
+                        <!-- Audio Reader Controls -->
+                        <div class="audio-controls" id="audioControls">
+                            <button class="audio-btn" id="audioPlayBtn" title="Play Audio">▶️</button>
+                            <button class="audio-btn" id="audioPauseBtn" title="Pause Audio" style="display: none;">⏸️</button>
+                            <button class="audio-btn" id="audioStopBtn" title="Stop Audio">⏹️</button>
+                            <div class="audio-speed" id="audioSpeed" title="Click to change speed">1.0x</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </header>
 
+        <!-- Mobile Library Toggle Bar -->
+        <div class="mobile-lib-bar" id="mobileLibBar">
+            <button class="mobile-lib-toggle" id="mobileLibToggle" aria-expanded="false" aria-label="Toggle library panel">
+                📚 <span>My Library</span> <span class="mobile-lib-chevron" id="mobileLibChevron">▼</span>
+            </button>
+        </div>
+
         <!-- Main Content -->
         <main class="app-main">
             <!-- Library Panel -->
-            <aside class="library-panel">
+            <aside class="library-panel" id="libraryPanel">
               <div class="library-panel-inner">
                 <!-- Library -->
                 <div class="control-panel">
@@ -6757,6 +7003,70 @@
             if (target) positionSpotlightAndTooltip(target, s.position);
         }
     });
+    </script>
+
+    <!-- ═══ Mobile UX Scripts ═══ -->
+    <script>
+    (function() {
+        // ── Hamburger menu ──────────────────────────────
+        const menuBtn = document.getElementById('mobileMenuBtn');
+        const secondary = document.getElementById('headerSecondary');
+
+        if (menuBtn && secondary) {
+            menuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = secondary.classList.toggle('open');
+                menuBtn.classList.toggle('open', isOpen);
+                menuBtn.setAttribute('aria-expanded', isOpen);
+            });
+
+            // Close when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!menuBtn.contains(e.target) && !secondary.contains(e.target)) {
+                    secondary.classList.remove('open');
+                    menuBtn.classList.remove('open');
+                    menuBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        // ── Library panel toggle ─────────────────────────
+        const libToggle = document.getElementById('mobileLibToggle');
+        const libPanel  = document.getElementById('libraryPanel');
+        const libChevron = document.getElementById('mobileLibChevron');
+        const libBar    = document.getElementById('mobileLibBar');
+
+        if (libToggle && libPanel) {
+            libToggle.addEventListener('click', () => {
+                const isOpen = libPanel.classList.toggle('mobile-open');
+                libToggle.setAttribute('aria-expanded', isOpen);
+                if (libChevron) libChevron.classList.toggle('open', isOpen);
+
+                // Scroll library panel into view if opening
+                if (isOpen) {
+                    setTimeout(() => libPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+                }
+            });
+        }
+
+        // ── Adjust library toggle visibility on resize ──
+        function handleResize() {
+            const isMobile = window.innerWidth <= 768;
+            if (!isMobile && libPanel) {
+                // On desktop, always show library panel
+                libPanel.classList.remove('mobile-open');
+                libPanel.style.display = '';
+            }
+        }
+        window.addEventListener('resize', handleResize);
+        handleResize();
+
+        // ── iOS safe-area: add bottom padding to body ───
+        const hasSafeArea = CSS.supports('padding-bottom: env(safe-area-inset-bottom)');
+        if (hasSafeArea) {
+            document.documentElement.style.setProperty('--safe-area-bottom', 'env(safe-area-inset-bottom)');
+        }
+    })();
     </script>
 </body>
 </html>

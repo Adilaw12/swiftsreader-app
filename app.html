@@ -125,8 +125,7 @@
 
         /* Focus Mode */
         body.focus-mode .app-header,
-        body.focus-mode .library-panel,
-        body.focus-mode .document-map {
+        body.focus-mode .library-panel {
             display: none !important;
         }
 
@@ -335,7 +334,7 @@
             margin: 0 auto;
             padding: var(--space-2xl) var(--space-xl);
             display: grid;
-            grid-template-columns: 280px 1fr 60px;
+            grid-template-columns: 280px 1fr;
             gap: var(--space-2xl);
             align-items: start;
         }
@@ -1081,109 +1080,6 @@
             color: var(--text-secondary);
         }
 
-        /* Document Map */
-        .document-map {
-            position: sticky;
-            top: calc(92px + var(--space-2xl));
-            height: calc(100vh - 92px - var(--space-2xl) * 2);
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-md);
-        }
-
-        .map-container {
-            flex: 1;
-            background: var(--bg-surface);
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius-lg);
-            position: relative;
-            overflow: hidden;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .map-sections {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-        }
-
-        .map-section {
-            position: absolute;
-            left: 0;
-            right: 0;
-            background: var(--bg-tertiary);
-            border-top: 1px solid var(--border-light);
-            cursor: pointer;
-            transition: var(--transition-fast);
-        }
-
-        .map-section:hover {
-            background: var(--primary-pale);
-        }
-
-        .map-section.current {
-            background: var(--primary-light);
-        }
-
-        .map-viewport {
-            position: absolute;
-            left: 0;
-            right: 0;
-            background: rgba(0, 188, 212, 0.15);
-            border: 2px solid var(--primary);
-            border-radius: var(--space-xs);
-            cursor: grab;
-            transition: background var(--transition-fast);
-        }
-
-        .map-viewport:active {
-            cursor: grabbing;
-            background: rgba(0, 188, 212, 0.28);
-        }
-
-        .map-progress {
-            position: absolute;
-            left: 0;
-            top: 0;
-            height: 100%;
-            background: var(--primary);
-            opacity: 0.1;
-            pointer-events: none;
-        }
-
-        .map-info {
-            background: var(--bg-surface);
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius-lg);
-            padding: var(--space-md);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .map-stat {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: var(--space-sm) 0;
-            font-size: 12px;
-        }
-
-        .map-stat:not(:last-child) {
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .map-stat-label {
-            color: var(--text-tertiary);
-            font-weight: 600;
-        }
-
-        .map-stat-value {
-            color: var(--text-primary);
-            font-weight: 700;
-            font-family: 'SFMono-Regular', 'SF Mono', Consolas, 'Courier New', monospace;
-        }
-
         /* Break Reminder */
         .break-reminder {
             position: fixed;
@@ -1445,11 +1341,7 @@
         /* Responsive */
         @media (max-width: 1400px) {
             .app-main {
-                grid-template-columns: 250px 1fr;
-            }
-
-            .document-map {
-                display: none;
+                grid-template-columns: 1fr;
             }
         }
 
@@ -2574,24 +2466,6 @@
                 </div>
             </section>
 
-            <!-- Document Map -->
-            <aside class="document-map">
-                <div class="map-container" id="mapContainer">
-                    <div class="map-sections" id="mapSections"></div>
-                    <div class="map-viewport" id="mapViewport"></div>
-                    <div class="map-progress" id="mapProgress"></div>
-                </div>
-                <div class="map-info">
-                    <div class="map-stat">
-                        <span class="map-stat-label">Position</span>
-                        <span class="map-stat-value" id="mapPosition">0%</span>
-                    </div>
-                    <div class="map-stat">
-                        <span class="map-stat-label">Section</span>
-                        <span class="map-stat-value" id="mapSectionDisplay">-/-</span>
-                    </div>
-                </div>
-            </aside>
         </main>
     </div>
 
@@ -2644,11 +2518,8 @@
         let breakTimer = null;
         let readingStartTime = null;
 
-        // Document sections for map
+        // Document sections
         let documentSections = [];
-        let isDraggingViewport = false;
-        let dragStartY = 0;
-        let dragStartTop = 0;
 
         // Reading goals
         let weeklyGoal = { target: 10, current: 0 }; // papers per week
@@ -2697,14 +2568,6 @@
         // Highlights
         const highlightsList = document.getElementById('highlightsList');
         const highlightCount = document.getElementById('highlightCount');
-
-        // Map elements
-        const mapContainer = document.getElementById('mapContainer');
-        const mapSections = document.getElementById('mapSections');
-        const mapViewport = document.getElementById('mapViewport');
-        const mapProgress = document.getElementById('mapProgress');
-        const mapPosition = document.getElementById('mapPosition');
-        const mapSectionDisplay = document.getElementById('mapSectionDisplay');
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -2966,7 +2829,7 @@
                 currentIndex = Math.max(0, currentIndex - chunkSize);
                 updateDisplay();
                 updateStats();
-                updateMapViewport();
+
                 saveCurrentPaperProgress();
             });
 
@@ -2975,7 +2838,7 @@
                 currentIndex = Math.min(contentItems.length - 1, currentIndex + chunkSize);
                 updateDisplay();
                 updateStats();
-                updateMapViewport();
+
                 saveCurrentPaperProgress();
             });
 
@@ -3155,7 +3018,7 @@
                     currentIndex = 0;
                     updateDisplay();
                     updateStats();
-                    updateMapViewport();
+
                     showNotification('⏮ Restarted from beginning');
                     break;
             }
@@ -3859,7 +3722,7 @@
 
             updateDisplay();
             updateStats();
-            buildDocumentMap();
+            detectDocumentSections();
             updateLibraryUI();
 
             const mediaCount = paper.media?.length || 0;
@@ -4083,29 +3946,16 @@
 
         // Load and verify auth on startup
         async function initAuth() {
-            const token = getAuthToken();
-            if (!token) {
-                window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
-                return false;
-            }
-            try {
-                const r = await fetch('/api/auth/me', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!r.ok) {
-                    localStorage.removeItem('sr_token');
-                    window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
-                    return false;
-                }
-                currentUser = await r.json();
-                updateUserUI();
-                return true;
-            } catch {
-                // Network issue — allow offline use but summaries won't work
-                const cached = localStorage.getItem('sr_user');
-                if (cached) currentUser = JSON.parse(cached);
-                return true;
-            }
+            // Standalone app — no backend auth required.
+            // Set a default user so tier checks and UI pass correctly.
+            currentUser = {
+                email: 'user@swiftsreader.app',
+                tier: 'beta',
+                summariesUsed: 0,
+                summariesLimit: Infinity
+            };
+            updateUserUI();
+            return true;
         }
 
         function updateUserUI() {
@@ -4919,7 +4769,7 @@
                             if (contentItems[ci].type === ContentType.TEXT) count++;
                             if (count === ti) { currentIndex = ci; break; }
                         }
-                        updateDisplay(); updateStats(); updateMapViewport();
+                        updateDisplay(); updateStats();
                     });
                 });
 
@@ -5057,7 +4907,7 @@
 
                 updateDisplay();
                 updateStats();
-                updateMapViewport();
+
                 lastUpdate = timestamp;
             }
 
@@ -5239,7 +5089,7 @@
                         currentIndex = highlight.index;
                         updateDisplay();
                         updateStats();
-                        updateMapViewport();
+
                         
                         // Switch to read tab
                         document.querySelectorAll('.reader-tab').forEach(t => t.classList.remove('active'));
@@ -5315,7 +5165,7 @@
 
                     if (mediaIndex >= 0) {
                         currentIndex = mediaIndex;
-                        updateDisplay(); updateStats(); updateMapViewport();
+                        updateDisplay(); updateStats();
                         document.querySelectorAll('.reader-tab').forEach(t => t.classList.remove('active'));
                         document.querySelector('[data-tab="read"]').classList.add('active');
                         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -5588,139 +5438,6 @@
             console.log(`[Sections] ${documentSections.length} sections:`, documentSections.map(s => `"${s.title}" (${s.words.length}w)`));
         }
 
-        // Build document map
-        function buildDocumentMap() {
-            if (contentItems.length === 0) return;
-
-            detectDocumentSections();
-            mapSections.innerHTML = '';
-
-            const mapHeight = mapContainer.clientHeight;
-            const totalWords = contentItems.filter(i => i.type === ContentType.TEXT).length;
-
-            documentSections.forEach((section, index) => {
-                const sectionDiv = document.createElement('div');
-                sectionDiv.className = 'map-section';
-                
-                const startPercent = (section.startIndex / totalWords) * 100;
-                const endPercent = (section.endIndex / totalWords) * 100;
-                const height = Math.max(3, ((endPercent - startPercent) / 100) * mapHeight);
-                
-                sectionDiv.style.top = `${(startPercent / 100) * mapHeight}px`;
-                sectionDiv.style.height = `${height}px`;
-                sectionDiv.title = section.title;
-                
-                sectionDiv.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    jumpToSection(index);
-                });
-
-                mapSections.appendChild(sectionDiv);
-            });
-
-            updateMapViewport();
-        }
-
-        // Update map viewport
-        function updateMapViewport() {
-            if (!mapContainer) return;
-
-            const totalItems   = contentItems.length;
-            const mapHeight    = mapContainer.clientHeight;
-            if (totalItems === 0 || mapHeight === 0) return;
-
-            // Progress as fraction 0–1
-            const progress = totalItems > 1 ? currentIndex / (totalItems - 1) : 0;
-
-            // Viewport indicator height & position
-            const viewportSize = Math.max(20, Math.min(80, (50 / totalItems) * mapHeight));
-            const viewportTop  = Math.max(0, Math.min(mapHeight - viewportSize, progress * mapHeight));
-
-            mapViewport.style.height = `${viewportSize}px`;
-            mapViewport.style.top    = `${viewportTop}px`;
-
-            // Progress bar & position label
-            mapProgress.style.width       = `${progress * 100}%`;
-            mapPosition.textContent       = `${Math.round(progress * 100)}%`;
-
-            // Section tracking
-            const textIndex = contentItems.slice(0, currentIndex)
-                .filter(i => i.type === ContentType.TEXT).length;
-
-            const currentSection = documentSections.find(section =>
-                textIndex >= section.startIndex && textIndex <= section.endIndex
-            );
-
-            if (currentSection) {
-                const sectionIndex = documentSections.indexOf(currentSection);
-                mapSectionDisplay.textContent = `${sectionIndex + 1}/${documentSections.length}`;
-
-                document.querySelectorAll('.map-section').forEach((el, idx) => {
-                    el.classList.toggle('current', idx === sectionIndex);
-                });
-
-                // Pause at section boundaries during playback
-                if (isPlaying && sectionIndex !== currentSectionIndex && sectionIndex > 0) {
-                    currentSectionIndex = sectionIndex;
-                    pause();
-                    showSectionSummary(sectionIndex);
-                }
-            } else if (documentSections.length === 0) {
-                mapSectionDisplay.textContent = '-/-';
-            }
-        }
-
-        // Viewport dragging
-        mapViewport.addEventListener('mousedown', (e) => {
-            isDraggingViewport = true;
-            dragStartY = e.clientY;
-            dragStartTop = parseFloat(mapViewport.style.top || 0);
-            e.preventDefault();
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDraggingViewport) return;
-
-            const deltaY = e.clientY - dragStartY;
-            const mapHeight = mapContainer.clientHeight;
-            const viewportHeight = mapViewport.clientHeight;
-            
-            let newTop = dragStartTop + deltaY;
-            newTop = Math.max(0, Math.min(mapHeight - viewportHeight, newTop));
-            
-            mapViewport.style.top = `${newTop}px`;
-
-            const progress = newTop / (mapHeight - viewportHeight);
-            const newIndex = Math.round(progress * (contentItems.length - 1));
-            
-            const textIndex = contentItems.slice(0, newIndex)
-                .filter(i => i.type === ContentType.TEXT).length;
-            const totalWords = contentItems.filter(i => i.type === ContentType.TEXT).length;
-            mapPosition.textContent = `${Math.round((textIndex / totalWords) * 100)}%`;
-        });
-
-        document.addEventListener('mouseup', (e) => {
-            if (!isDraggingViewport) return;
-
-            isDraggingViewport = false;
-
-            const mapHeight = mapContainer.clientHeight;
-            const viewportHeight = mapViewport.clientHeight;
-            const viewportTop = parseFloat(mapViewport.style.top || 0);
-            const progress = viewportTop / (mapHeight - viewportHeight);
-            
-            currentIndex = Math.round(progress * (contentItems.length - 1));
-            currentIndex = Math.max(0, Math.min(contentItems.length - 1, currentIndex));
-            
-            updateDisplay();
-            updateStats();
-            updateMapViewport();
-            saveCurrentPaperProgress();
-
-            showNotification(\`📍 Jumped to \${Math.round(progress * 100)}%\`);
-        });
-        */ // END OLD MAP FUNCTIONS - ALL DISABLED
-
         // Jump to section
         function jumpToSection(sectionIndex) {
             if (sectionIndex < 0 || sectionIndex >= documentSections.length) return;
@@ -5743,7 +5460,7 @@
             currentIndex = itemIndex;
             updateDisplay();
             updateStats();
-            updateMapViewport();
+
             saveCurrentPaperProgress();
 
             showNotification(`📍 ${section.title}`);

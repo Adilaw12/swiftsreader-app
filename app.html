@@ -14,6 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/opendyslexic" rel="stylesheet">
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -825,6 +826,68 @@
 
         .word-display.highlight-all .word {
             color: var(--primary);
+        }
+
+        /* ── Dyslexia Paragraph Mode ─────────────────────────────── */
+        .dyslexia-display {
+            font-family: 'OpenDyslexic', sans-serif;
+            font-size: 22px;
+            line-height: 2;
+            letter-spacing: 0.08em;
+            word-spacing: 0.18em;
+            text-align: left;
+            color: var(--text-primary);
+            max-width: 680px;
+            margin: 0 auto;
+            padding: var(--space-lg) 0;
+        }
+
+        .dyslexia-display .dy-word {
+            display: inline;
+            border-radius: 4px;
+            padding: 2px 1px;
+            transition: background 0.1s, color 0.1s;
+            line-height: 2;
+        }
+
+        /* Current word — strong cyan highlight */
+        .dyslexia-display .dy-word.dy-current {
+            background: rgba(0, 188, 212, 0.2);
+            color: var(--primary-dark, #006970);
+            border-bottom: 3px solid var(--primary, #00BCD4);
+            border-radius: 4px 4px 2px 2px;
+            font-weight: 700;
+        }
+
+        /* Sentence containing current word — subtle tint */
+        .dyslexia-display .dy-word.dy-sentence {
+            background: rgba(0, 188, 212, 0.06);
+        }
+
+        /* Already-read words — muted */
+        .dyslexia-display .dy-word.dy-read {
+            color: var(--text-tertiary, #aaa);
+        }
+
+        /* Bionic bold prefix (when highlight=first) */
+        .dyslexia-display.bionic .dy-bold {
+            font-weight: 900;
+        }
+
+        /* Allow dyslexia paragraph scroll to work — toggled by JS */
+        .reader-area.dyslexia-active {
+            overflow: visible;
+        }
+
+        /* Reader display scrolls in paragraph mode */
+        .reader-display.dyslexia-mode {
+            align-items: flex-start;
+            justify-content: flex-start;
+            overflow-y: auto;
+            max-height: 58vh;
+            min-height: 58vh;
+            padding: var(--space-xl) var(--space-2xl);
+            scroll-behavior: smooth;
         }
 
         /* Placeholder */
@@ -2511,8 +2574,8 @@
                 </div>
             </section>
 
-            <!-- Document Map - DISABLED -->
-            <aside class="document-map" style="display: none;">
+            <!-- Document Map -->
+            <aside class="document-map">
                 <div class="map-container" id="mapContainer">
                     <div class="map-sections" id="mapSections"></div>
                     <div class="map-viewport" id="mapViewport"></div>
@@ -4773,6 +4836,100 @@
                 return;
             }
 
+            // ── DYSLEXIA PARAGRAPH MODE ─────────────────────────────────
+            if (isDyslexic) {
+                displayEl.classList.add('dyslexia-mode');
+                displayEl.closest('.reader-area')?.classList.add('dyslexia-active');
+
+                // Build a window of words centred on currentIndex
+                const CONTEXT_BEFORE = 60;  // words to show before current
+                const CONTEXT_AFTER  = 120; // words to show after current
+                const textItems = contentItems.filter(i => i.type === ContentType.TEXT);
+                const totalText = textItems.length;
+
+                // Map currentIndex (contentItems index) → textItems index
+                const textIndex = contentItems.slice(0, currentIndex + 1)
+                    .filter(i => i.type === ContentType.TEXT).length - 1;
+                const safeIdx  = Math.max(0, Math.min(totalText - 1, textIndex));
+
+                const winStart = Math.max(0, safeIdx - CONTEXT_BEFORE);
+                const winEnd   = Math.min(totalText - 1, safeIdx + CONTEXT_AFTER);
+
+                // Find sentence boundaries around currentWord for tinting
+                const sentenceEnds = new Set();
+                for (let i = winStart; i <= winEnd; i++) {
+                    if (/[.!?]$/.test(textItems[i].content || '')) sentenceEnds.add(i);
+                }
+                // Find which sentence the current word is in
+                let sentStart = winStart, sentEnd = winEnd;
+                for (let i = safeIdx; i >= winStart; i--) {
+                    if (i < safeIdx && sentenceEnds.has(i)) { sentStart = i + 1; break; }
+                }
+                for (let i = safeIdx; i <= winEnd; i++) {
+                    if (sentenceEnds.has(i)) { sentEnd = i; break; }
+                }
+
+                // Build HTML
+                const isBionic = highlightMode === 'first';
+                let html = `<div class="dyslexia-display${isBionic ? ' bionic' : ''}">`;
+
+                for (let i = winStart; i <= winEnd; i++) {
+                    const word = textItems[i].content || '';
+                    let cls = 'dy-word';
+                    if (i < safeIdx)  cls += ' dy-read';
+                    if (i === safeIdx) cls += ' dy-current';
+                    else if (i >= sentStart && i <= sentEnd) cls += ' dy-sentence';
+
+                    let display = word;
+                    if (isBionic && word.length > 1) {
+                        const boldLen = Math.max(1, Math.ceil(word.length * 0.45));
+                        const clean   = word.replace(/[^a-zA-Z]/g, '');
+                        if (clean.length > 0) {
+                            display = `<span class="dy-bold">${word.slice(0, boldLen)}</span>${word.slice(boldLen)}`;
+                        }
+                    }
+
+                    html += `<span class="dy-word ${cls}" data-ti="${i}">${display}</span> `;
+
+                    // Add paragraph break at sentence endings for readability
+                    if (sentenceEnds.has(i) && i < winEnd) {
+                        html += '<br>';
+                    }
+                }
+                html += '</div>';
+                displayEl.innerHTML = html;
+
+                // Scroll current word into view smoothly
+                requestAnimationFrame(() => {
+                    const cur = displayEl.querySelector('.dy-current');
+                    if (cur) {
+                        const top = cur.offsetTop - displayEl.clientHeight / 2 + cur.clientHeight;
+                        displayEl.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+                    }
+                });
+
+                // Click a word to jump there
+                displayEl.querySelectorAll('.dy-word[data-ti]').forEach(el => {
+                    el.style.cursor = 'pointer';
+                    el.addEventListener('click', () => {
+                        const ti = parseInt(el.dataset.ti);
+                        // Map textItems index back to contentItems index
+                        let count = -1;
+                        for (let ci = 0; ci < contentItems.length; ci++) {
+                            if (contentItems[ci].type === ContentType.TEXT) count++;
+                            if (count === ti) { currentIndex = ci; break; }
+                        }
+                        updateDisplay(); updateStats(); updateMapViewport();
+                    });
+                });
+
+                return;
+            }
+
+            // ── RSVP MODE (default) ──────────────────────────────────────
+            displayEl.classList.remove('dyslexia-mode');
+            displayEl.closest('.reader-area')?.classList.remove('dyslexia-active');
+
             // Display regular text
             const chunk = [];
             for (let i = 0; i < chunkSize && currentIndex + i < contentItems.length; i++) {
@@ -4788,11 +4945,7 @@
             }
             html += '"';
             
-            html += ` style="font-size: ${fontSize}px; font-family: `;
-            if (isDyslexic) {
-                html += 'OpenDyslexic, ';
-            }
-            html += `${fontFamily}, sans-serif;">`;
+            html += ` style="font-size: ${fontSize}px; font-family: ${fontFamily}, sans-serif;">`;
             
             chunk.forEach(word => {
                 html += `<span class="word">${word}</span>`;
@@ -4926,11 +5079,23 @@
             progressFill.style.width = progress + '%';
 
             const wordsLeft = totalWords - currentWord;
-            const minutesLeft = wordsLeft / wpm;
-            const seconds = Math.round(minutesLeft * 60);
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            timeRemaining.textContent = `${mins}:${secs.toString().padStart(2, '0')} remaining`;
+            const effectiveWpm = wpm > 0 ? wpm : 300;
+
+            if (totalWords === 0) {
+                timeRemaining.textContent = '—';
+            } else if (wordsLeft === 0) {
+                timeRemaining.textContent = 'Complete ✓';
+            } else {
+                const totalSeconds = Math.round((wordsLeft / effectiveWpm) * 60);
+                const hrs  = Math.floor(totalSeconds / 3600);
+                const mins = Math.floor((totalSeconds % 3600) / 60);
+                const secs = totalSeconds % 60;
+                if (hrs > 0) {
+                    timeRemaining.textContent = `${hrs}h ${mins}m remaining`;
+                } else {
+                    timeRemaining.textContent = `${mins}:${secs.toString().padStart(2, '0')} remaining`;
+                }
+            }
         }
 
         // Update header stats
@@ -5458,42 +5623,50 @@
 
         // Update map viewport
         function updateMapViewport() {
-            // Map disabled - returning early
-            return;
-        }
-        
-        /* OLD MAP FUNCTION - DISABLED TO PREVENT ERRORS
-        function updateMapViewportOld() {
+            if (!mapContainer) return;
+
+            const totalItems   = contentItems.length;
+            const mapHeight    = mapContainer.clientHeight;
+            if (totalItems === 0 || mapHeight === 0) return;
+
+            // Progress as fraction 0–1
+            const progress = totalItems > 1 ? currentIndex / (totalItems - 1) : 0;
+
+            // Viewport indicator height & position
             const viewportSize = Math.max(20, Math.min(80, (50 / totalItems) * mapHeight));
-            const viewportTop = Math.max(0, Math.min(mapHeight - viewportSize, progress * mapHeight));
+            const viewportTop  = Math.max(0, Math.min(mapHeight - viewportSize, progress * mapHeight));
 
             mapViewport.style.height = `${viewportSize}px`;
-            mapViewport.style.top = `${viewportTop}px`;
+            mapViewport.style.top    = `${viewportTop}px`;
 
-            mapProgress.style.width = `${progress * 100}%`;
-            mapPosition.textContent = `${Math.round(progress * 100)}%`;
+            // Progress bar & position label
+            mapProgress.style.width       = `${progress * 100}%`;
+            mapPosition.textContent       = `${Math.round(progress * 100)}%`;
 
+            // Section tracking
             const textIndex = contentItems.slice(0, currentIndex)
                 .filter(i => i.type === ContentType.TEXT).length;
-            
-            const currentSection = documentSections.find(section => 
+
+            const currentSection = documentSections.find(section =>
                 textIndex >= section.startIndex && textIndex <= section.endIndex
             );
 
             if (currentSection) {
                 const sectionIndex = documentSections.indexOf(currentSection);
                 mapSectionDisplay.textContent = `${sectionIndex + 1}/${documentSections.length}`;
-                
+
                 document.querySelectorAll('.map-section').forEach((el, idx) => {
                     el.classList.toggle('current', idx === sectionIndex);
                 });
 
-                // Check if we've entered a new section during reading
+                // Pause at section boundaries during playback
                 if (isPlaying && sectionIndex !== currentSectionIndex && sectionIndex > 0) {
                     currentSectionIndex = sectionIndex;
                     pause();
                     showSectionSummary(sectionIndex);
                 }
+            } else if (documentSections.length === 0) {
+                mapSectionDisplay.textContent = '-/-';
             }
         }
 

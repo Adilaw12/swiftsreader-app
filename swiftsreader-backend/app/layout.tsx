@@ -1,18 +1,13 @@
 // app/layout.tsx
-import type { Metadata } from 'next'
-import { ClerkProvider } from '@clerk/nextjs'
+// Minimal layout — ClerkProvider wraps the app for API route auth.
+// The actual UI is served by app/route.ts (raw HTML from public/app.html).
 
-export const metadata: Metadata = {
-  title: 'SwiftsReader — Academic Reader for ADHD & Dyslexic Minds',
-  description: 'Fast, focused, unstoppable. RSVP reading, AI summaries, and dyslexia modes designed for academic researchers.',
-}
+import { ClerkProvider } from '@clerk/nextjs'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body>{children}</body>
-      </html>
+      {children}
     </ClerkProvider>
   )
 }

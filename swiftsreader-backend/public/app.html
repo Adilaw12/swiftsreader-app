@@ -2400,8 +2400,10 @@
     </button>
 
     <script>
-        // Configure PDF.js worker
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        // Configure PDF.js worker (safe — CDN may not have loaded yet)
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
 
         // Configuration
         const ContentType = {
@@ -3366,6 +3368,11 @@
         // PDF EXTRACTION  (text + images + tables + equations)
         // ─────────────────────────────────────────────────────────────────────
         async function loadPDFText(file) {
+            // Ensure worker is configured even if CDN loaded after script ran
+            if (typeof pdfjsLib === 'undefined') {
+                throw new Error('PDF library (pdf.js) failed to load. Check your internet connection.');
+            }
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             let fullText = '';

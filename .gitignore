@@ -2,3 +2,6 @@
 .env*.local
 node_modules/
 .next/
+swiftsreader-backend/node_modules/
+swiftsreader-backend/.next/
+swiftsreader-backend/.env*.local

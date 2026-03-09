@@ -14,6 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/opendyslexic" rel="stylesheet">
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -2600,6 +2601,13 @@
                     document.querySelectorAll('[data-dyslexia]').forEach(btn => {
                         btn.classList.toggle('active', btn.dataset.dyslexia === String(isDyslexic));
                     });
+                    // Restore warm background if dyslexia was on
+                    if (isDyslexic) {
+                        document.querySelectorAll('.reader-area, .reader-display').forEach(el => {
+                            el.style.background = '#f5f0e8';
+                            el.style.color = '#2c1810';
+                        });
+                    }
                 }
                 
                 if (settings.theme) {
@@ -2825,6 +2833,12 @@
                     document.querySelectorAll('[data-dyslexia]').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     isDyslexic = btn.dataset.dyslexia === 'true';
+                    // Apply warm background to all reader areas
+                    document.querySelectorAll('.reader-area, .reader-display').forEach(el => {
+                        el.style.background = isDyslexic ? '#f5f0e8' : '';
+                        el.style.color = isDyslexic ? '#2c1810' : '';
+                        el.style.transition = 'background 0.3s, color 0.3s';
+                    });
                     updateDisplay();
                     saveSettings();
                 });
@@ -4537,11 +4551,11 @@
             }
             html += '"';
             
-            html += ` style="font-size: ${fontSize}px; font-family: `;
             if (isDyslexic) {
-                html += 'OpenDyslexic, ';
+                html += ` style="font-size: ${fontSize}px; font-family: OpenDyslexic, ${fontFamily}, sans-serif; letter-spacing: 0.12em; word-spacing: 0.25em; line-height: 2.2;">`;
+            } else {
+                html += ` style="font-size: ${fontSize}px; font-family: ${fontFamily}, sans-serif;">`;
             }
-            html += `${fontFamily}, sans-serif;">`;
             
             chunk.forEach(word => {
                 html += `<span class="word">${word}</span>`;
@@ -4930,9 +4944,10 @@
             // Build paragraphs from contentItems
             const fontStyle = `font-size:${fontSize}px;font-family:${isDyslexic ? 'OpenDyslexic,' : ''}${fontFamily},sans-serif;`;
             const lineH = isDyslexic ? '2.2' : '1.85';
-            const letterS = isDyslexic ? '0.04em' : 'normal';
+            const letterS = isDyslexic ? '0.12em' : 'normal';
+            const wordS = isDyslexic ? '0.25em' : 'normal';
 
-            let html = `<div class="paragraph-view" style="padding:24px 8px;${fontStyle}line-height:${lineH};letter-spacing:${letterS};max-width:680px;margin:0 auto;">`;
+            let html = `<div class="paragraph-view" style="padding:24px 8px;${fontStyle}line-height:${lineH};letter-spacing:${letterS};word-spacing:${wordS};max-width:680px;margin:0 auto;">`;
 
             let para = [];
             contentItems.forEach((item, idx) => {

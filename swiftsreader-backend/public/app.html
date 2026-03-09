@@ -3150,14 +3150,23 @@
                 showNotification('📂 Loading file...');
 
                 let result = { text: '', media: [] };
-                if (file.name.endsWith('.txt')) {
+                const fname = file.name.toLowerCase();
+                if (fname.endsWith('.txt')) {
                     result.text = await file.text();
-                } else if (file.name.endsWith('.pdf')) {
+                } else if (fname.endsWith('.pdf')) {
+                    if (typeof pdfjsLib === 'undefined') {
+                        throw new Error('PDF library not loaded. Check your internet connection and try again.');
+                    }
                     showNotification('📄 Extracting PDF content and images...');
                     result = await loadPDFText(file);
-                } else if (file.name.endsWith('.docx')) {
+                } else if (fname.endsWith('.docx')) {
+                    if (typeof mammoth === 'undefined') {
+                        throw new Error('DOCX library not loaded. Check your internet connection and try again.');
+                    }
                     showNotification('📝 Extracting DOCX content and images...');
                     result = await loadDOCXText(file);
+                } else {
+                    throw new Error(`Unsupported file type: ${file.name.split('.').pop().toUpperCase()}. Please use PDF, DOCX, or TXT.`);
                 }
 
                 paper.text = result.text;
@@ -3193,7 +3202,8 @@
                 showNotification(`✅ Added: ${paper.title}${mediaMsg}`);
             } catch (error) {
                 console.error('[File] Error:', error);
-                showNotification('❌ Failed to load file', 'error');
+                const msg = error?.message || String(error) || 'Unknown error';
+                showNotification(`❌ Failed to load file: ${msg}`, 'error');
             }
         }
 

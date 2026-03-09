@@ -3841,46 +3841,26 @@
 
         // Load and verify auth on startup
         async function initAuth() {
-            // Standalone / file:// — skip backend auth entirely
-            const isStandalone = (location.protocol === 'file:' || location.hostname === '');
-            const token = getAuthToken();
-
-            if (!token && !isStandalone) {
-                window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
-                return false;
-            }
-            if (!token) {
-                // Offline / standalone — allow guest mode
-                return true;
-            }
+            // The app is self-contained and handles its own auth state.
+            // We optionally sync user profile from the backend, but never block
+            // the app from loading if the backend is unavailable or returns non-JSON.
             try {
-                const r = await fetch('/api/auth/me', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!r.ok) {
-                    if (isStandalone) {
-                        // Offline — fall through to cached user
-                        throw new Error('offline');
-                    }
-                    // Backend says token is invalid — only redirect on real deployments
-                    if (r.status === 401 || r.status === 403) {
-                        localStorage.removeItem('sr_token');
-                        window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
-                        return false;
-                    }
-                    // Any other error (404, 500) — treat as offline
-                    throw new Error('backend-unavailable');
+                const r = await fetch('/api/auth/me', { credentials: 'include' });
+                // Guard against HTML error pages (Clerk redirects, Next.js 404s etc.)
+                const ct = r.headers.get('content-type') || '';
+                if (!ct.includes('application/json')) throw new Error('non-json');
+                if (r.ok) {
+                    currentUser = await r.json();
+                    localStorage.setItem('sr_user', JSON.stringify(currentUser));
+                    updateUserUI();
                 }
-                currentUser = await r.json();
-                localStorage.setItem('sr_user', JSON.stringify(currentUser));
-                updateUserUI();
-                return true;
             } catch {
-                // Network issue or unavailable backend — allow offline use
+                // Backend unavailable or not logged in — load from cache if available
                 const cached = localStorage.getItem('sr_user');
                 if (cached) { try { currentUser = JSON.parse(cached); } catch {} }
-                return true;
             }
+            // Always return true — app works offline / as guest
+            return true;
         }
 
         function updateUserUI() {

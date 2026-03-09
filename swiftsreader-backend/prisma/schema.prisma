@@ -1,0 +1,166 @@
+// prisma/schema.prisma
+// SwiftsReader — database: prisma-postgres-claret-bucket
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+// Created automatically via Clerk webhook on user.created
+
+model User {
+  id        String   @id              // Clerk userId e.g. "user_2abc..."
+  email     String   @unique
+  tier      Tier     @default(FREE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Stripe
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String? @unique
+
+  // Usage tracking
+  summariesUsed  Int @default(0)
+  summariesLimit Int @default(10)
+
+  // HD Voice (TTS) usage — resets monthly via Stripe billing cycle
+  ttsCharsUsed  Int @default(0)
+  ttsCharsLimit Int @default(0)       // 0 = FREE (browser only); set by tier
+
+  // Relations
+  papers          Paper[]
+  summaries       Summary[]
+  readingSessions ReadingSession[]
+
+  @@map("users")
+}
+
+enum Tier {
+  FREE
+  STUDENT
+  PRO
+  BETA
+}
+
+// ─── Paper ────────────────────────────────────────────────────────────────────
+
+model Paper {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  authors   String?
+  year      String?
+  journal   String?
+  doi       String?
+  tags      String[] @default([])
+  text      String?  @db.Text
+  media     Json?                      // figures, tables, equations metadata
+  addedDate DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Reading state
+  progress     Float   @default(0)    // 0–1
+  currentIndex Int     @default(0)
+  completed    Boolean @default(false)
+  readingTime  Int     @default(0)    // seconds
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summaries  Summary[]
+  highlights Highlight[]
+  bookmarks  Bookmark[]
+  notes      Note?
+
+  @@index([userId])
+  @@map("papers")
+}
+
+// ─── Summary ──────────────────────────────────────────────────────────────────
+
+model Summary {
+  id           String   @id @default(cuid())
+  paperId      String
+  userId       String
+  sectionIndex Int
+  sectionTitle String?
+  content      String   @db.Text
+  model        String   @default("claude-sonnet-4-6")
+  tokensUsed   Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([paperId, sectionIndex])
+  @@index([paperId])
+  @@index([userId])
+  @@map("summaries")
+}
+
+// ─── Highlight ────────────────────────────────────────────────────────────────
+
+model Highlight {
+  id        String   @id @default(cuid())
+  paperId   String
+  text      String
+  note      String?
+  wordIndex Int
+  createdAt DateTime @default(now())
+
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+
+  @@index([paperId])
+  @@map("highlights")
+}
+
+// ─── Bookmark ────────────────────────────────────────────────────────────────
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  paperId   String
+  label     String?
+  wordIndex Int
+  createdAt DateTime @default(now())
+
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+
+  @@index([paperId])
+  @@map("bookmarks")
+}
+
+// ─── Note ─────────────────────────────────────────────────────────────────────
+
+model Note {
+  id          String   @id @default(cuid())
+  paperId     String   @unique
+  keyFindings String?  @db.Text
+  summary     String?  @db.Text
+  relevance   String?  @db.Text
+  questions   String?  @db.Text
+  updatedAt   DateTime @updatedAt
+
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+
+  @@map("notes")
+}
+
+// ─── ReadingSession ───────────────────────────────────────────────────────────
+
+model ReadingSession {
+  id        String   @id @default(cuid())
+  userId    String
+  paperId   String?
+  duration  Int                       // seconds
+  wordsRead Int      @default(0)
+  date      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([date])
+  @@map("reading_sessions")
+}

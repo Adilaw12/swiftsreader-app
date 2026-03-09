@@ -1,26 +1,29 @@
 // middleware.ts
-// Clerk auth middleware — runs on Edge Runtime.
-// Only intercepts API routes and Next.js pages; static files are excluded.
+// Clerk auth middleware — only protects API routes.
+// The SwiftsReader app (public/app.html) handles its own auth state client-side.
 
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
-const isPublicRoute = createRouteMatcher([
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/webhooks/(.*)',   // Stripe + Clerk webhooks must be public
+// API routes that require a valid Clerk session
+const isProtectedApi = createRouteMatcher([
+  '/api/auth(.*)',
+  '/api/tts(.*)',
+  '/api/library(.*)',
+  '/api/summary(.*)',
+  '/api/checkout(.*)',
+  '/api/sessions(.*)',
 ])
 
 export default clerkMiddleware(async (auth, req) => {
-  if (!isPublicRoute(req)) {
+  if (isProtectedApi(req)) {
     await auth.protect()
   }
+  // Everything else (pages, static files, webhooks) passes through freely
 })
 
 export const config = {
   matcher: [
-    // Only run middleware on API routes and Next.js page routes.
-    // Excludes: static files, _next internals, and anything with a file extension.
+    // Only run on API routes — skip all static files and page routes
     '/(api|trpc)(.*)',
-    '/((?!_next/static|_next/image|favicon\\.ico|.*\\..*).*)',
   ],
 }

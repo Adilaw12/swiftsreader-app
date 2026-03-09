@@ -1,11 +1,10 @@
-// middleware.ts  (project root)
-// Protects all routes — public routes listed in matcher exclusions
+// middleware.ts
+// Clerk auth middleware — runs on Edge Runtime.
+// Only intercepts API routes and Next.js pages; static files are excluded.
 
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
 const isPublicRoute = createRouteMatcher([
-  '/',
-  '/app.html',            // SwiftsReader app — handles its own auth state
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/webhooks/(.*)',   // Stripe + Clerk webhooks must be public
@@ -19,7 +18,9 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Only run middleware on API routes and Next.js page routes.
+    // Excludes: static files, _next internals, and anything with a file extension.
     '/(api|trpc)(.*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|.*\\..*).*)',
   ],
 }

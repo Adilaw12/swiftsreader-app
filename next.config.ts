@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // Prisma client must run in Node.js runtime, not Edge
+  // Keep Prisma in Node.js runtime — never run in Edge
   serverExternalPackages: ['@prisma/client', 'prisma'],
 }
 

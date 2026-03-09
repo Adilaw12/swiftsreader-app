@@ -226,6 +226,79 @@
             animation: pulse 2s ease-in-out infinite;
         }
 
+        /* Floating audio bar */
+        #floatingAudioBar {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: var(--bg-surface, #fff);
+            border: 1px solid var(--border-light);
+            border-radius: 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+            backdrop-filter: blur(12px);
+            transition: opacity .2s, transform .2s;
+        }
+        body.dark-mode #floatingAudioBar {
+            background: rgba(30,30,46,0.95);
+            border-color: rgba(255,255,255,0.1);
+        }
+        #floatingAudioBar .fab-btn {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-secondary, #f5f5f5);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px;
+            transition: background .15s, transform .1s;
+            flex-shrink: 0;
+        }
+        #floatingAudioBar .fab-btn:hover { background: var(--primary-pale); transform: scale(1.08); }
+        #floatingAudioBar .fab-btn.active { background: var(--primary); color: white; }
+        #floatingAudioBar .fab-speed {
+            font-size: 11px; font-weight: 700;
+            color: var(--text-secondary);
+            cursor: pointer; padding: 0 4px;
+            white-space: nowrap;
+        }
+        #floatingAudioBar .fab-hd {
+            height: 26px; padding: 0 10px;
+            border-radius: 13px;
+            border: 1.5px solid var(--border-light);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 10px; font-weight: 700;
+            cursor: pointer; white-space: nowrap;
+            transition: all .15s;
+            flex-shrink: 0;
+        }
+        #floatingAudioBar .fab-hd.on {
+            border-color: #00bcd4; color: #00bcd4;
+            box-shadow: 0 0 8px rgba(0,188,212,.25);
+        }
+        #floatingAudioBar .fab-voice {
+            font-size: 11px;
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 3px 5px;
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            cursor: pointer;
+            width: 110px; height: 26px;
+            overflow: hidden;
+        }
+        #floatingAudioBar .fab-divider {
+            width: 1px; height: 20px;
+            background: var(--border-light);
+            flex-shrink: 0;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.8; }
@@ -1940,41 +2013,9 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <div id="streakDisplay" class="streak-badge" style="display: none;">
-                        🔥 <span id="streakCount">0</span> day streak
-                    </div>
-                    <div class="header-stats">
-                        <div class="stat">
-                            <div class="stat-value" id="headerWpmDisplay">300</div>
-                            <div class="stat-label">WPM</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value" id="headerProgressDisplay">0%</div>
-                            <div class="stat-label">Progress</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value" id="headerPapersDisplay">0</div>
-                            <div class="stat-label">Papers</div>
-                        </div>
-                    </div>
                     <button class="button button-primary" id="addPaperBtn">
                         <span>+ Add Paper</span>
                     </button>
-                    <button class="button" onclick="openContactModal()" aria-label="Contact Us" style="background:transparent;border:1.5px solid var(--border-light);color:var(--text-secondary);border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border-light)';this.style.color='var(--text-secondary)'">Contact Us</button>
-                    <!-- User account info -->
-                    <div id="userInfoBar" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);">
-                        <span id="userTierBadge" style="padding:3px 10px;border-radius:20px;font-weight:700;font-size:11px;background:var(--primary-pale);color:var(--primary-dark);">FREE</span>
-                        <span id="userEmailDisplay" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-                        <button id="upgradeBtn" onclick="openUpgradeModal()" style="display:none;padding:4px 10px;background:var(--primary);color:white;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Upgrade</button>
-                        <button id="logoutBtn" title="Sign out" style="background:none;border:1px solid var(--border-light);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:var(--text-secondary);">Sign out</button>
-                    </div>
-                    <!-- Audio Reader Controls -->
-                    <div class="audio-controls" id="audioControls">
-                        <button class="audio-btn" id="audioPlayBtn" title="Play Audio">▶️</button>
-                        <button class="audio-btn" id="audioPauseBtn" title="Pause Audio" style="display: none;">⏸️</button>
-                        <button class="audio-btn" id="audioStopBtn" title="Stop Audio">⏹️</button>
-                        <div class="audio-speed" id="audioSpeed" title="Click to change speed">1.0x</div>
-                    </div>
                 </div>
             </div>
         </header>
@@ -2105,6 +2146,36 @@
                         <button class="button button-secondary button-small" id="shortcutsBtn">
                             <span>⌨️ Keys</span>
                         </button>
+                    </div>
+                </div>
+                <!-- Account & Stats widget (moved from header) -->
+                <div style="padding:12px 16px 16px;border-top:1px solid var(--border-light);margin-top:auto;">
+                    <!-- Stats row -->
+                    <div style="display:flex;gap:0;background:var(--bg-primary);border-radius:10px;overflow:hidden;border:1px solid var(--border-light);margin-bottom:10px;">
+                        <div style="flex:1;padding:8px 6px;text-align:center;border-right:1px solid var(--border-light);">
+                            <div id="headerWpmDisplay" style="font-size:15px;font-weight:800;color:var(--primary);">300</div>
+                            <div style="font-size:9px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.4px;">WPM</div>
+                        </div>
+                        <div style="flex:1;padding:8px 6px;text-align:center;border-right:1px solid var(--border-light);">
+                            <div id="headerProgressDisplay" style="font-size:15px;font-weight:800;color:var(--primary);">0%</div>
+                            <div style="font-size:9px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.4px;">Done</div>
+                        </div>
+                        <div style="flex:1;padding:8px 6px;text-align:center;">
+                            <div id="headerPapersDisplay" style="font-size:15px;font-weight:800;color:var(--primary);">0</div>
+                            <div style="font-size:9px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.4px;">Papers</div>
+                        </div>
+                    </div>
+                    <!-- Streak -->
+                    <div id="streakDisplay" style="display:none;text-align:center;font-size:12px;font-weight:600;color:var(--primary);margin-bottom:8px;">
+                        🔥 <span id="streakCount">0</span> day streak
+                    </div>
+                    <!-- User account -->
+                    <div id="userInfoBar" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span id="userTierBadge" style="padding:2px 8px;border-radius:20px;font-weight:700;font-size:10px;background:var(--primary-pale);color:var(--primary-dark);">FREE</span>
+                        <span id="userEmailDisplay" style="font-size:11px;color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;"></span>
+                        <button id="upgradeBtn" onclick="openUpgradeModal()" style="display:none;padding:3px 8px;background:var(--primary);color:white;border:none;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;">Upgrade</button>
+                        <button id="logoutBtn" title="Sign out" style="background:none;border:1px solid var(--border-light);border-radius:5px;padding:2px 7px;font-size:10px;cursor:pointer;color:var(--text-secondary);">Sign out</button>
+                        <button onclick="openContactModal()" style="background:none;border:1px solid var(--border-light);border-radius:5px;padding:2px 7px;font-size:10px;cursor:pointer;color:var(--text-secondary);">Contact</button>
                     </div>
                 </div>
               </div><!-- /.library-panel-inner -->
@@ -3770,27 +3841,44 @@
 
         // Load and verify auth on startup
         async function initAuth() {
+            // Standalone / file:// — skip backend auth entirely
+            const isStandalone = (location.protocol === 'file:' || location.hostname === '');
             const token = getAuthToken();
-            if (!token) {
+
+            if (!token && !isStandalone) {
                 window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
                 return false;
+            }
+            if (!token) {
+                // Offline / standalone — allow guest mode
+                return true;
             }
             try {
                 const r = await fetch('/api/auth/me', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (!r.ok) {
-                    localStorage.removeItem('sr_token');
-                    window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
-                    return false;
+                    if (isStandalone) {
+                        // Offline — fall through to cached user
+                        throw new Error('offline');
+                    }
+                    // Backend says token is invalid — only redirect on real deployments
+                    if (r.status === 401 || r.status === 403) {
+                        localStorage.removeItem('sr_token');
+                        window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+                        return false;
+                    }
+                    // Any other error (404, 500) — treat as offline
+                    throw new Error('backend-unavailable');
                 }
                 currentUser = await r.json();
+                localStorage.setItem('sr_user', JSON.stringify(currentUser));
                 updateUserUI();
                 return true;
             } catch {
-                // Network issue — allow offline use but summaries won't work
+                // Network issue or unavailable backend — allow offline use
                 const cached = localStorage.getItem('sr_user');
-                if (cached) currentUser = JSON.parse(cached);
+                if (cached) { try { currentUser = JSON.parse(cached); } catch {} }
                 return true;
             }
         }
@@ -5729,41 +5817,17 @@
         // ── Voice selector UI ───────────────────────────────────────────────
         // Injected into the audio controls bar
         function buildVoiceSelectorUI() {
-            const audioControls = document.getElementById('audioControls');
-            if (!audioControls || document.getElementById('voiceSelector')) return;
-
-            // Inject HD button first so it always appears before the voice selector
-            const hdBtn = document.createElement('button');
-            hdBtn.id = 'hdVoiceBtn';
-            hdBtn.title = 'HD Voice — natural human voice (OpenAI TTS)';
-            hdBtn.style.cssText = 'height:28px;padding:0 10px;border-radius:14px;border:1.5px solid var(--border-light);' +
-                'background:transparent;color:var(--text-secondary);font-size:11px;font-weight:700;' +
-                'cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0;';
-            hdBtn.innerHTML = '🎙️&nbsp;HD';
-            audioControls.appendChild(hdBtn);
-
-            // Voice selector — compact width
-            const wrapper = document.createElement('div');
-            wrapper.style.cssText = 'display:flex;align-items:center;gap:6px;margin-left:4px;flex-shrink:1;min-width:0;';
-            wrapper.innerHTML = `
-                <select id="voiceSelector" title="Choose voice"
-                    style="font-size:11px;border:1px solid var(--border-light);border-radius:6px;
-                           padding:3px 6px;background:var(--bg-surface);color:var(--text-primary);
-                           cursor:pointer;width:120px;max-width:120px;height:28px;overflow:hidden;
-                           text-overflow:ellipsis;">
-                    <option>Loading voices…</option>
-                </select>
-            `;
-            audioControls.appendChild(wrapper);
-
-            wrapper.querySelector('#voiceSelector').addEventListener('change', (e) => {
+            // Voice selector + HD button are pre-rendered in #floatingAudioBar
+            const sel = document.getElementById('voiceSelector');
+            if (!sel || sel.dataset.built) return;
+            sel.dataset.built = '1';
+            sel.addEventListener('change', (e) => {
                 selectedVoice = availableVoices.find(v => v.name === e.target.value) || null;
                 console.log('[Audio] Voice changed to:', selectedVoice?.name);
                 showNotification('🎤 Voice: ' + (selectedVoice?.name || 'default'), 'info');
                 if (isAudioPlaying) { pauseAudio(); setTimeout(playAudio, 200); }
             });
-
-            populateVoiceSelector(); // populate with whatever is loaded
+            populateVoiceSelector();
         }
 
         // ── Text extraction ─────────────────────────────────────────────────
@@ -5918,12 +5982,8 @@
         }
 
         function setAudioUIState(playing) {
-            const audioControls = document.getElementById('audioControls');
             const audioPlayBtn  = document.getElementById('audioPlayBtn');
             const audioPauseBtn = document.getElementById('audioPauseBtn');
-            if (!audioControls) return;
-            audioControls.style.display = 'flex';
-            audioControls.classList.toggle('active', playing);
             if (audioPlayBtn)  audioPlayBtn.style.display  = playing ? 'none' : 'flex';
             if (audioPauseBtn) audioPauseBtn.style.display = playing ? 'flex' : 'none';
         }
@@ -6846,5 +6906,18 @@
         }
     });
     </script>
+    <!-- Floating Audio Bar -->
+    <div id="floatingAudioBar">
+        <button class="fab-btn" id="audioPlayBtn" title="Play">&#9654;&#65039;</button>
+        <button class="fab-btn" id="audioPauseBtn" title="Pause" style="display:none;">&#9208;&#65039;</button>
+        <button class="fab-btn" id="audioStopBtn" title="Stop">&#9209;&#65039;</button>
+        <div class="fab-divider"></div>
+        <div class="fab-speed" id="audioSpeed" title="Speed">1.0x</div>
+        <button class="fab-hd" id="hdVoiceBtn" title="HD Voice — natural human voice">&#127897; HD</button>
+        <div class="fab-divider"></div>
+        <select class="fab-voice" id="voiceSelector" title="Choose voice">
+            <option>Loading voices…</option>
+        </select>
+    </div>
 </body>
 </html>

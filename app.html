@@ -14,14 +14,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link href="https://fonts.cdnfonts.com/css/opendyslexic" rel="stylesheet">
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
     
     <style>
         :root {
@@ -125,7 +121,8 @@
 
         /* Focus Mode */
         body.focus-mode .app-header,
-        body.focus-mode .library-panel {
+        body.focus-mode .library-panel,
+        body.focus-mode .document-map {
             display: none !important;
         }
 
@@ -334,7 +331,7 @@
             margin: 0 auto;
             padding: var(--space-2xl) var(--space-xl);
             display: grid;
-            grid-template-columns: 280px 1fr;
+            grid-template-columns: 280px 1fr 60px;
             gap: var(--space-2xl);
             align-items: start;
         }
@@ -827,68 +824,6 @@
             color: var(--primary);
         }
 
-        /* ── Dyslexia Paragraph Mode ─────────────────────────────── */
-        .dyslexia-display {
-            font-family: 'OpenDyslexic', sans-serif;
-            font-size: 22px;
-            line-height: 2;
-            letter-spacing: 0.08em;
-            word-spacing: 0.18em;
-            text-align: left;
-            color: var(--text-primary);
-            max-width: 680px;
-            margin: 0 auto;
-            padding: var(--space-lg) 0;
-        }
-
-        .dyslexia-display .dy-word {
-            display: inline;
-            border-radius: 4px;
-            padding: 2px 1px;
-            transition: background 0.1s, color 0.1s;
-            line-height: 2;
-        }
-
-        /* Current word — strong cyan highlight */
-        .dyslexia-display .dy-word.dy-current {
-            background: rgba(0, 188, 212, 0.2);
-            color: var(--primary-dark, #006970);
-            border-bottom: 3px solid var(--primary, #00BCD4);
-            border-radius: 4px 4px 2px 2px;
-            font-weight: 700;
-        }
-
-        /* Sentence containing current word — subtle tint */
-        .dyslexia-display .dy-word.dy-sentence {
-            background: rgba(0, 188, 212, 0.06);
-        }
-
-        /* Already-read words — muted */
-        .dyslexia-display .dy-word.dy-read {
-            color: var(--text-tertiary, #aaa);
-        }
-
-        /* Bionic bold prefix (when highlight=first) */
-        .dyslexia-display.bionic .dy-bold {
-            font-weight: 900;
-        }
-
-        /* Allow dyslexia paragraph scroll to work — toggled by JS */
-        .reader-area.dyslexia-active {
-            overflow: visible;
-        }
-
-        /* Reader display scrolls in paragraph mode */
-        .reader-display.dyslexia-mode {
-            align-items: flex-start;
-            justify-content: flex-start;
-            overflow-y: auto;
-            max-height: 58vh;
-            min-height: 58vh;
-            padding: var(--space-xl) var(--space-2xl);
-            scroll-behavior: smooth;
-        }
-
         /* Placeholder */
         .reader-placeholder {
             text-align: center;
@@ -1080,6 +1015,109 @@
             color: var(--text-secondary);
         }
 
+        /* Document Map */
+        .document-map {
+            position: sticky;
+            top: calc(92px + var(--space-2xl));
+            height: calc(100vh - 92px - var(--space-2xl) * 2);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .map-container {
+            flex: 1;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .map-sections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        .map-section {
+            position: absolute;
+            left: 0;
+            right: 0;
+            background: var(--bg-tertiary);
+            border-top: 1px solid var(--border-light);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .map-section:hover {
+            background: var(--primary-pale);
+        }
+
+        .map-section.current {
+            background: var(--primary-light);
+        }
+
+        .map-viewport {
+            position: absolute;
+            left: 0;
+            right: 0;
+            background: rgba(0, 188, 212, 0.15);
+            border: 2px solid var(--primary);
+            border-radius: var(--space-xs);
+            cursor: grab;
+            transition: background var(--transition-fast);
+        }
+
+        .map-viewport:active {
+            cursor: grabbing;
+            background: rgba(0, 188, 212, 0.28);
+        }
+
+        .map-progress {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: var(--primary);
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        .map-info {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: var(--space-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .map-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-sm) 0;
+            font-size: 12px;
+        }
+
+        .map-stat:not(:last-child) {
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .map-stat-label {
+            color: var(--text-tertiary);
+            font-weight: 600;
+        }
+
+        .map-stat-value {
+            color: var(--text-primary);
+            font-weight: 700;
+            font-family: 'SFMono-Regular', 'SF Mono', Consolas, 'Courier New', monospace;
+        }
+
         /* Break Reminder */
         .break-reminder {
             position: fixed;
@@ -1233,7 +1271,7 @@
         /* Focus Mode Toggle */
         .focus-toggle {
             position: fixed;
-            bottom: 100px;
+            bottom: var(--space-xl);
             left: var(--space-xl);
             width: 56px;
             height: 56px;
@@ -1341,7 +1379,11 @@
         /* Responsive */
         @media (max-width: 1400px) {
             .app-main {
-                grid-template-columns: 1fr;
+                grid-template-columns: 250px 1fr;
+            }
+
+            .document-map {
+                display: none;
             }
         }
 
@@ -1353,8 +1395,6 @@
             .library-panel {
                 position: static;
                 max-height: none;
-                height: auto;
-                display: flex; /* visible on tablet, hidden on mobile via JS */
             }
 
             .header-stats {
@@ -1362,7 +1402,33 @@
             }
         }
 
-        /* (mobile styles now handled in the dedicated mobile section below) */
+        @media (max-width: 640px) {
+            .app-header {
+                padding: var(--space-md) 0;
+            }
+
+            .brand-text h1 {
+                font-size: 18px;
+            }
+
+            .brand-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+            }
+
+            .app-main {
+                padding: var(--space-lg);
+            }
+
+            .reader-area {
+                padding: var(--space-lg);
+            }
+
+            .word-display {
+                font-size: 32px;
+            }
+        }
 
         /* Template Badge */
         .template-badge {
@@ -1857,261 +1923,6 @@
         .contact-modal-success .success-icon { font-size: 48px; margin-bottom: 12px; }
         .contact-modal-success h3 { font-size: 20px; font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
         .contact-modal-success p  { font-size: 14px; color: var(--text-secondary); }
-
-        /* ═══════════════════════════════════════════════
-           MOBILE RESPONSIVENESS
-        ═══════════════════════════════════════════════ */
-
-        /* Mobile hamburger button — hidden on desktop */
-        .mobile-menu-btn {
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            gap: 5px;
-            background: none;
-            border: 1.5px solid var(--border-light);
-            border-radius: 8px;
-            padding: 8px 10px;
-            cursor: pointer;
-            width: 40px;
-            height: 40px;
-            flex-shrink: 0;
-        }
-        .mobile-menu-btn span {
-            display: block;
-            width: 18px;
-            height: 2px;
-            background: var(--text-primary);
-            border-radius: 2px;
-            transition: all 0.2s;
-        }
-        .mobile-menu-btn.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
-        .mobile-menu-btn.open span:nth-child(2) { opacity: 0; }
-        .mobile-menu-btn.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
-
-        /* Header secondary — desktop: always visible */
-        .header-secondary {
-            display: contents; /* renders children as if they were direct flex children */
-        }
-
-        /* Mobile library toggle bar — hidden on desktop */
-        .mobile-lib-bar {
-            display: none;
-            background: var(--bg-surface);
-            border-bottom: 1px solid var(--border-light);
-            padding: 0 var(--space-lg);
-        }
-        .mobile-lib-toggle {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: none;
-            border: none;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-primary);
-            cursor: pointer;
-            padding: 12px 0;
-            width: 100%;
-            font-family: inherit;
-        }
-        .mobile-lib-chevron {
-            margin-left: auto;
-            font-size: 11px;
-            color: var(--text-tertiary);
-            transition: transform 0.2s;
-        }
-        .mobile-lib-chevron.open { transform: rotate(180deg); }
-
-        /* Safe-area padding for bottom fixed elements on iOS */
-        .hz-player {
-            bottom: max(24px, calc(env(safe-area-inset-bottom) + 16px));
-        }
-        .focus-toggle {
-            bottom: max(100px, calc(env(safe-area-inset-bottom) + 90px));
-        }
-
-        /* ─── Tablet (≤768px) ─────────────────────────── */
-        @media (max-width: 768px) {
-
-            /* Show hamburger, hide secondary items by default */
-            .mobile-menu-btn { display: flex; }
-
-            .header-secondary {
-                display: none;
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                background: var(--bg-surface);
-                border-bottom: 1px solid var(--border-light);
-                padding: var(--space-md) var(--space-xl);
-                flex-direction: column;
-                gap: var(--space-md);
-                box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-                z-index: 99;
-            }
-            .header-secondary.open {
-                display: flex;
-            }
-
-            /* Make audio controls full-width in mobile menu */
-            .header-secondary .audio-controls {
-                width: 100%;
-                justify-content: center;
-            }
-
-            /* Streak + userInfoBar full width */
-            .header-secondary #userInfoBar {
-                flex-wrap: wrap;
-                gap: 6px;
-            }
-
-            /* App header: position relative so dropdown anchors correctly */
-            .app-header {
-                position: sticky;
-                overflow: visible;
-            }
-
-            /* Show mobile library toggle */
-            .mobile-lib-bar { display: block; }
-
-            /* Library panel: collapsible on mobile */
-            .library-panel {
-                display: none;
-                position: static;
-                height: auto;
-                max-height: 70vh;
-                overflow-y: auto;
-            }
-            .library-panel.mobile-open {
-                display: flex;
-            }
-
-            /* Main grid: single column, no padding waste */
-            .app-main {
-                padding: var(--space-md);
-                gap: var(--space-md);
-            }
-
-            /* Reader tabs: scrollable, no wrap */
-            .reader-tabs {
-                overflow-x: auto;
-                flex-wrap: nowrap;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-                gap: 0;
-            }
-            .reader-tabs::-webkit-scrollbar { display: none; }
-
-            .reader-tab {
-                white-space: nowrap;
-                flex-shrink: 0;
-                padding: var(--space-sm) var(--space-md);
-                font-size: 12px;
-            }
-
-            /* Reader display: comfortable mobile size */
-            .word-display {
-                font-size: 36px !important;
-            }
-
-            .reader-display {
-                min-height: 240px;
-                padding: var(--space-lg);
-            }
-
-            /* Control buttons: slightly smaller */
-            .control-button { width: 44px; height: 44px; font-size: 18px; }
-            .control-button.primary { width: 56px; height: 56px; font-size: 22px; }
-
-            /* Modal: full-width bottom sheet feel */
-            .modal {
-                width: 100%;
-                max-width: 100%;
-                margin: auto var(--space-md) 0;
-                border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-                max-height: 90vh;
-            }
-            .modal-overlay {
-                align-items: flex-end;
-            }
-
-            /* Upgrade modal: stack plans */
-            .modal div[style*="grid-template-columns:1fr 1fr"] {
-                grid-template-columns: 1fr !important;
-            }
-
-            /* Hz music pill: smaller on mobile */
-            .hz-player {
-                left: 12px;
-                padding: 8px 14px 8px 10px;
-            }
-            .hz-title { font-size: 11px; }
-
-            /* Focus toggle */
-            .focus-toggle {
-                left: 12px;
-                width: 48px;
-                height: 48px;
-                font-size: 20px;
-            }
-        }
-
-        /* ─── Phone (≤480px) ─────────────────────────── */
-        @media (max-width: 480px) {
-
-            /* Header: tighter */
-            .header-content {
-                padding: 0 var(--space-md);
-                gap: var(--space-sm);
-            }
-            .brand-text p { display: none; }
-            .brand-text h1 { font-size: 18px; }
-            .brand-logo-img { width: 36px; height: 36px; }
-
-            /* Add Paper button: icon only */
-            #addPaperBtn span::before { content: '+ '; }
-
-            /* Reader area: minimal padding */
-            .reader-area {
-                padding: var(--space-lg) var(--space-md);
-            }
-
-            /* Word display */
-            .word-display {
-                font-size: 30px !important;
-                line-height: 1.3;
-            }
-
-            .reader-display {
-                min-height: 200px;
-                padding: var(--space-md);
-            }
-
-            /* Progress bar */
-            .progress-info {
-                font-size: 11px;
-                flex-wrap: wrap;
-                gap: 4px;
-            }
-
-            /* Reader controls: center tightly */
-            .reader-controls {
-                gap: var(--space-sm);
-            }
-
-            /* Tabs: even more compact */
-            .reader-tab {
-                font-size: 11px;
-                padding: 6px 10px;
-            }
-
-            /* Library: take full viewport height when open */
-            .library-panel.mobile-open {
-                max-height: 80vh;
-            }
-        }
     </style>
   <!-- Vercel Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
@@ -2129,64 +1940,49 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <!-- Mobile: hamburger button -->
-                    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menu" aria-expanded="false">
-                        <span></span><span></span><span></span>
-                    </button>
-                    <!-- Primary actions always visible -->
+                    <div id="streakDisplay" class="streak-badge" style="display: none;">
+                        🔥 <span id="streakCount">0</span> day streak
+                    </div>
+                    <div class="header-stats">
+                        <div class="stat">
+                            <div class="stat-value" id="headerWpmDisplay">300</div>
+                            <div class="stat-label">WPM</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="headerProgressDisplay">0%</div>
+                            <div class="stat-label">Progress</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="headerPapersDisplay">0</div>
+                            <div class="stat-label">Papers</div>
+                        </div>
+                    </div>
                     <button class="button button-primary" id="addPaperBtn">
                         <span>+ Add Paper</span>
                     </button>
-                    <!-- Secondary actions — hidden on mobile behind hamburger -->
-                    <div class="header-secondary" id="headerSecondary">
-                        <div id="streakDisplay" class="streak-badge" style="display: none;">
-                            🔥 <span id="streakCount">0</span> day streak
-                        </div>
-                        <div class="header-stats">
-                            <div class="stat">
-                                <div class="stat-value" id="headerWpmDisplay">300</div>
-                                <div class="stat-label">WPM</div>
-                            </div>
-                            <div class="stat">
-                                <div class="stat-value" id="headerProgressDisplay">0%</div>
-                                <div class="stat-label">Progress</div>
-                            </div>
-                            <div class="stat">
-                                <div class="stat-value" id="headerPapersDisplay">0</div>
-                                <div class="stat-label">Papers</div>
-                            </div>
-                        </div>
-                        <button class="button" onclick="openContactModal()" aria-label="Contact Us" style="background:transparent;border:1.5px solid var(--border-light);color:var(--text-secondary);border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border-light)';this.style.color='var(--text-secondary)'">Contact Us</button>
-                        <!-- User account info -->
-                        <div id="userInfoBar" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);">
-                            <span id="userTierBadge" style="padding:3px 10px;border-radius:20px;font-weight:700;font-size:11px;background:var(--primary-pale);color:var(--primary-dark);">FREE</span>
-                            <span id="userEmailDisplay" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-                            <button id="upgradeBtn" onclick="openUpgradeModal()" style="display:none;padding:4px 10px;background:var(--primary);color:white;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Upgrade</button>
-                            <button id="logoutBtn" title="Sign out" style="background:none;border:1px solid var(--border-light);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:var(--text-secondary);">Sign out</button>
-                        </div>
-                        <!-- Audio Reader Controls -->
-                        <div class="audio-controls" id="audioControls">
-                            <button class="audio-btn" id="audioPlayBtn" title="Play Audio">▶️</button>
-                            <button class="audio-btn" id="audioPauseBtn" title="Pause Audio" style="display: none;">⏸️</button>
-                            <button class="audio-btn" id="audioStopBtn" title="Stop Audio">⏹️</button>
-                            <div class="audio-speed" id="audioSpeed" title="Click to change speed">1.0x</div>
-                        </div>
+                    <button class="button" onclick="openContactModal()" aria-label="Contact Us" style="background:transparent;border:1.5px solid var(--border-light);color:var(--text-secondary);border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border-light)';this.style.color='var(--text-secondary)'">Contact Us</button>
+                    <!-- User account info -->
+                    <div id="userInfoBar" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);">
+                        <span id="userTierBadge" style="padding:3px 10px;border-radius:20px;font-weight:700;font-size:11px;background:var(--primary-pale);color:var(--primary-dark);">FREE</span>
+                        <span id="userEmailDisplay" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                        <button id="upgradeBtn" onclick="openUpgradeModal()" style="display:none;padding:4px 10px;background:var(--primary);color:white;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Upgrade</button>
+                        <button id="logoutBtn" title="Sign out" style="background:none;border:1px solid var(--border-light);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:var(--text-secondary);">Sign out</button>
+                    </div>
+                    <!-- Audio Reader Controls -->
+                    <div class="audio-controls" id="audioControls">
+                        <button class="audio-btn" id="audioPlayBtn" title="Play Audio">▶️</button>
+                        <button class="audio-btn" id="audioPauseBtn" title="Pause Audio" style="display: none;">⏸️</button>
+                        <button class="audio-btn" id="audioStopBtn" title="Stop Audio">⏹️</button>
+                        <div class="audio-speed" id="audioSpeed" title="Click to change speed">1.0x</div>
                     </div>
                 </div>
             </div>
         </header>
 
-        <!-- Mobile Library Toggle Bar -->
-        <div class="mobile-lib-bar" id="mobileLibBar">
-            <button class="mobile-lib-toggle" id="mobileLibToggle" aria-expanded="false" aria-label="Toggle library panel">
-                📚 <span>My Library</span> <span class="mobile-lib-chevron" id="mobileLibChevron">▼</span>
-            </button>
-        </div>
-
         <!-- Main Content -->
         <main class="app-main">
             <!-- Library Panel -->
-            <aside class="library-panel" id="libraryPanel">
+            <aside class="library-panel">
               <div class="library-panel-inner">
                 <!-- Library -->
                 <div class="control-panel">
@@ -2337,7 +2133,7 @@
                             <div class="reader-placeholder">
                                 <div class="reader-placeholder-icon">🐦</div>
                                 <h3>Ready when you are</h3>
-                                <p>Add a paper from your library to start reading. Supports PDF and Word documents.</p>
+                                <p>Add a paper from your library to start reading. Supports PDF, Word, DOI links, and URLs.</p>
                                 <div style="display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap;">
                                     <div style="padding:8px 16px;border-radius:20px;background:rgba(0,188,212,0.08);border:1px solid rgba(0,188,212,0.2);font-size:12px;font-weight:600;color:var(--primary-dark);">⚡ RSVP Reading</div>
                                     <div style="padding:8px 16px;border-radius:20px;background:rgba(0,188,212,0.08);border:1px solid rgba(0,188,212,0.2);font-size:12px;font-weight:600;color:var(--primary-dark);">🎧 AudioReader</div>
@@ -2466,6 +2262,24 @@
                 </div>
             </section>
 
+            <!-- Document Map - DISABLED -->
+            <aside class="document-map" style="display: none;">
+                <div class="map-container" id="mapContainer">
+                    <div class="map-sections" id="mapSections"></div>
+                    <div class="map-viewport" id="mapViewport"></div>
+                    <div class="map-progress" id="mapProgress"></div>
+                </div>
+                <div class="map-info">
+                    <div class="map-stat">
+                        <span class="map-stat-label">Position</span>
+                        <span class="map-stat-value" id="mapPosition">0%</span>
+                    </div>
+                    <div class="map-stat">
+                        <span class="map-stat-label">Section</span>
+                        <span class="map-stat-value" id="mapSectionDisplay">-/-</span>
+                    </div>
+                </div>
+            </aside>
         </main>
     </div>
 
@@ -2484,7 +2298,6 @@
             PAUSE: 'pause',
             FIGURE: 'figure',
             TABLE: 'table',
-            EQUATION: 'equation',
             SECTION_START: 'section_start'
         };
 
@@ -2518,8 +2331,11 @@
         let breakTimer = null;
         let readingStartTime = null;
 
-        // Document sections
+        // Document sections for map
         let documentSections = [];
+        let isDraggingViewport = false;
+        let dragStartY = 0;
+        let dragStartTop = 0;
 
         // Reading goals
         let weeklyGoal = { target: 10, current: 0 }; // papers per week
@@ -2568,6 +2384,14 @@
         // Highlights
         const highlightsList = document.getElementById('highlightsList');
         const highlightCount = document.getElementById('highlightCount');
+
+        // Map elements
+        const mapContainer = document.getElementById('mapContainer');
+        const mapSections = document.getElementById('mapSections');
+        const mapViewport = document.getElementById('mapViewport');
+        const mapProgress = document.getElementById('mapProgress');
+        const mapPosition = document.getElementById('mapPosition');
+        const mapSectionDisplay = document.getElementById('mapSectionDisplay');
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -2829,7 +2653,7 @@
                 currentIndex = Math.max(0, currentIndex - chunkSize);
                 updateDisplay();
                 updateStats();
-
+                updateMapViewport();
                 saveCurrentPaperProgress();
             });
 
@@ -2838,7 +2662,7 @@
                 currentIndex = Math.min(contentItems.length - 1, currentIndex + chunkSize);
                 updateDisplay();
                 updateStats();
-
+                updateMapViewport();
                 saveCurrentPaperProgress();
             });
 
@@ -3018,7 +2842,7 @@
                     currentIndex = 0;
                     updateDisplay();
                     updateStats();
-
+                    updateMapViewport();
                     showNotification('⏮ Restarted from beginning');
                     break;
             }
@@ -3114,7 +2938,7 @@
                     <input type="text" id="paperJournal" placeholder="Nature, ICML, etc.">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">DOI / URL <span style="font-weight:400;color:var(--text-tertiary);font-size:11px;">(for reference only)</span></label>
+                    <label class="form-label">DOI / URL</label>
                     <input type="text" id="paperDoi" placeholder="https://doi.org/...">
                 </div>
                 <div class="form-group">
@@ -3722,7 +3546,7 @@
 
             updateDisplay();
             updateStats();
-            detectDocumentSections();
+            buildDocumentMap();
             updateLibraryUI();
 
             const mediaCount = paper.media?.length || 0;
@@ -3932,7 +3756,7 @@
         let currentUser = null;
 
         const PAPER_LIMITS    = { free: 3,        student: Infinity, pro: Infinity };
-        const SUMMARY_LIMITS  = { free: 20,       student: Infinity, pro: Infinity };
+        const SUMMARY_LIMITS  = { free: 5,        student: Infinity, pro: Infinity };
 
         function getAuthToken() {
             return localStorage.getItem('sr_token') || '';
@@ -3946,16 +3770,29 @@
 
         // Load and verify auth on startup
         async function initAuth() {
-            // Standalone app — no backend auth required.
-            // Set a default user so tier checks and UI pass correctly.
-            currentUser = {
-                email: 'user@swiftsreader.app',
-                tier: 'beta',
-                summariesUsed: 0,
-                summariesLimit: Infinity
-            };
-            updateUserUI();
-            return true;
+            const token = getAuthToken();
+            if (!token) {
+                window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+                return false;
+            }
+            try {
+                const r = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!r.ok) {
+                    localStorage.removeItem('sr_token');
+                    window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+                    return false;
+                }
+                currentUser = await r.json();
+                updateUserUI();
+                return true;
+            } catch {
+                // Network issue — allow offline use but summaries won't work
+                const cached = localStorage.getItem('sr_user');
+                if (cached) currentUser = JSON.parse(cached);
+                return true;
+            }
         }
 
         function updateUserUI() {
@@ -4324,8 +4161,8 @@
                         ✅ ${tier === 'student' ? 'Student' : 'Pro'} plan — unlimited AI summaries
                     </div>`;
                 } else {
-                    const left = Math.max(0, (limit || 20) - used);
-                    const pct  = Math.min(100, (used / (limit || 20)) * 100);
+                    const left = Math.max(0, (limit || 5) - used);
+                    const pct  = Math.min(100, (used / (limit || 5)) * 100);
                     const barColor = left === 0 ? 'var(--error)' : left <= 1 ? 'var(--warning)' : 'var(--primary)';
                     statusHtml = `
                     <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:var(--space-sm) var(--space-md);margin-bottom:var(--space-md);">
@@ -4466,8 +4303,8 @@
             const paper = library.find(p => p.id === currentPaperId);
             const mediaItems = paper?.media || [];
             
-            // Split into sentences and words, handling figure/table/equation markers
-            const segments = text.split(/(\[FIGURE_\d+\]|\[TABLE_\d+\]|\[EQUATION_\d+\])/);
+            // Split into sentences and words, handling figure/table markers
+            const segments = text.split(/(\[FIGURE_\d+\]|\[TABLE_\d+\])/);
             
             segments.forEach((segment) => {
                 // Check if this is a figure marker
@@ -4508,26 +4345,6 @@
                     contentItems.push({
                         type: ContentType.PAUSE,
                         duration: 2000 // 2 second pause to view table
-                    });
-                    return;
-                }
-
-                // Check if this is an equation marker
-                const eqMatch = segment.match(/\[EQUATION_(\d+)\]/);
-                if (eqMatch) {
-                    const eqNum = parseInt(eqMatch[1]);
-                    const eq = mediaItems.find(m => m.type === 'equation' && m.number === eqNum);
-                    
-                    contentItems.push({
-                        type: ContentType.EQUATION,
-                        number: eqNum,
-                        latex: eq?.latex || '',
-                        content: eq?.latex || `Equation ${eqNum}`
-                    });
-                    
-                    contentItems.push({
-                        type: ContentType.PAUSE,
-                        duration: 2500
                     });
                     return;
                 }
@@ -4646,140 +4463,6 @@
                 return;
             }
 
-            // Display equation
-            if (currentItem && currentItem.type === ContentType.EQUATION) {
-                let html = '<div class="figure-display" style="text-align:center;">';
-                html += `<div class="figure-caption" style="margin-bottom:12px;"><span class="figure-number">Equation ${currentItem.number}</span></div>`;
-                
-                if (currentItem.latex) {
-                    // Render LaTeX with KaTeX if available
-                    const eqContainer = document.createElement('div');
-                    eqContainer.style.cssText = 'font-size:1.4em;padding:20px;overflow-x:auto;';
-                    try {
-                        if (typeof katex !== 'undefined') {
-                            katex.render(currentItem.latex, eqContainer, { displayMode: true, throwOnError: false });
-                        } else {
-                            eqContainer.textContent = currentItem.latex;
-                        }
-                    } catch(e) {
-                        eqContainer.textContent = currentItem.latex;
-                    }
-                    html += '<div class="eq-placeholder"></div>';
-                    html += '<div class="pause-indicator">⏸ Reading paused for equation</div>';
-                    html += '<div class="media-controls">';
-                    html += '<button class="media-button" onclick="prevBtn.click()">← Previous</button>';
-                    html += '<button class="media-button" onclick="nextBtn.click()">Continue →</button>';
-                    html += '</div>';
-                    html += '</div>';
-                    displayEl.innerHTML = html;
-                    displayEl.querySelector('.eq-placeholder').replaceWith(eqContainer);
-                } else {
-                    html += `<div style="padding:20px;font-size:1.1em;font-family:monospace;background:var(--bg-secondary);border-radius:8px;">${currentItem.content || '[Equation]'}</div>`;
-                    html += '<div class="pause-indicator">⏸ Reading paused for equation</div>';
-                    html += '<div class="media-controls">';
-                    html += '<button class="media-button" onclick="prevBtn.click()">← Previous</button>';
-                    html += '<button class="media-button" onclick="nextBtn.click()">Continue →</button>';
-                    html += '</div>';
-                    html += '</div>';
-                    displayEl.innerHTML = html;
-                }
-                return;
-            }
-
-            // ── DYSLEXIA PARAGRAPH MODE ─────────────────────────────────
-            if (isDyslexic) {
-                displayEl.classList.add('dyslexia-mode');
-                displayEl.closest('.reader-area')?.classList.add('dyslexia-active');
-
-                // Build a window of words centred on currentIndex
-                const CONTEXT_BEFORE = 60;  // words to show before current
-                const CONTEXT_AFTER  = 120; // words to show after current
-                const textItems = contentItems.filter(i => i.type === ContentType.TEXT);
-                const totalText = textItems.length;
-
-                // Map currentIndex (contentItems index) → textItems index
-                const textIndex = contentItems.slice(0, currentIndex + 1)
-                    .filter(i => i.type === ContentType.TEXT).length - 1;
-                const safeIdx  = Math.max(0, Math.min(totalText - 1, textIndex));
-
-                const winStart = Math.max(0, safeIdx - CONTEXT_BEFORE);
-                const winEnd   = Math.min(totalText - 1, safeIdx + CONTEXT_AFTER);
-
-                // Find sentence boundaries around currentWord for tinting
-                const sentenceEnds = new Set();
-                for (let i = winStart; i <= winEnd; i++) {
-                    if (/[.!?]$/.test(textItems[i].content || '')) sentenceEnds.add(i);
-                }
-                // Find which sentence the current word is in
-                let sentStart = winStart, sentEnd = winEnd;
-                for (let i = safeIdx; i >= winStart; i--) {
-                    if (i < safeIdx && sentenceEnds.has(i)) { sentStart = i + 1; break; }
-                }
-                for (let i = safeIdx; i <= winEnd; i++) {
-                    if (sentenceEnds.has(i)) { sentEnd = i; break; }
-                }
-
-                // Build HTML
-                const isBionic = highlightMode === 'first';
-                let html = `<div class="dyslexia-display${isBionic ? ' bionic' : ''}">`;
-
-                for (let i = winStart; i <= winEnd; i++) {
-                    const word = textItems[i].content || '';
-                    let cls = 'dy-word';
-                    if (i < safeIdx)  cls += ' dy-read';
-                    if (i === safeIdx) cls += ' dy-current';
-                    else if (i >= sentStart && i <= sentEnd) cls += ' dy-sentence';
-
-                    let display = word;
-                    if (isBionic && word.length > 1) {
-                        const boldLen = Math.max(1, Math.ceil(word.length * 0.45));
-                        const clean   = word.replace(/[^a-zA-Z]/g, '');
-                        if (clean.length > 0) {
-                            display = `<span class="dy-bold">${word.slice(0, boldLen)}</span>${word.slice(boldLen)}`;
-                        }
-                    }
-
-                    html += `<span class="dy-word ${cls}" data-ti="${i}">${display}</span> `;
-
-                    // Add paragraph break at sentence endings for readability
-                    if (sentenceEnds.has(i) && i < winEnd) {
-                        html += '<br>';
-                    }
-                }
-                html += '</div>';
-                displayEl.innerHTML = html;
-
-                // Scroll current word into view smoothly
-                requestAnimationFrame(() => {
-                    const cur = displayEl.querySelector('.dy-current');
-                    if (cur) {
-                        const top = cur.offsetTop - displayEl.clientHeight / 2 + cur.clientHeight;
-                        displayEl.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-                    }
-                });
-
-                // Click a word to jump there
-                displayEl.querySelectorAll('.dy-word[data-ti]').forEach(el => {
-                    el.style.cursor = 'pointer';
-                    el.addEventListener('click', () => {
-                        const ti = parseInt(el.dataset.ti);
-                        // Map textItems index back to contentItems index
-                        let count = -1;
-                        for (let ci = 0; ci < contentItems.length; ci++) {
-                            if (contentItems[ci].type === ContentType.TEXT) count++;
-                            if (count === ti) { currentIndex = ci; break; }
-                        }
-                        updateDisplay(); updateStats();
-                    });
-                });
-
-                return;
-            }
-
-            // ── RSVP MODE (default) ──────────────────────────────────────
-            displayEl.classList.remove('dyslexia-mode');
-            displayEl.closest('.reader-area')?.classList.remove('dyslexia-active');
-
             // Display regular text
             const chunk = [];
             for (let i = 0; i < chunkSize && currentIndex + i < contentItems.length; i++) {
@@ -4795,7 +4478,11 @@
             }
             html += '"';
             
-            html += ` style="font-size: ${fontSize}px; font-family: ${fontFamily}, sans-serif;">`;
+            html += ` style="font-size: ${fontSize}px; font-family: `;
+            if (isDyslexic) {
+                html += 'OpenDyslexic, ';
+            }
+            html += `${fontFamily}, sans-serif;">`;
             
             chunk.forEach(word => {
                 html += `<span class="word">${word}</span>`;
@@ -4907,7 +4594,7 @@
 
                 updateDisplay();
                 updateStats();
-
+                updateMapViewport();
                 lastUpdate = timestamp;
             }
 
@@ -4929,23 +4616,11 @@
             progressFill.style.width = progress + '%';
 
             const wordsLeft = totalWords - currentWord;
-            const effectiveWpm = wpm > 0 ? wpm : 300;
-
-            if (totalWords === 0) {
-                timeRemaining.textContent = '—';
-            } else if (wordsLeft === 0) {
-                timeRemaining.textContent = 'Complete ✓';
-            } else {
-                const totalSeconds = Math.round((wordsLeft / effectiveWpm) * 60);
-                const hrs  = Math.floor(totalSeconds / 3600);
-                const mins = Math.floor((totalSeconds % 3600) / 60);
-                const secs = totalSeconds % 60;
-                if (hrs > 0) {
-                    timeRemaining.textContent = `${hrs}h ${mins}m remaining`;
-                } else {
-                    timeRemaining.textContent = `${mins}:${secs.toString().padStart(2, '0')} remaining`;
-                }
-            }
+            const minutesLeft = wordsLeft / wpm;
+            const seconds = Math.round(minutesLeft * 60);
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            timeRemaining.textContent = `${mins}:${secs.toString().padStart(2, '0')} remaining`;
         }
 
         // Update header stats
@@ -5089,7 +4764,7 @@
                         currentIndex = highlight.index;
                         updateDisplay();
                         updateStats();
-
+                        updateMapViewport();
                         
                         // Switch to read tab
                         document.querySelectorAll('.reader-tab').forEach(t => t.classList.remove('active'));
@@ -5165,7 +4840,7 @@
 
                     if (mediaIndex >= 0) {
                         currentIndex = mediaIndex;
-                        updateDisplay(); updateStats();
+                        updateDisplay(); updateStats(); updateMapViewport();
                         document.querySelectorAll('.reader-tab').forEach(t => t.classList.remove('active'));
                         document.querySelector('[data-tab="read"]').classList.add('active');
                         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -5219,7 +4894,7 @@
                     <input type="text" id="editPaperJournal" value="${paper.journal || ''}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">DOI / URL <span style="font-weight:400;color:var(--text-tertiary);font-size:11px;">(for reference only)</span></label>
+                    <label class="form-label">DOI / URL</label>
                     <input type="text" id="editPaperDoi" value="${paper.doi || ''}">
                 </div>
                 <div class="form-group">
@@ -5438,6 +5113,131 @@
             console.log(`[Sections] ${documentSections.length} sections:`, documentSections.map(s => `"${s.title}" (${s.words.length}w)`));
         }
 
+        // Build document map
+        function buildDocumentMap() {
+            if (contentItems.length === 0) return;
+
+            detectDocumentSections();
+            mapSections.innerHTML = '';
+
+            const mapHeight = mapContainer.clientHeight;
+            const totalWords = contentItems.filter(i => i.type === ContentType.TEXT).length;
+
+            documentSections.forEach((section, index) => {
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'map-section';
+                
+                const startPercent = (section.startIndex / totalWords) * 100;
+                const endPercent = (section.endIndex / totalWords) * 100;
+                const height = Math.max(3, ((endPercent - startPercent) / 100) * mapHeight);
+                
+                sectionDiv.style.top = `${(startPercent / 100) * mapHeight}px`;
+                sectionDiv.style.height = `${height}px`;
+                sectionDiv.title = section.title;
+                
+                sectionDiv.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    jumpToSection(index);
+                });
+
+                mapSections.appendChild(sectionDiv);
+            });
+
+            updateMapViewport();
+        }
+
+        // Update map viewport
+        function updateMapViewport() {
+            // Map disabled - returning early
+            return;
+        }
+        
+        /* OLD MAP FUNCTION - DISABLED TO PREVENT ERRORS
+        function updateMapViewportOld() {
+            const viewportSize = Math.max(20, Math.min(80, (50 / totalItems) * mapHeight));
+            const viewportTop = Math.max(0, Math.min(mapHeight - viewportSize, progress * mapHeight));
+
+            mapViewport.style.height = `${viewportSize}px`;
+            mapViewport.style.top = `${viewportTop}px`;
+
+            mapProgress.style.width = `${progress * 100}%`;
+            mapPosition.textContent = `${Math.round(progress * 100)}%`;
+
+            const textIndex = contentItems.slice(0, currentIndex)
+                .filter(i => i.type === ContentType.TEXT).length;
+            
+            const currentSection = documentSections.find(section => 
+                textIndex >= section.startIndex && textIndex <= section.endIndex
+            );
+
+            if (currentSection) {
+                const sectionIndex = documentSections.indexOf(currentSection);
+                mapSectionDisplay.textContent = `${sectionIndex + 1}/${documentSections.length}`;
+                
+                document.querySelectorAll('.map-section').forEach((el, idx) => {
+                    el.classList.toggle('current', idx === sectionIndex);
+                });
+
+                // Check if we've entered a new section during reading
+                if (isPlaying && sectionIndex !== currentSectionIndex && sectionIndex > 0) {
+                    currentSectionIndex = sectionIndex;
+                    pause();
+                    showSectionSummary(sectionIndex);
+                }
+            }
+        }
+
+        // Viewport dragging
+        mapViewport.addEventListener('mousedown', (e) => {
+            isDraggingViewport = true;
+            dragStartY = e.clientY;
+            dragStartTop = parseFloat(mapViewport.style.top || 0);
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDraggingViewport) return;
+
+            const deltaY = e.clientY - dragStartY;
+            const mapHeight = mapContainer.clientHeight;
+            const viewportHeight = mapViewport.clientHeight;
+            
+            let newTop = dragStartTop + deltaY;
+            newTop = Math.max(0, Math.min(mapHeight - viewportHeight, newTop));
+            
+            mapViewport.style.top = `${newTop}px`;
+
+            const progress = newTop / (mapHeight - viewportHeight);
+            const newIndex = Math.round(progress * (contentItems.length - 1));
+            
+            const textIndex = contentItems.slice(0, newIndex)
+                .filter(i => i.type === ContentType.TEXT).length;
+            const totalWords = contentItems.filter(i => i.type === ContentType.TEXT).length;
+            mapPosition.textContent = `${Math.round((textIndex / totalWords) * 100)}%`;
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (!isDraggingViewport) return;
+
+            isDraggingViewport = false;
+
+            const mapHeight = mapContainer.clientHeight;
+            const viewportHeight = mapViewport.clientHeight;
+            const viewportTop = parseFloat(mapViewport.style.top || 0);
+            const progress = viewportTop / (mapHeight - viewportHeight);
+            
+            currentIndex = Math.round(progress * (contentItems.length - 1));
+            currentIndex = Math.max(0, Math.min(contentItems.length - 1, currentIndex));
+            
+            updateDisplay();
+            updateStats();
+            updateMapViewport();
+            saveCurrentPaperProgress();
+
+            showNotification(\`📍 Jumped to \${Math.round(progress * 100)}%\`);
+        });
+        */ // END OLD MAP FUNCTIONS - ALL DISABLED
+
         // Jump to section
         function jumpToSection(sectionIndex) {
             if (sectionIndex < 0 || sectionIndex >= documentSections.length) return;
@@ -5460,7 +5260,7 @@
             currentIndex = itemIndex;
             updateDisplay();
             updateStats();
-
+            updateMapViewport();
             saveCurrentPaperProgress();
 
             showNotification(`📍 ${section.title}`);
@@ -5932,13 +5732,25 @@
             const audioControls = document.getElementById('audioControls');
             if (!audioControls || document.getElementById('voiceSelector')) return;
 
+            // Inject HD button first so it always appears before the voice selector
+            const hdBtn = document.createElement('button');
+            hdBtn.id = 'hdVoiceBtn';
+            hdBtn.title = 'HD Voice — natural human voice (OpenAI TTS)';
+            hdBtn.style.cssText = 'height:28px;padding:0 10px;border-radius:14px;border:1.5px solid var(--border-light);' +
+                'background:transparent;color:var(--text-secondary);font-size:11px;font-weight:700;' +
+                'cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0;';
+            hdBtn.innerHTML = '🎙️&nbsp;HD';
+            audioControls.appendChild(hdBtn);
+
+            // Voice selector — compact width
             const wrapper = document.createElement('div');
-            wrapper.style.cssText = 'display:flex;align-items:center;gap:6px;margin-left:4px;';
+            wrapper.style.cssText = 'display:flex;align-items:center;gap:6px;margin-left:4px;flex-shrink:1;min-width:0;';
             wrapper.innerHTML = `
                 <select id="voiceSelector" title="Choose voice"
                     style="font-size:11px;border:1px solid var(--border-light);border-radius:6px;
                            padding:3px 6px;background:var(--bg-surface);color:var(--text-primary);
-                           cursor:pointer;max-width:160px;height:28px;">
+                           cursor:pointer;width:120px;max-width:120px;height:28px;overflow:hidden;
+                           text-overflow:ellipsis;">
                     <option>Loading voices…</option>
                 </select>
             `;
@@ -6191,6 +6003,146 @@
         console.log('🎤 Audio reader v3 loaded — smart human voice selection active');
         console.log('💡 Best voices: Google UK English Female (Chrome), Microsoft Neural (Edge), Karen/Moira (Safari)');
 
+    </script>
+
+    <!-- HD Voice (OpenAI TTS) -->
+    <script>
+    (function() {
+        let hdOn = false;
+        let hdKey = localStorage.getItem('sr_openai_key') || '';
+        let hdAudio = null, hdAbort = null, hdURLs = [];
+        const BACKEND = (location.protocol !== 'file:' && location.hostname !== '');
+
+        function chunk(text, max) {
+            const sents = text.match(/[^.!?]+[.!?]+[\s]*/g) || [text];
+            const out = []; let cur = '';
+            for (const s of sents) { if ((cur+s).length > max && cur) { out.push(cur.trim()); cur = s; } else cur += s; }
+            if (cur.trim()) out.push(cur.trim());
+            return out;
+        }
+
+        function showKeyPrompt(cb) {
+            const ex = document.getElementById('_hdModal'); if (ex) ex.remove();
+            const d = document.createElement('div');
+            d.id = '_hdModal';
+            d.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);';
+            d.innerHTML =
+                '<div style="background:#1e1e2e;border:1px solid rgba(0,188,212,0.4);border-radius:16px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);">' +
+                '<div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:10px;">🎙️ HD Voice Setup</div>' +
+                '<div style="font-size:13px;color:#aaa;line-height:1.6;margin-bottom:18px;">HD Voice uses OpenAI TTS for natural human narration.<br>Enter your OpenAI API key — saved in your browser only.<br><br><span style="color:#00bcd4;">On the live backend this is automatic once OPENAI_API_KEY is set in Vercel.</span></div>' +
+                '<input id="_hdKey" type="password" placeholder="sk-..." style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(0,188,212,0.3);background:rgba(255,255,255,0.07);color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:14px;outline:none;">' +
+                '<div style="display:flex;gap:10px;">' +
+                '<button id="_hdSave" style="flex:1;padding:10px;border-radius:8px;border:none;cursor:pointer;background:#00bcd4;color:#000;font-weight:700;font-size:14px;">Enable HD Voice</button>' +
+                '<button id="_hdCancel" style="padding:10px 18px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:#fff;cursor:pointer;">Cancel</button>' +
+                '</div>' +
+                '<div id="_hdErr" style="color:#ff5252;font-size:12px;margin-top:10px;display:none;"></div>' +
+                '<div style="font-size:11px;color:#777;margin-top:14px;">Get a key at <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#00bcd4;">platform.openai.com/api-keys</a> — ~$0.015/1K chars.</div>' +
+                '</div>';
+            document.body.appendChild(d);
+            const inp = d.querySelector('#_hdKey'), err = d.querySelector('#_hdErr');
+            inp.value = hdKey; setTimeout(() => inp.focus(), 80);
+            d.querySelector('#_hdCancel').onclick = () => d.remove();
+            d.querySelector('#_hdSave').onclick = () => {
+                const k = inp.value.trim();
+                if (!k.startsWith('sk-')) { err.textContent = 'Should start with sk-'; err.style.display = 'block'; return; }
+                hdKey = k; localStorage.setItem('sr_openai_key', k); d.remove();
+                if (cb) cb();
+            };
+            inp.onkeydown = e => { if (e.key === 'Enter') d.querySelector('#_hdSave').click(); };
+        }
+
+        function updateBtn() {
+            const btn = document.getElementById('hdVoiceBtn'); if (!btn) return;
+            if (hdOn) {
+                btn.textContent = '🎙️ HD ✓';
+                btn.style.borderColor = '#00bcd4'; btn.style.color = '#00bcd4';
+                btn.style.boxShadow = '0 0 8px rgba(0,188,212,0.35)';
+            } else {
+                btn.textContent = '🎙️ HD';
+                btn.style.borderColor = ''; btn.style.color = ''; btn.style.boxShadow = '';
+            }
+        }
+
+        function stopHD() {
+            if (hdAbort) { hdAbort.abort(); hdAbort = null; }
+            if (hdAudio) { hdAudio.pause(); hdAudio.src = ''; hdAudio = null; }
+            hdURLs.forEach(u => URL.revokeObjectURL(u)); hdURLs = [];
+        }
+
+        async function playHD() {
+            // Get text from the app's own extractTextForAudio if available
+            let text = '';
+            if (typeof extractTextForAudio === 'function') text = extractTextForAudio();
+            if (!text.trim()) {
+                // fallback: grab all visible paragraph text in the reader
+                text = Array.from(document.querySelectorAll('.reader-text p, .reader-paragraph, .paper-text'))
+                            .map(el => el.textContent).join(' ');
+            }
+            if (!text.trim()) { alert('No text found to read. Open a paper first.'); return; }
+
+            stopHD();
+            hdAbort = new AbortController();
+            const chunks = chunk(text, 3000);
+            let ci = 0;
+
+            const next = async () => {
+                if (ci >= chunks.length) { stopHD(); return; }
+                const ch = chunks[ci++];
+                try {
+                    let resp;
+                    if (BACKEND) {
+                        const token = await (window.Clerk?.session?.getToken().catch(()=>null) ?? Promise.resolve(null));
+                        const hdrs = {'Content-Type':'application/json'};
+                        if (token) hdrs['Authorization'] = 'Bearer ' + token;
+                        resp = await fetch('/api/tts', {method:'POST', headers:hdrs, signal:hdAbort.signal,
+                            body: JSON.stringify({text: ch, speed: window.audioSpeed || 1})});
+                    } else {
+                        resp = await fetch('https://api.openai.com/v1/audio/speech', {
+                            method:'POST', signal:hdAbort.signal,
+                            headers:{'Authorization':'Bearer '+hdKey,'Content-Type':'application/json'},
+                            body: JSON.stringify({model:'tts-1',input:ch,voice:'nova',
+                                speed:Math.min(4,Math.max(0.25, window.audioSpeed||1)),response_format:'mp3'})
+                        });
+                        if (resp.status === 401) {
+                            hdKey=''; localStorage.removeItem('sr_openai_key');
+                            showKeyPrompt(() => playHD()); return;
+                        }
+                    }
+                    if (!resp.ok) throw new Error('TTS error ' + resp.status);
+                    const url = URL.createObjectURL(await resp.blob());
+                    hdURLs.push(url);
+                    hdAudio = new Audio(url);
+                    hdAudio.playbackRate = window.audioSpeed || 1;
+                    hdAudio.onended = () => { URL.revokeObjectURL(url); next(); };
+                    hdAudio.onerror = () => next();
+                    await hdAudio.play();
+                } catch(e) {
+                    if (e.name === 'AbortError') return;
+                    console.error('[HD]', e);
+                    hdOn = false; updateBtn();
+                    alert('HD Voice error: ' + e.message);
+                }
+            };
+            next();
+        }
+
+        function toggle() {
+            if (!BACKEND && !hdKey) { showKeyPrompt(() => { hdOn=true; updateBtn(); playHD(); }); return; }
+            hdOn = !hdOn; updateBtn();
+            if (hdOn) playHD(); else stopHD();
+        }
+
+        // Wire up once DOM is ready
+        function init() {
+            const btn = document.getElementById('hdVoiceBtn');
+            if (!btn) { setTimeout(init, 300); return; }
+            btn.onclick = toggle;
+            updateBtn();
+            console.log('[HD Voice] Ready. Backend mode:', BACKEND);
+        }
+        document.addEventListener('DOMContentLoaded', () => setTimeout(init, 800));
+        setTimeout(init, 1200); // fallback if DOMContentLoaded already fired
+    })();
     </script>
 
     <!-- Contact Us Modal -->
@@ -6675,7 +6627,7 @@
         {
             targetId: 'addPaperBtn',
             title: 'Add your first paper',
-            desc: 'Click here to upload a PDF or Word document. SwiftsReader extracts the full text for RSVP reading and AI summaries.',
+            desc: 'Click here to upload a PDF, paste a DOI, or enter a URL. SwiftsReader handles all academic document formats.',
             position: 'bottom-left'
         },
         {
@@ -6893,70 +6845,6 @@
             if (target) positionSpotlightAndTooltip(target, s.position);
         }
     });
-    </script>
-
-    <!-- ═══ Mobile UX Scripts ═══ -->
-    <script>
-    (function() {
-        // ── Hamburger menu ──────────────────────────────
-        const menuBtn = document.getElementById('mobileMenuBtn');
-        const secondary = document.getElementById('headerSecondary');
-
-        if (menuBtn && secondary) {
-            menuBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const isOpen = secondary.classList.toggle('open');
-                menuBtn.classList.toggle('open', isOpen);
-                menuBtn.setAttribute('aria-expanded', isOpen);
-            });
-
-            // Close when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!menuBtn.contains(e.target) && !secondary.contains(e.target)) {
-                    secondary.classList.remove('open');
-                    menuBtn.classList.remove('open');
-                    menuBtn.setAttribute('aria-expanded', 'false');
-                }
-            });
-        }
-
-        // ── Library panel toggle ─────────────────────────
-        const libToggle = document.getElementById('mobileLibToggle');
-        const libPanel  = document.getElementById('libraryPanel');
-        const libChevron = document.getElementById('mobileLibChevron');
-        const libBar    = document.getElementById('mobileLibBar');
-
-        if (libToggle && libPanel) {
-            libToggle.addEventListener('click', () => {
-                const isOpen = libPanel.classList.toggle('mobile-open');
-                libToggle.setAttribute('aria-expanded', isOpen);
-                if (libChevron) libChevron.classList.toggle('open', isOpen);
-
-                // Scroll library panel into view if opening
-                if (isOpen) {
-                    setTimeout(() => libPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
-                }
-            });
-        }
-
-        // ── Adjust library toggle visibility on resize ──
-        function handleResize() {
-            const isMobile = window.innerWidth <= 768;
-            if (!isMobile && libPanel) {
-                // On desktop, always show library panel
-                libPanel.classList.remove('mobile-open');
-                libPanel.style.display = '';
-            }
-        }
-        window.addEventListener('resize', handleResize);
-        handleResize();
-
-        // ── iOS safe-area: add bottom padding to body ───
-        const hasSafeArea = CSS.supports('padding-bottom: env(safe-area-inset-bottom)');
-        if (hasSafeArea) {
-            document.documentElement.style.setProperty('--safe-area-bottom', 'env(safe-area-inset-bottom)');
-        }
-    })();
     </script>
 </body>
 </html>

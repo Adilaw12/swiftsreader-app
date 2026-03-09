@@ -2,6 +2,7 @@
 import { sql } from '../_db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { randomUUID } from 'crypto';
 
 function makeToken(userId) {
   const secret = process.env.JWT_SECRET || 'dev-secret-change-in-production';
@@ -44,9 +45,10 @@ export default async function handler(req, res) {
       return res.status(409).json({ error: 'An account with this email already exists.' });
 
     const passwordHash = await bcrypt.hash(password, 12);
+    const newId = randomUUID();
     const result = await sql`
-      INSERT INTO users (email, password_hash)
-      VALUES (${normalEmail}, ${passwordHash})
+      INSERT INTO users (id, email, password_hash, "updatedAt")
+      VALUES (${newId}, ${normalEmail}, ${passwordHash}, NOW())
       RETURNING id, email, subscription_tier, subscription_status, summaries_used
     `;
     const user = result.rows[0];

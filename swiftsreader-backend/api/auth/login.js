@@ -24,6 +24,9 @@ export default async function handler(req, res) {
 
     if (!user) return res.status(401).json({ error: 'Invalid email or password' });
 
+    if (!user.password_hash)
+      return res.status(401).json({ error: 'No password set for this account. Please register again.' });
+
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(401).json({ error: 'Invalid email or password' });
 

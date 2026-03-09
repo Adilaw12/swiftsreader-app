@@ -45,8 +45,8 @@ export default async function handler(req, res) {
     const { Resend } = await import('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    await resend.emails.send({
-      from:    'SwiftsReader <noreply@swiftsreader.com>',
+    const sendResult = await resend.emails.send({
+      from:    'SwiftsReader <onboarding@resend.dev>',
       to:      normalEmail,
       subject: 'Reset your SwiftsReader password',
       html: `
@@ -69,6 +69,12 @@ export default async function handler(req, res) {
         </div>
       `
     });
+
+    if (sendResult.error) {
+      console.error('[forgot] Resend error:', sendResult.error);
+    } else {
+      console.log(`[forgot] Email sent to ${normalEmail}, id: ${sendResult.data?.id}`);
+    }
 
     return res.json(SUCCESS);
 

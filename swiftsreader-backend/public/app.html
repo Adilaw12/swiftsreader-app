@@ -119,6 +119,21 @@
             flex-direction: column;
         }
 
+        /* Paragraph Reading Mode */
+        .paragraph-view .para-word {
+            cursor: pointer;
+            border-radius: 3px;
+            transition: background 0.1s;
+        }
+        .paragraph-view .para-word:hover {
+            background: var(--primary-pale);
+        }
+        .paragraph-view .current-word {
+            background: rgba(0, 188, 212, 0.25);
+            border-radius: 3px;
+            outline: 2px solid var(--primary);
+        }
+
         /* Focus Mode */
         body.focus-mode .app-header,
         body.focus-mode .library-panel,
@@ -2113,6 +2128,13 @@
                         </div>
                     </div>
                     <div class="control-group">
+                        <div class="control-label">Reading Mode</div>
+                        <div class="select-group">
+                            <button class="select-button active" data-readmode="rsvp" title="Word-by-word flash reading">RSVP</button>
+                            <button class="select-button" data-readmode="paragraph" title="Full paragraph — easier for dyslexia">Paragraph</button>
+                        </div>
+                    </div>
+                    <div class="control-group">
                         <div class="control-label">Highlight</div>
                         <div class="select-group">
                             <button class="select-button active" data-highlight="none">None</button>
@@ -2194,6 +2216,7 @@
                         <button class="reader-tab" data-tab="highlights">✨ Highlights</button>
                         <button class="reader-tab" data-tab="summaries">📋 Summaries</button>
                         <button class="reader-tab" data-tab="media">📊 Figures & Tables</button>
+                        <button class="reader-tab" data-tab="equations">∑ Equations</button>
                     </div>
                 </div>
 
@@ -2331,6 +2354,23 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Tab: Equations -->
+                <div class="tab-content" data-tab-content="equations">
+                    <div class="reader-area">
+                        <div class="notes-area">
+                            <div class="notes-label" style="margin-bottom: var(--space-md);">
+                                Equations &amp; Formulae
+                                <span style="color: var(--text-tertiary); font-weight: normal; margin-left: var(--space-sm);" id="equationCount">(0)</span>
+                            </div>
+                            <div id="equationGrid" style="display:flex;flex-direction:column;gap:10px;">
+                                <p style="text-align: center; color: var(--text-tertiary); padding: var(--space-2xl);">
+                                    No equations detected in this paper.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- Document Map - DISABLED -->
@@ -2392,6 +2432,7 @@
         let fontFamily = 'Inter';
         let highlightMode = 'none';
         let isDyslexic = false;
+        let readingMode = 'rsvp'; // 'rsvp' | 'paragraph'
         let theme = 'light';
         let animationFrame = null;
         let lastUpdate = 0;
@@ -2545,6 +2586,13 @@
                     });
                 }
                 
+                if (settings.readingMode) {
+                    readingMode = settings.readingMode;
+                    document.querySelectorAll('[data-readmode]').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.readmode === readingMode);
+                    });
+                }
+
                 if (settings.isDyslexic !== undefined) {
                     isDyslexic = settings.isDyslexic;
                     document.querySelectorAll('[data-dyslexia]').forEach(btn => {
@@ -2583,6 +2631,7 @@
                     fontFamily,
                     highlightMode,
                     isDyslexic,
+                readingMode,
                     theme,
                     breakInterval
                 };
@@ -2775,6 +2824,24 @@
                     btn.classList.add('active');
                     isDyslexic = btn.dataset.dyslexia === 'true';
                     updateDisplay();
+                    saveSettings();
+                });
+            });
+
+            // Reading Mode Buttons (RSVP vs Paragraph)
+            document.querySelectorAll('[data-readmode]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('[data-readmode]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    readingMode = btn.dataset.readmode;
+                    if (readingMode === 'paragraph') {
+                        // Stop RSVP if running
+                        if (isPlaying) { isPlaying = false; cancelAnimationFrame(animationFrame); }
+                        showParagraphView();
+                    } else {
+                        hideParagraphView();
+                        updateDisplay();
+                    }
                     saveSettings();
                 });
             });
@@ -3130,694 +3197,441 @@
             }
         }
 
-        // Load PDF text with figures, tables, and equations
+        // ─────────────────────────────────────────────────────────────────────
+        // PDF EXTRACTION  (text + images + tables + equations)
+        // ─────────────────────────────────────────────────────────────────────
         async function loadPDFText(file) {
             const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             let fullText = '';
-            let figureCount = 0;
-            let tableCount = 0;
-            let equationCount = 0;
+            let figureCount = 0, tableCount = 0, equationCount = 0;
             const mediaItems = [];
 
-            // ── Pass 1: render each page to a canvas so we can crop figure regions ──
-            console.log('[PDF] Rendering', pdf.numPages, 'pages...');
-            const pageCanvases = []; // indexed by pageNum-1
+            // ── render all pages to canvas (scale 2 for quality) ───────────────
+            const pageCanvases = [];
             for (let i = 1; i <= pdf.numPages; i++) {
                 try {
-                    const page = await pdf.getPage(i);
-                    const viewport = page.getViewport({ scale: 1.5 }); // lower scale = faster
-                    const canvas = document.createElement('canvas');
-                    canvas.width  = viewport.width;
-                    canvas.height = viewport.height;
-                    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-                    pageCanvases.push({ pageNumber: i, canvas, viewport });
+                    const page    = await pdf.getPage(i);
+                    const vp      = page.getViewport({ scale: 2 });
+                    const canvas  = document.createElement('canvas');
+                    canvas.width  = vp.width;
+                    canvas.height = vp.height;
+                    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+                    pageCanvases.push({ pageNum: i, canvas, vp, page });
                 } catch (err) {
-                    console.warn('[PDF] Could not render page', i, err);
+                    console.warn('[PDF] render failed page', i, err);
                     pageCanvases.push(null);
                 }
             }
 
-            // ── Pass 2: extract text and detect media ──────────────────────────────
-            console.log('[PDF] Extracting text and detecting media...');
+            // ── extract text + detect captions ────────────────────────────────
             for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const textContent = await page.getTextContent();
-
-                // Collect items with position data
-                const items = textContent.items.map(item => ({
-                    str:  item.str,
-                    x:    item.transform[4],
-                    y:    item.transform[5],
-                    w:    item.width,
-                    h:    item.height || 0,
-                    font: item.fontName || ''
+                const page       = await pdf.getPage(i);
+                const tc         = await page.getTextContent();
+                const pageItems  = tc.items.map(it => ({
+                    str : it.str,
+                    x   : it.transform[4],
+                    y   : it.transform[5],
+                    w   : it.width,
+                    h   : Math.abs(it.height) || 10,
+                    bold: (it.fontName || '').toLowerCase().includes('bold')
                 }));
 
-                const pageText = items.map(it => it.str).join(' ');
-                const canvasData = pageCanvases[i - 1];
-
-                // Split page text into lines for caption matching
-                const rawLines = pageText.split(/(?<=\.)\s{2,}|\n/);
-                const lines = rawLines.map(l => l.trim()).filter(l => l.length > 0);
-
-                // --- Figure captions ---
-                const figPatterns = [
-                    /^(Figure|Fig\.?|FIG\.?)\s*(\d+)[:\.\-–—\s]\s*(.*)/i,
-                    /^(\d+)\s*\.\s*(Figure|Fig\.?)[:\.\-–—\s]\s*(.*)/i,
-                    /^(Figure|Fig\.?)\s*(\d+[a-z]?)[:\.\-–—\s]/i
-                ];
-
-                for (const line of lines) {
-                    let matched = false;
-                    for (const pat of figPatterns) {
-                        const m = line.match(pat);
-                        if (m) {
-                            figureCount++;
-                            const caption = (m[3] || m[2] || line).trim();
-
-                            // Try to find the caption text items to get a bounding box
-                            // so we can crop just the figure area from the page canvas.
-                            let figImage = null;
-                            if (canvasData) {
-                                // Find items that match the start of this caption
-                                const captionPrefix = line.slice(0, 20).toLowerCase();
-                                const captionItems = items.filter(it =>
-                                    it.str && line.toLowerCase().includes(it.str.toLowerCase().slice(0, 8))
-                                );
-
-                                if (captionItems.length > 0) {
-                                    // Caption Y in PDF coords (bottom-up). The figure is above the caption.
-                                    const captionY = Math.max(...captionItems.map(it => it.y));
-                                    const pageH = canvasData.viewport.height;
-                                    const scale = canvasData.viewport.scale;
-                                    // Convert PDF y (bottom-up) to canvas y (top-down)
-                                    const captionCanvasY = pageH - (captionY * scale);
-
-                                    // Crop the region above the caption (figure body)
-                                    const figTop    = Math.max(0, captionCanvasY - 350);
-                                    const figHeight = Math.min(350, captionCanvasY - figTop);
-
-                                    if (figHeight > 30) {
-                                        const cropCanvas = document.createElement('canvas');
-                                        cropCanvas.width  = canvasData.canvas.width;
-                                        cropCanvas.height = figHeight;
-                                        const ctx = cropCanvas.getContext('2d');
-                                        ctx.drawImage(canvasData.canvas, 0, figTop, cropCanvas.width, figHeight,
-                                                                          0,    0, cropCanvas.width, figHeight);
-                                        figImage = cropCanvas.toDataURL('image/png');
-                                    }
-                                }
-
-                                // Fallback: whole page
-                                if (!figImage) figImage = canvasData.canvas.toDataURL('image/png');
-                            }
-
-                            fullText += `\n[FIGURE_${figureCount}]\n`;
-                            mediaItems.push({ type: 'figure', number: figureCount,
-                                              caption, image: figImage, pageNumber: i });
-                            matched = true;
-                            break;
-                        }
-                    }
+                // group into lines by Y (±4 pt tolerance)
+                const lineMap = {};
+                for (const it of pageItems) {
+                    const ky = Math.round(it.y / 4) * 4;
+                    (lineMap[ky] = lineMap[ky] || []).push(it);
                 }
+                const lines = Object.entries(lineMap)
+                    .sort((a, b) => parseFloat(b[0]) - parseFloat(a[0])) // top→bottom
+                    .map(([y, items]) => ({
+                        y    : parseFloat(y),
+                        text : items.sort((a, b) => a.x - b.x).map(it => it.str).join(' ').trim(),
+                        items: items.sort((a, b) => a.x - b.x)
+                    }))
+                    .filter(l => l.text.length > 0);
 
-                // --- Table captions ---
-                const tablePatterns = [
-                    /^Table\s*(\d+)[:\.\-–—\s]\s*(.*)/i,
-                    /^(\d+)\s*\.\s*Table[:\.\-–—\s]\s*(.*)/i
-                ];
-                for (const line of lines) {
-                    for (const pat of tablePatterns) {
-                        const m = line.match(pat);
-                        if (m) {
-                            tableCount++;
-                            const caption = (m[2] || line).trim();
-                            fullText += `\n[TABLE_${tableCount}]\n`;
-                            mediaItems.push({ type: 'table', number: tableCount,
-                                              caption, content: '', pageNumber: i });
-                            break;
-                        }
-                    }
-                }
+                const pcd = pageCanvases[i - 1]; // {canvas, vp, page}
 
-                // --- Equation / formula detection ---
-                // Equations often appear as: "Equation N", "(N)", or lines dense with math symbols
-                const equationPatterns = [
-                    /^(Equation|Eq\.?)\s*(\d+)[:\.\-–—\s]/i,
-                    /^\(\s*(\d+)\s*\)\s*$/,       // standalone "(N)" = numbered equation
-                ];
-                const mathSymbolDensity = (s) => {
-                    const mathChars = (s.match(/[=∑∫∂∇×·÷√∞±≈≤≥α-ωΑ-Ω\^_{}\\]/g) || []).length;
-                    return s.length > 0 ? mathChars / s.length : 0;
+                // helper: PDF-point Y → canvas Y (PDF is bottom-up, canvas top-down)
+                const toCanvasY = (pdfY) => {
+                    if (!pcd) return 0;
+                    // viewport.height is in CSS px at the given scale
+                    // pdfY is in PDF user-space points
+                    return pcd.vp.height - pdfY * pcd.vp.scale;
                 };
 
-                for (const line of lines) {
-                    let isEquation = false;
-                    let eqCaption = line;
+                // helper: crop a band from a page canvas
+                const cropBand = (topY, botY) => {
+                    if (!pcd) return null;
+                    const y0 = Math.max(0, Math.round(topY));
+                    const y1 = Math.min(pcd.canvas.height, Math.round(botY));
+                    if (y1 - y0 < 20) return null;
+                    const crop = document.createElement('canvas');
+                    crop.width  = pcd.canvas.width;
+                    crop.height = y1 - y0;
+                    crop.getContext('2d').drawImage(pcd.canvas, 0, y0, crop.width, y1 - y0, 0, 0, crop.width, y1 - y0);
+                    return crop.toDataURL('image/jpeg', 0.88);
+                };
 
-                    for (const pat of equationPatterns) {
-                        if (line.match(pat)) { isEquation = true; break; }
-                    }
-                    // Also flag lines that are purely mathematical (>25% special chars, short)
-                    if (!isEquation && line.length < 120 && mathSymbolDensity(line) > 0.25) {
-                        isEquation = true;
-                    }
+                const figPat = [
+                    /^(Figure|Fig\.?)\s*(\d+[a-z]?)[.:\-–—\s]/i,
+                    /^(Fig\.?)\s*(\d+[a-z]?)\s*\./i,
+                ];
+                const tblPat = [
+                    /^Table\s*(\d+)[.:\-–—\s]/i,
+                    /^TABLE\s*(\d+)[.:\-–—\s]/,
+                ];
+                const eqPat = [
+                    /^(Equation|Eq\.?)\s*(\d+)[.:\-–—\s]/i,
+                    /^\(\s*(\d+)\s*\)\s*$/,
+                ];
+                const mathDensity = s =>
+                    (s.match(/[=∑∫∂∇×·÷√∞±≈≤≥α-ωΑ-Ω\^_{}\\]/g) || []).length / Math.max(s.length, 1);
 
-                    if (isEquation) {
+                for (let li = 0; li < lines.length; li++) {
+                    const { y: lineY, text, items: lineItems } = lines[li];
+                    let hit = false;
+
+                    // ── Figure caption ───────────────────────────────────────
+                    for (const pat of figPat) {
+                        if (pat.test(text)) {
+                            figureCount++;
+                            // Caption is at lineY. Figure body is ABOVE caption
+                            // (from previous line's top to this caption's top).
+                            const captionTop = toCanvasY(lineY + (lineItems[0]?.h || 10));
+                            // Look back for the last non-caption line to find figure top
+                            let figTopPdfY = lineY + 300; // default: 300 pts above caption
+                            if (li > 0) {
+                                // walk back to find a line that is clearly above (not adjacent)
+                                for (let k = li - 1; k >= Math.max(0, li - 8); k--) {
+                                    if (lines[k].y - lineY > 40) { figTopPdfY = lines[k].y; break; }
+                                }
+                            }
+                            const figTop = toCanvasY(figTopPdfY + 20);
+                            const img    = cropBand(Math.min(figTop, captionTop - 10), captionTop);
+
+                            fullText += `\n[FIGURE_${figureCount}]\n`;
+                            mediaItems.push({
+                                type: 'figure', number: figureCount,
+                                caption: text, image: img, pageNumber: i
+                            });
+                            hit = true; break;
+                        }
+                    }
+                    if (hit) continue;
+
+                    // ── Table caption ────────────────────────────────────────
+                    for (const pat of tblPat) {
+                        if (pat.test(text)) {
+                            tableCount++;
+                            // Tables usually appear BELOW their caption
+                            const captionBot = toCanvasY(lineY);
+                            const tableBot   = captionBot + 300; // up to 300px below
+                            const img        = cropBand(captionBot + 4, Math.min(tableBot, pcd?.canvas.height || tableBot));
+
+                            fullText += `\n[TABLE_${tableCount}]\n`;
+                            mediaItems.push({
+                                type: 'table', number: tableCount,
+                                caption: text, image: img, pageNumber: i,
+                                content: ''
+                            });
+                            hit = true; break;
+                        }
+                    }
+                    if (hit) continue;
+
+                    // ── Equation ─────────────────────────────────────────────
+                    for (const pat of eqPat) {
+                        if (pat.test(text)) {
+                            equationCount++;
+                            fullText += `\n[EQUATION_${equationCount}]\n`;
+                            mediaItems.push({
+                                type: 'equation', number: equationCount,
+                                caption: `Equation ${equationCount}`,
+                                latex: text, pageNumber: i
+                            });
+                            hit = true; break;
+                        }
+                    }
+                    if (hit) continue;
+
+                    // math-dense short line → equation
+                    if (text.length < 120 && mathDensity(text) > 0.22) {
                         equationCount++;
                         fullText += `\n[EQUATION_${equationCount}]\n`;
                         mediaItems.push({
-                            type: 'equation',
-                            number: equationCount,
+                            type: 'equation', number: equationCount,
                             caption: `Equation ${equationCount}`,
-                            latex: line,          // store raw text for display
-                            pageNumber: i
+                            latex: text, pageNumber: i
                         });
+                        continue;
                     }
                 }
 
-                fullText += pageText + '\n\n';
-            }
-
-            // ── Pass 3: attempt structured table extraction ─────────────────────────
-            try {
-                const structuredTables = await extractTablesFromPDF(pdf);
-                // Merge with caption-detected tables (avoid duplicates by page)
-                const existingTablePages = new Set(mediaItems.filter(m => m.type === 'table').map(m => m.pageNumber));
-                for (const tbl of structuredTables) {
-                    if (!existingTablePages.has(tbl.pageNumber)) {
+                // ── structured table extraction for this page ─────────────
+                const pageTables = extractPageTables(pageItems, i, tableCount, pcd, toCanvasY, cropBand);
+                for (const tbl of pageTables) {
+                    // avoid duplicates from caption-based detection
+                    const alreadyCovered = mediaItems.some(
+                        m => m.type === 'table' && m.pageNumber === i
+                            && Math.abs((m.tableY || 0) - (tbl.tableY || 0)) < 50
+                    );
+                    if (!alreadyCovered) {
+                        tableCount++;
+                        tbl.number = tableCount;
                         mediaItems.push(tbl);
                     }
                 }
-            } catch (e) {
-                console.warn('[PDF] Structured table extraction failed:', e);
+
+                fullText += lines.map(l => l.text).join('\n') + '\n\n';
             }
 
-            console.log(`[PDF] Extracted: ${figureCount} figures, ${tableCount} tables, ${equationCount} equations`);
+            console.log(`[PDF] Extracted: ${figureCount} figs, ${tableCount} tables, ${equationCount} eqs`);
             return { text: fullText, media: mediaItems };
         }
 
-        // Load DOCX text with figures and tables
+        // Detect grid-structured tables within a single page's text items
+        function extractPageTables(items, pageNum, tableCountSoFar, pcd, toCanvasY, cropBand) {
+            if (!items.length) return [];
+            const tables = [];
+
+            // Group items into rows by Y (±3 pt)
+            const rowMap = {};
+            for (const it of items) {
+                if (!it.str || !it.str.trim()) continue;
+                const ky = Math.round(it.y / 3) * 3;
+                (rowMap[ky] = rowMap[ky] || []).push(it);
+            }
+            const allRows = Object.entries(rowMap)
+                .sort((a, b) => parseFloat(b[0]) - parseFloat(a[0]))
+                .map(([y, its]) => ({
+                    y    : parseFloat(y),
+                    items: its.sort((a, b) => a.x - b.x),
+                    cols : its.length
+                }));
+
+            // A "table-like" row has ≥3 items with consistent column alignment
+            // Slide a window: need ≥4 consecutive rows all having ≥3 items
+            let runStart = -1, run = [];
+            const flushRun = () => {
+                if (run.length < 4) { run = []; runStart = -1; return; }
+
+                // Verify column alignment: at least 3 x-positions repeat across ≥60% of rows
+                const xFreq = {};
+                run.forEach(row => row.items.forEach(it => {
+                    const rx = Math.round(it.x / 8) * 8;
+                    xFreq[rx] = (xFreq[rx] || 0) + 1;
+                }));
+                const minFreq = Math.ceil(run.length * 0.55);
+                const colXs = Object.entries(xFreq)
+                    .filter(([, c]) => c >= minFreq)
+                    .map(([x]) => parseFloat(x))
+                    .sort((a, b) => a - b);
+
+                if (colXs.length < 2) { run = []; runStart = -1; return; }
+
+                // Build cell data
+                const tableData = run.map(row => {
+                    return colXs.map((cx, ci) => {
+                        const nextCx = colXs[ci + 1] ?? Infinity;
+                        return row.items
+                            .filter(it => it.x >= cx - 12 && it.x < nextCx - 4)
+                            .map(it => it.str)
+                            .join(' ')
+                            .trim();
+                    });
+                });
+
+                // Skip if >60% of cells are empty (not a real table)
+                const totalCells = tableData.flat().length;
+                const emptyCells = tableData.flat().filter(c => !c).length;
+                if (emptyCells / totalCells > 0.6) { run = []; runStart = -1; return; }
+
+                // Crop image of the table region
+                const topY = run[0].y, botY = run[run.length - 1].y;
+                const img  = cropBand(
+                    Math.max(0, toCanvasY(topY + 20) - 6),
+                    toCanvasY(botY) + 10
+                );
+
+                const headerRow = tableData[0];
+                const dataRows  = tableData.slice(1);
+                tables.push({
+                    type      : 'table',
+                    number    : tableCountSoFar + tables.length + 1,
+                    caption   : 'Table: ' + headerRow.filter(Boolean).join(' | '),
+                    pageNumber: pageNum,
+                    tableY    : topY,
+                    image     : img,
+                    headers   : headerRow,
+                    rows      : dataRows,
+                    html      : generateTableHTML(headerRow, dataRows),
+                    content   : ''
+                });
+
+                run = []; runStart = -1;
+            };
+
+            for (const row of allRows) {
+                if (row.cols >= 3) {
+                    run.push(row);
+                } else {
+                    flushRun();
+                }
+            }
+            flushRun();
+
+            return tables;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // DOCX EXTRACTION  (text + images + tables)
+        // ─────────────────────────────────────────────────────────────────────
         async function loadDOCXText(file) {
             const arrayBuffer = await file.arrayBuffer();
-            const mediaItems = [];
-            let imageCount = 0;
-            let tableCount = 0;
-            
-            // First, extract images
+            const mediaItems  = [];
+            let figureCount   = 0;
+            let tableCount    = 0;
+
+            // ── 1. Convert to HTML (preserves tables + embeds images as base64) ─
+            let htmlResult;
             try {
-                await mammoth.convert(
-                    {arrayBuffer: arrayBuffer},
+                htmlResult = await mammoth.convertToHtml(
+                    { arrayBuffer },
                     {
-                        convertImage: mammoth.images.imgElement(function(image) {
-                            return image.read("base64").then(function(imageBuffer) {
-                                imageCount++;
-                                const imageData = "data:" + image.contentType + ";base64," + imageBuffer;
-                                mediaItems.push({
-                                    type: 'figure',
-                                    number: imageCount,
-                                    caption: `Figure ${imageCount}`,
-                                    image: imageData
-                                });
-                                return { src: imageData };
-                            });
-                        })
+                        convertImage: mammoth.images.imgElement(img =>
+                            img.read('base64').then(data => ({
+                                src: `data:${img.contentType};base64,${data}`
+                            }))
+                        )
                     }
                 );
-                console.log('[DOCX] Extracted', imageCount, 'images');
             } catch (err) {
-                console.warn('[DOCX] Could not extract images:', err);
-            }
-            
-            // Now extract text
-            const result = await mammoth.extractRawText({arrayBuffer});
-            let text = result.value;
-            let processedText = '';
-            let figureCount = 0;
-            
-            const lines = text.split('\n');
-            
-            for (let line of lines) {
-                const trimmedLine = line.trim();
-                
-                // Detect figure captions with better patterns
-                const figurePatterns = [
-                    /^(Figure|Fig\.?|FIG\.?)\s+(\d+)[:\.\-–—]?\s*(.*)$/i,
-                    /^(\d+)\.\s+(Figure|Fig\.?)[:\.\-–—]?\s*(.*)$/i
-                ];
-                
-                let figureFound = false;
-                for (let pattern of figurePatterns) {
-                    const figMatch = trimmedLine.match(pattern);
-                    if (figMatch) {
-                        figureCount++;
-                        const caption = figMatch[3] || trimmedLine;
-                        
-                        // Find matching extracted image
-                        const existingImage = mediaItems.find(
-                            m => m.type === 'figure' && m.number === figureCount
-                        );
-                        
-                        if (existingImage) {
-                            existingImage.caption = caption.trim();
-                        } else {
-                            // Caption without image
-                            mediaItems.push({
-                                type: 'figure',
-                                number: figureCount,
-                                caption: caption.trim(),
-                                image: null
-                            });
-                        }
-                        
-                        processedText += `\n[FIGURE_${figureCount}]\n`;
-                        figureFound = true;
-                        break;
-                    }
-                }
-                
-                if (figureFound) continue;
-                
-                // Detect table captions
-                const tablePatterns = [
-                    /^Table\s+(\d+)[:\.\-–—]?\s*(.*)$/i,
-                    /^(\d+)\.\s+Table[:\.\-–—]?\s*(.*)$/i
-                ];
-                
-                let tableFound = false;
-                for (let pattern of tablePatterns) {
-                    const tableMatch = trimmedLine.match(pattern);
-                    if (tableMatch) {
-                        tableCount++;
-                        const caption = tableMatch[2] || trimmedLine;
-                        
-                        mediaItems.push({
-                            type: 'table',
-                            number: tableCount,
-                            caption: caption.trim(),
-                            content: ''
-                        });
-                        
-                        processedText += `\n[TABLE_${tableCount}]\n`;
-                        tableFound = true;
-                        break;
-                    }
-                }
-                
-                if (tableFound) continue;
-                
-                processedText += line + '\n';
-            }
-            
-            // Add markers for any images without captions
-            if (imageCount > figureCount) {
-                for (let i = figureCount + 1; i <= imageCount; i++) {
-                    processedText += `\n[FIGURE_${i}]\n`;
-                }
-            }
-            
-            if (mediaItems.length > 0) {
-                console.log('[DOCX] Total:', mediaItems.length, 'items -',
-                    mediaItems.filter(m => m.type === 'figure').length, 'figures,',
-                    mediaItems.filter(m => m.type === 'table').length, 'tables');
-            }
-            
-            return { text: processedText || text, media: mediaItems };
-        }
-
-        // Update library UI
-        function updateLibraryUI(searchQuery = '') {
-            const query = searchQuery.toLowerCase();
-            const filtered = library.filter(paper => {
-                if (!query) return true;
-                return paper.title.toLowerCase().includes(query) ||
-                       (paper.authors && paper.authors.toLowerCase().includes(query)) ||
-                       paper.tags.some(tag => tag.toLowerCase().includes(query));
-            });
-
-            libraryCount.textContent = filtered.length;
-
-            if (filtered.length === 0) {
-                libraryList.innerHTML = '<p style="text-align: center; color: var(--text-tertiary); font-size: 12px; padding: var(--space-lg);">No papers found</p>';
-                return;
+                console.warn('[DOCX] HTML conversion failed, falling back to raw text:', err);
+                const raw = await mammoth.extractRawText({ arrayBuffer });
+                return { text: raw.value, media: [] };
             }
 
-            libraryList.innerHTML = filtered.map(paper => `
-                <div class="library-item ${paper.id === currentPaperId ? 'active' : ''}" data-id="${paper.id}">
-                    <div class="library-item-header">
-                        <div class="library-item-title">${paper.title}</div>
-                        <button class="library-item-menu" data-id="${paper.id}">⋮</button>
-                    </div>
-                    ${paper.authors ? `<div class="library-item-meta">${paper.authors}${paper.year ? ` (${paper.year})` : ''}</div>` : ''}
-                    ${paper.tags.length > 0 ? `
-                        <div class="library-item-tags">
-                            ${paper.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
-                        </div>
-                    ` : ''}
-                    <div class="library-item-progress">
-                        <div class="library-item-progress-fill" style="width: ${paper.progress}%"></div>
-                    </div>
-                </div>
-            `).join('');
+            const htmlStr = htmlResult.value;
 
-            // Add click handlers
-            document.querySelectorAll('.library-item').forEach(item => {
-                item.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('library-item-menu')) return;
-                    const id = parseInt(item.dataset.id);
-                    loadPaper(id);
-                });
-            });
+            // ── 2. Parse the HTML in a detached DOM ──────────────────────────
+            const parser = new DOMParser();
+            const doc    = parser.parseFromString(htmlStr, 'text/html');
+            let fullText = '';
 
-            document.querySelectorAll('.library-item-menu').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const id = parseInt(btn.dataset.id);
-                    showPaperMenu(id, e);
-                });
-            });
-        }
+            // ── 3. Walk top-level elements in document order ──────────────────
+            for (const el of doc.body.children) {
+                const tag = el.tagName.toUpperCase();
 
-        // Show paper menu
-        function showPaperMenu(paperId, event) {
-            const paper = library.find(p => p.id === paperId);
-            if (!paper) return;
-
-            const menu = document.createElement('div');
-            menu.className = 'modal-overlay';
-            menu.innerHTML = `
-                <div class="modal" style="max-width: 400px;">
-                    <div class="modal-header">
-                        <h2 class="modal-title">${paper.title}</h2>
-                        <button class="modal-close">×</button>
-                    </div>
-                    <div class="modal-content">
-                        <div class="button-group" style="display: grid; gap: var(--space-sm);">
-                            <button class="button button-secondary" id="editPaperBtn">
-                                ✏️ Edit Metadata
-                            </button>
-                            <button class="button button-secondary" id="exportPaperBtn">
-                                💾 Export Paper Data
-                            </button>
-                            <button class="button button-secondary" id="duplicatePaperBtn">
-                                📋 Duplicate
-                            </button>
-                            <button class="button button-secondary" id="deletePaperBtn" style="color: var(--error);">
-                                🗑️ Delete Paper
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(menu);
-
-            const closeMenu = () => menu.remove();
-            menu.querySelector('.modal-close').addEventListener('click', closeMenu);
-            menu.addEventListener('click', (e) => {
-                if (e.target === menu) closeMenu();
-            });
-
-            document.getElementById('editPaperBtn').addEventListener('click', () => {
-                closeMenu();
-                editPaper(paperId);
-            });
-
-            document.getElementById('exportPaperBtn').addEventListener('click', () => {
-                exportPaper(paperId);
-                closeMenu();
-            });
-
-            document.getElementById('duplicatePaperBtn').addEventListener('click', () => {
-                duplicatePaper(paperId);
-                closeMenu();
-            });
-
-            document.getElementById('deletePaperBtn').addEventListener('click', () => {
-                if (confirm(`Delete "${paper.title}"? This cannot be undone.`)) {
-                    deletePaper(paperId);
-                    closeMenu();
-                }
-            });
-        }
-
-        // Load paper
-        function loadPaper(paperId) {
-            const paper = library.find(p => p.id === paperId);
-            if (!paper) return;
-
-            // Save current paper if any
-            if (currentPaperId) {
-                saveCurrentPaperProgress();
-                updatePaperStats();
-            }
-
-            currentPaperId = paperId;
-            
-            // Log paper info
-            console.log('[Load Paper]', paper.title);
-            console.log('[Load Paper] Media items:', paper.media?.length || 0);
-            if (paper.media && paper.media.length > 0) {
-                console.log('[Load Paper] Figures:', paper.media.filter(m => m.type === 'figure').length);
-                console.log('[Load Paper] Tables:', paper.media.filter(m => m.type === 'table').length);
-                paper.media.forEach((m, i) => {
-                    console.log(`  [${i}] ${m.type} ${m.number}: ${m.caption.substring(0, 50)}... ${m.image ? '(has image)' : '(no image)'}`);
-                });
-            }
-            
-            parseText(paper.text);
-            
-            // Restore position
-            currentIndex = paper.currentIndex || 0;
-            
-            // Update header
-            readerHeader.style.display = 'block';
-            currentPaperTitle.textContent = paper.title;
-            currentPaperMeta.textContent = [
-                paper.authors,
-                paper.year,
-                paper.journal
-            ].filter(x => x).join(' • ');
-
-            // Load notes
-            notesKeyFindings.value = paper.notes.keyFindings || '';
-            notesSummary.value = paper.notes.summary || '';
-            notesRelevance.value = paper.notes.relevance || '';
-            notesQuestions.value = paper.notes.questions || '';
-
-            // Load highlights
-            updateHighlightsUI();
-
-            // Load media grid
-            updateMediaGrid();
-
-            // Load summaries
-            updateSummariesUI();
-
-            updateDisplay();
-            updateStats();
-            buildDocumentMap();
-            updateLibraryUI();
-
-            const mediaCount = paper.media?.length || 0;
-            const mediaInfo = mediaCount > 0 ? ` (${mediaCount} figures/tables)` : '';
-            showNotification(`📖 Opened: ${paper.title}${mediaInfo}`);
-
-            // Update streak
-            updateStreak();
-
-            // Start break timer
-            resetBreakTimer();
-        }
-
-        // Enhanced table extraction from PDF
-        async function extractTablesFromPDF(pdf) {
-            console.log('[Tables] Starting enhanced table extraction...');
-            const tables = [];
-            
-            try {
-                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                    const page = await pdf.getPage(pageNum);
-                    const textContent = await page.getTextContent();
-                    
-                    console.log(`[Tables] Scanning page ${pageNum}...`);
-                    
-                    // Get items with positioning
-                    const items = textContent.items.map(item => ({
-                        text: item.str.trim(),
-                        x: item.transform[4],
-                        y: item.transform[5],
-                        width: item.width,
-                        height: item.height,
-                        font: item.fontName
-                    })).filter(item => item.text.length > 0);
-
-                    // Detect table headers (bold text, consistent x positions)
-                    const potentialHeaders = items.filter(item => 
-                        item.font && (item.font.includes('Bold') || item.font.includes('Heavy'))
+                // ── TABLE ──────────────────────────────────────────────────
+                if (tag === 'TABLE') {
+                    tableCount++;
+                    const rows    = Array.from(el.querySelectorAll('tr'));
+                    const rowData = rows.map(r =>
+                        Array.from(r.querySelectorAll('th,td')).map(c => c.textContent.trim())
                     );
+                    const headers = rowData[0] || [];
+                    const body    = rowData.slice(1);
 
-                    // Group items by y position (rows)
-                    const rowGroups = {};
-                    const threshold = 5; // pixels tolerance
-                    
-                    items.forEach(item => {
-                        const roundedY = Math.round(item.y / threshold) * threshold;
-                        if (!rowGroups[roundedY]) {
-                            rowGroups[roundedY] = [];
-                        }
-                        rowGroups[roundedY].push(item);
-                    });
-
-                    // Sort rows by y position (top to bottom)
-                    const sortedRows = Object.keys(rowGroups)
-                        .map(y => parseFloat(y))
-                        .sort((a, b) => b - a); // PDF coords are bottom-up
-
-                    // Detect potential tables (3+ consecutive rows with similar structure)
-                    let tableStart = -1;
-                    let tableRows = [];
-                    
-                    for (let i = 0; i < sortedRows.length; i++) {
-                        const row = rowGroups[sortedRows[i]];
-                        row.sort((a, b) => a.x - b.x); // Left to right
-                        
-                        // Check if this looks like a table row (multiple columns)
-                        if (row.length >= 2) {
-                            if (tableStart === -1) {
-                                tableStart = i;
-                                tableRows = [row];
-                            } else {
-                                tableRows.push(row);
-                            }
-                        } else if (tableStart !== -1 && tableRows.length >= 3) {
-                            // End of table detected
-                            const table = processTableRows(tableRows, pageNum, tables.length + 1);
-                            if (table) {
-                                tables.push(table);
-                                console.log(`[Tables] ✅ Found table ${tables.length} on page ${pageNum}`);
-                            }
-                            tableStart = -1;
-                            tableRows = [];
-                        } else {
-                            tableStart = -1;
-                            tableRows = [];
-                        }
+                    // infer caption from immediately preceding sibling
+                    let caption = `Table ${tableCount}`;
+                    const prev = el.previousElementSibling;
+                    if (prev && /table/i.test(prev.textContent)) {
+                        caption = prev.textContent.trim().slice(0, 120);
                     }
-                    
-                    // Check for table at end of page
-                    if (tableStart !== -1 && tableRows.length >= 3) {
-                        const table = processTableRows(tableRows, pageNum, tables.length + 1);
-                        if (table) {
-                            tables.push(table);
-                            console.log(`[Tables] ✅ Found table ${tables.length} on page ${pageNum}`);
+
+                    mediaItems.push({
+                        type      : 'table',
+                        number    : tableCount,
+                        caption,
+                        headers,
+                        rows      : body,
+                        html      : generateTableHTML(headers, body),
+                        content   : '',
+                        image     : null
+                    });
+                    fullText += `\n[TABLE_${tableCount}]\n`;
+
+                // ── IMAGE ──────────────────────────────────────────────────
+                } else if (tag === 'P' && el.querySelector('img')) {
+                    const img = el.querySelector('img');
+                    figureCount++;
+
+                    // try to get caption from alt text or next sibling
+                    let caption = img.getAttribute('alt') || `Figure ${figureCount}`;
+                    const next = el.nextElementSibling;
+                    if (next && /fig(ure)?\.?\s*\d/i.test(next.textContent)) {
+                        caption = next.textContent.trim().slice(0, 160);
+                    }
+
+                    mediaItems.push({
+                        type      : 'figure',
+                        number    : figureCount,
+                        caption,
+                        image     : img.src,
+                        pageNumber: null
+                    });
+                    fullText += `\n[FIGURE_${figureCount}]\n`;
+
+                // ── TEXT ───────────────────────────────────────────────────
+                } else {
+                    const text = el.textContent.trim();
+                    if (!text) continue;
+
+                    // catch figure/table captions in text (numbered captions without inline image)
+                    if (/^(Figure|Fig\.?)\s*\d+/i.test(text)) {
+                        figureCount++;
+                        // Check if we already have an image for this number
+                        const existing = mediaItems.find(m => m.type === 'figure' && m.number === figureCount);
+                        if (existing) { existing.caption = text.slice(0, 160); }
+                        else {
+                            mediaItems.push({ type: 'figure', number: figureCount,
+                                              caption: text.slice(0, 160), image: null });
                         }
+                        fullText += `\n[FIGURE_${figureCount}]\n`;
+                    } else if (/^Table\s*\d+/i.test(text)) {
+                        // Only add if we don't already have this table from structural extraction
+                        const existing = mediaItems.find(m => m.type === 'table' && m.number === tableCount + 1);
+                        if (!existing) {
+                            tableCount++;
+                            mediaItems.push({ type: 'table', number: tableCount,
+                                              caption: text.slice(0, 160), headers: [], rows: [], html: '', content: '' });
+                            fullText += `\n[TABLE_${tableCount}]\n`;
+                        }
+                    } else {
+                        fullText += text + '\n';
                     }
                 }
-                
-                console.log(`[Tables] ✅ Extracted ${tables.length} tables total`);
-                return tables;
-                
-            } catch (error) {
-                console.error('[Tables] Error extracting tables:', error);
-                showNotification('⚠️ Some tables may not have been detected', 'warning');
-                return tables;
             }
+
+            console.log(`[DOCX] Extracted: ${figureCount} figs, ${tableCount} tables`);
+            return { text: fullText, media: mediaItems };
         }
 
-        // Process table rows into structured data
-        function processTableRows(rows, pageNum, tableNum) {
-            if (rows.length < 3) return null;
-            
-            // Determine column positions from first few rows
-            const columnPositions = detectColumnPositions(rows.slice(0, Math.min(5, rows.length)));
-            
-            if (columnPositions.length < 2) return null;
-            
-            // Extract table data
-            const tableData = rows.map(row => {
-                const rowData = [];
-                columnPositions.forEach((colX, colIndex) => {
-                    // Find items near this column position
-                    const colItems = row.filter(item => {
-                        const nextColX = columnPositions[colIndex + 1] || Infinity;
-                        return item.x >= colX - 10 && item.x < nextColX;
-                    });
-                    rowData.push(colItems.map(item => item.text).join(' '));
-                });
-                return rowData;
-            });
-            
-            // Detect header row (usually first row or bold)
-            const headerRow = tableData[0];
-            const dataRows = tableData.slice(1);
-            
-            // Create caption
-            const caption = `Table ${tableNum}: ${headerRow.join(' | ')}`;
-            
-            // Generate HTML
-            const html = generateTableHTML(headerRow, dataRows);
-            
-            return {
-                type: 'table',
-                number: tableNum,
-                caption: caption,
-                pageNumber: pageNum,
-                headers: headerRow,
-                rows: dataRows,
-                html: html
-            };
-        }
-
-        // Detect column positions from rows
-        function detectColumnPositions(rows) {
-            const xPositions = {};
-            
-            rows.forEach(row => {
-                row.forEach(item => {
-                    const roundedX = Math.round(item.x / 5) * 5;
-                    xPositions[roundedX] = (xPositions[roundedX] || 0) + 1;
-                });
-            });
-            
-            // Get positions that appear frequently
-            const threshold = Math.ceil(rows.length * 0.5);
-            const positions = Object.keys(xPositions)
-                .filter(x => xPositions[x] >= threshold)
-                .map(x => parseFloat(x))
-                .sort((a, b) => a - b);
-            
-            return positions;
-        }
-
-        // Generate HTML for table
+        // ─────────────────────────────────────────────────────────────────────
+        // SHARED: generate HTML table
+        // ─────────────────────────────────────────────────────────────────────
         function generateTableHTML(headers, rows) {
-            let html = '<table border="1" style="border-collapse: collapse; width: 100%; margin: 1em 0;">';
-            
-            // Header
-            html += '<thead><tr>';
-            headers.forEach(header => {
-                html += `<th style="padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-medium); font-weight: 600;">${header}</th>`;
-            });
-            html += '</tr></thead>';
-            
-            // Body
-            html += '<tbody>';
-            rows.forEach(row => {
-                html += '<tr>';
-                row.forEach(cell => {
-                    html += `<td style="padding: 8px; border: 1px solid var(--border-light);">${cell}</td>`;
-                });
-                html += '</tr>';
-            });
-            html += '</tbody>';
-            
+            const thStyle = 'padding:7px 10px;background:var(--bg-secondary);border:1px solid var(--border-medium);font-weight:600;text-align:left;font-size:13px;';
+            const tdStyle = 'padding:6px 10px;border:1px solid var(--border-light);font-size:13px;';
+            let html = '<table style="border-collapse:collapse;width:100%;margin:8px 0;">';
+            if (headers.length) {
+                html += '<thead><tr>' + headers.map(h => `<th style="${thStyle}">${h || ''}</th>`).join('') + '</tr></thead>';
+            }
+            if (rows.length) {
+                html += '<tbody>' + rows.map((row, ri) =>
+                    '<tr style="' + (ri % 2 ? 'background:var(--bg-secondary);' : '') + '">' +
+                    row.map(c => `<td style="${tdStyle}">${c || ''}</td>`).join('') +
+                    '</tr>'
+                ).join('') + '</tbody>';
+            }
             html += '</table>';
             return html;
         }
 
-        console.log('📊 Enhanced table detection loaded');
+        console.log('📊 Extraction engine loaded');
 
         // ============================================
         // AUTH & SUBSCRIPTION SYSTEM
@@ -3989,25 +3803,30 @@
             const content = section.words.slice(0, 6000).join(' ');
 
             try {
-                const response = await fetch('/api/summarise', {
+                const response = await fetch('/api/summary', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getAuthToken()}`
-                    },
-                    body: JSON.stringify({ sectionTitle: section.title, content })
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        paperId:      currentPaperId,
+                        sectionIndex: sectionIndex,
+                        sectionTitle: section.title || '',
+                        text:         content
+                    })
                 });
+
+                // Guard against HTML error pages
+                const ct = response.headers.get('content-type') || '';
+                if (!ct.includes('application/json')) {
+                    showNotification('❌ Summary service unavailable', 'error');
+                    return null;
+                }
 
                 const data = await response.json();
 
                 if (!response.ok) {
-                    // Limit reached → offer upgrade
-                    if (data.code === 'LIMIT_REACHED') {
-                        openUpgradeModal(`🤖 You've used all ${data.limit} free AI summaries this month. Upgrade for unlimited summaries.`);
-                        return null;
-                    }
-                    if (response.status === 401) {
-                        window.location.href = '/login';
+                    if (response.status === 403) {
+                        openUpgradeModal(`🤖 ${data.error || 'Upgrade for more summaries.'}`);
                         return null;
                     }
                     showNotification(`❌ ${data.error || 'AI error'}`, 'error');
@@ -4024,9 +3843,9 @@
                 return {
                     sectionIndex,
                     sectionTitle: section.title || 'Untitled',
-                    overview:    data.overview   || 'No overview available',
-                    keyPoints:   Array.isArray(data.keyPoints) ? data.keyPoints : [],
-                    importance:  data.importance || '',
+                    overview:    data.summary || 'No summary available',
+                    keyPoints:   [],
+                    importance:  '',
                     timestamp:   Date.now()
                 };
 
@@ -4868,28 +4687,39 @@
 
             mediaCountEl.textContent = `(${mediaItems.length})`;
 
-            mediaGrid.innerHTML = mediaItems.map((item, index) => {
-                const typeLabel = item.type === 'figure' ? `Figure ${item.number}`
-                                : item.type === 'table'   ? `Table ${item.number}`
-                                : item.type === 'equation' ? `Equation ${item.number}`
-                                : `Item ${item.number}`;
-                const icon = item.type === 'figure' ? '📊' : item.type === 'table' ? '📋' : '∑';
-                const hasImage = item.type === 'figure' && item.image;
+            // Filter to figures + tables only (equations have their own tab)
+            const figsTables = mediaItems.filter(m => m.type === 'figure' || m.type === 'table');
+            if (figsTables.length === 0) {
+                mediaGrid.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:var(--space-2xl);grid-column:1/-1;">No figures or tables detected in this paper.</p>';
+                mediaCountEl.textContent = '(0)';
+                return;
+            }
+            mediaCountEl.textContent = `(${figsTables.length})`;
 
-                const previewContent = hasImage
-                    ? `<img src="${item.image}" alt="${item.caption}" style="max-width:100%;max-height:160px;object-fit:contain;">`
-                    : item.type === 'equation'
-                        ? `<div style="font-family:monospace;font-size:13px;padding:8px;word-break:break-all;color:var(--text-primary);">${item.latex || item.caption}</div>`
-                        : `<div style="font-size:40px;color:var(--text-tertiary);">${icon}</div>`;
+            mediaGrid.innerHTML = figsTables.map((item, index) => {
+                const typeLabel = item.type === 'figure' ? `Figure ${item.number}` : `Table ${item.number}`;
+                const pageTag   = item.pageNumber ? `<div style="font-size:10px;color:var(--text-tertiary);margin-top:4px;">Page ${item.pageNumber}</div>` : '';
+
+                let previewContent;
+                if (item.image) {
+                    // figure screenshot OR table screenshot
+                    previewContent = `<img src="${item.image}" alt="${item.caption}" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:4px;">`;
+                } else if (item.type === 'table' && item.html) {
+                    // structured table without screenshot — show mini HTML table
+                    previewContent = `<div style="overflow:auto;max-height:180px;font-size:11px;width:100%;">${item.html}</div>`;
+                } else {
+                    const icon = item.type === 'figure' ? '🖼️' : '📋';
+                    previewContent = `<div style="font-size:36px;color:var(--text-tertiary);">${icon}</div>`;
+                }
 
                 return `
                     <div class="media-item" data-index="${index}">
-                        <div class="media-item-preview ${item.type !== 'figure' ? 'table-preview' : ''}" style="min-height:80px;display:flex;align-items:center;justify-content:center;">
+                        <div class="media-item-preview" style="min-height:80px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
                             ${previewContent}
                         </div>
                         <div class="media-item-label">${typeLabel}</div>
                         <div class="media-item-caption">${(item.caption || '').slice(0, 120)}</div>
-                        ${item.pageNumber ? `<div style="font-size:10px;color:var(--text-tertiary);margin-top:4px;">Page ${item.pageNumber}</div>` : ''}
+                        ${pageTag}
                     </div>
                 `;
             }).join('');
@@ -4897,13 +4727,13 @@
             // Click handlers to jump to this item in the reader
             document.querySelectorAll('.media-item').forEach(el => {
                 el.addEventListener('click', () => {
-                    const index = parseInt(el.dataset.index);
-                    const mediaItem = mediaItems[index];
+                    const index    = parseInt(el.dataset.index);
+                    const mediaItem = figsTables[index];
+                    if (!mediaItem) return;
 
                     const mediaIndex = contentItems.findIndex(c =>
-                        (c.type === ContentType.FIGURE   && c.number === mediaItem.number && mediaItem.type === 'figure') ||
-                        (c.type === ContentType.TABLE     && c.number === mediaItem.number && mediaItem.type === 'table') ||
-                        (c.type === 'equation'            && c.number === mediaItem.number && mediaItem.type === 'equation')
+                        (c.type === ContentType.FIGURE && c.number === mediaItem.number && mediaItem.type === 'figure') ||
+                        (c.type === ContentType.TABLE  && c.number === mediaItem.number && mediaItem.type === 'table')
                     );
 
                     if (mediaIndex >= 0) {
@@ -4915,7 +4745,105 @@
                         document.querySelector('[data-tab-content="read"]').classList.add('active');
                         showNotification(`📍 Jumped to ${el.querySelector('.media-item-label').textContent}`);
                     } else {
-                        showNotification(`📄 ${el.querySelector('.media-item-label').textContent} on page ${mediaItem.pageNumber || '?'}`);
+                        showNotification(`📄 ${el.querySelector('.media-item-label').textContent}${mediaItem.pageNumber ? ' — Page ' + mediaItem.pageNumber : ''}`);
+                    }
+                });
+            });
+        }
+
+        function showParagraphView() {
+            const displayEl = document.querySelector('.reader-display');
+            if (!displayEl || contentItems.length === 0) return;
+
+            // Build paragraphs from contentItems
+            const fontStyle = `font-size:${fontSize}px;font-family:${isDyslexic ? 'OpenDyslexic,' : ''}${fontFamily},sans-serif;`;
+            const lineH = isDyslexic ? '2.2' : '1.85';
+            const letterS = isDyslexic ? '0.04em' : 'normal';
+
+            let html = `<div class="paragraph-view" style="padding:24px 8px;${fontStyle}line-height:${lineH};letter-spacing:${letterS};max-width:680px;margin:0 auto;">`;
+
+            let para = [];
+            contentItems.forEach((item, idx) => {
+                if (item.type === 'text' || item.type === 'TEXT') {
+                    para.push(`<span class="para-word${idx === currentIndex ? ' current-word' : ''}" data-idx="${idx}">${item.word || item.content || ''}</span>`);
+                } else if (para.length > 0) {
+                    html += `<p style="margin-bottom:${isDyslexic ? '1.6em' : '1.2em'};">${para.join(' ')}</p>`;
+                    para = [];
+                    // Render figure/table/equation placeholders
+                    if (item.type === 'figure' || item.type === 'FIGURE') {
+                        html += `<div style="text-align:center;padding:16px;margin:12px 0;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-light);">`;
+                        if (item.image) html += `<img src="${item.image}" style="max-width:100%;max-height:300px;object-fit:contain;">`;
+                        html += `<div style="font-size:12px;color:var(--text-tertiary);margin-top:8px;">Figure ${item.number}${item.caption ? ': ' + item.caption.slice(0,120) : ''}</div></div>`;
+                    } else if (item.type === 'table' || item.type === 'TABLE') {
+                        html += `<div style="text-align:center;padding:12px;margin:12px 0;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-light);font-size:12px;color:var(--text-tertiary);">📋 Table ${item.number}${item.caption ? ': ' + item.caption.slice(0,80) : ''}</div>`;
+                    } else if (item.type === 'equation') {
+                        html += `<div style="font-family:monospace;font-size:14px;padding:12px 16px;margin:10px 0;background:var(--bg-primary);border-left:3px solid var(--primary);border-radius:4px;color:var(--text-primary);">${item.latex || item.caption || ''}</div>`;
+                    }
+                }
+            });
+            if (para.length > 0) html += `<p style="margin-bottom:1.2em;">${para.join(' ')}</p>`;
+            html += '</div>';
+
+            displayEl.innerHTML = html;
+
+            // Click a word to jump to it
+            displayEl.querySelectorAll('.para-word').forEach(el => {
+                el.addEventListener('click', () => {
+                    currentIndex = parseInt(el.dataset.idx);
+                    updateStats();
+                    displayEl.querySelectorAll('.para-word').forEach(w => w.classList.remove('current-word'));
+                    el.classList.add('current-word');
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+            });
+
+            // Scroll current word into view
+            const cur = displayEl.querySelector('.current-word');
+            if (cur) cur.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function hideParagraphView() {
+            // updateDisplay() will replace paragraph view with RSVP word display
+        }
+
+        function updateEquationGrid() {
+            const grid = document.getElementById('equationGrid');
+            const countEl = document.getElementById('equationCount');
+            if (!grid) return;
+
+            const paper = library.find(p => p.id === currentPaperId);
+            const equations = (paper?.media || []).filter(m => m.type === 'equation');
+
+            if (equations.length === 0) {
+                grid.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:var(--space-2xl);">No equations detected in this paper.</p>';
+                if (countEl) countEl.textContent = '(0)';
+                return;
+            }
+
+            if (countEl) countEl.textContent = `(${equations.length})`;
+            grid.innerHTML = equations.map((eq, i) => `
+                <div style="background:var(--bg-primary);border:1px solid var(--border-light);border-radius:10px;padding:14px 16px;cursor:pointer;" data-eq-index="${i}">
+                    <div style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+                        Equation ${eq.number}${eq.pageNumber ? ` · Page ${eq.pageNumber}` : ''}
+                    </div>
+                    <div style="font-family:monospace;font-size:14px;color:var(--text-primary);word-break:break-all;line-height:1.6;">
+                        ${eq.latex || eq.caption || '—'}
+                    </div>
+                </div>
+            `).join('');
+
+            grid.querySelectorAll('[data-eq-index]').forEach(el => {
+                el.addEventListener('click', () => {
+                    const eq = equations[parseInt(el.dataset.eqIndex)];
+                    const idx = contentItems.findIndex(c => c.type === 'equation' && c.number === eq.number);
+                    if (idx >= 0) {
+                        currentIndex = idx;
+                        updateDisplay(); updateStats();
+                        document.querySelectorAll('.reader-tab').forEach(t => t.classList.remove('active'));
+                        document.querySelector('[data-tab="read"]').classList.add('active');
+                        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                        document.querySelector('[data-tab-content="read"]').classList.add('active');
+                        showNotification(`📍 Jumped to Equation ${eq.number}`);
                     }
                 });
             });
@@ -6134,12 +6062,15 @@
                 try {
                     let resp;
                     if (BACKEND) {
-                        const token = await (window.Clerk?.session?.getToken().catch(()=>null) ?? Promise.resolve(null));
-                        const hdrs = {'Content-Type':'application/json'};
-                        if (token) hdrs['Authorization'] = 'Bearer ' + token;
-                        resp = await fetch('/api/tts', {method:'POST', headers:hdrs, signal:hdAbort.signal,
-                            body: JSON.stringify({text: ch, speed: window.audioSpeed || 1})});
-                        // If backend TTS route missing, fall back to direct OpenAI call
+                        // Use session cookie — Clerk auth() reads cookies not Bearer tokens
+                        resp = await fetch('/api/tts', {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: {'Content-Type': 'application/json'},
+                            signal: hdAbort.signal,
+                            body: JSON.stringify({text: ch, speed: window.audioSpeed || 1})
+                        });
+                        // Route missing entirely — fall back to direct key
                         if (resp.status === 404 || resp.status === 405) {
                             if (!hdKey) { showKeyPrompt(() => playHD()); return; }
                             resp = await fetch('https://api.openai.com/v1/audio/speech', {
@@ -6148,6 +6079,26 @@
                                 body: JSON.stringify({model:'tts-1',input:ch,voice:'nova',
                                     speed:Math.min(4,Math.max(0.25, window.audioSpeed||1)),response_format:'mp3'})
                             });
+                        }
+                        // Not signed in — prompt for direct key as fallback
+                        else if (resp.status === 401) {
+                            if (!hdKey) { showKeyPrompt(() => playHD()); return; }
+                            resp = await fetch('https://api.openai.com/v1/audio/speech', {
+                                method:'POST', signal:hdAbort.signal,
+                                headers:{'Authorization':'Bearer '+hdKey,'Content-Type':'application/json'},
+                                body: JSON.stringify({model:'tts-1',input:ch,voice:'nova',
+                                    speed:Math.min(4,Math.max(0.25, window.audioSpeed||1)),response_format:'mp3'})
+                            });
+                        }
+                        // Free tier — show upgrade modal, don't ask for key
+                        else if (resp.status === 403) {
+                            const data = await resp.json().catch(() => ({}));
+                            if (typeof openUpgradeModal === 'function') {
+                                openUpgradeModal('🎙️ HD Voice requires a Student or Pro plan. Upgrade for natural human narration.');
+                            } else {
+                                alert(data.error || 'HD Voice requires an upgraded plan.');
+                            }
+                            hdOn = false; updateBtn(); return;
                         }
                     } else {
                         resp = await fetch('https://api.openai.com/v1/audio/speech', {

@@ -2544,7 +2544,7 @@
             loadStreak();
             loadGoals();
             setupEventListeners();
-            updateLibraryUI();
+            if (typeof updateLibraryUI === 'function') updateLibraryUI();
             updateHeaderStats();
         });
 
@@ -2745,7 +2745,7 @@
 
             // Library search
             librarySearch.addEventListener('input', (e) => {
-                updateLibraryUI(e.target.value);
+                if (typeof updateLibraryUI === 'function') updateLibraryUI(e.target.value);
             });
 
             // WPM Slider
@@ -3133,8 +3133,8 @@
                 } else if (paper.text) {
                     library.unshift(paper);
                     saveLibrary();
-                    updateLibraryUI();
-                    updateHeaderStats();
+                    if (typeof updateLibraryUI === 'function') updateLibraryUI();
+                    if (typeof updateHeaderStats === 'function') updateHeaderStats();
                     showNotification(`📄 Added: ${title}`);
                     return true; // Close modal
                 } else {
@@ -3184,11 +3184,12 @@
                 
                 library.unshift(paper);
                 saveLibrary();
-                updateLibraryUI();
-                updateHeaderStats();
                 
-                // Close modal
-                document.querySelector('.modal-overlay').remove();
+                // Close modal first, then update UI
+                document.querySelector('.modal-overlay')?.remove();
+                
+                if (typeof updateLibraryUI === 'function') updateLibraryUI();
+                if (typeof updateHeaderStats === 'function') updateHeaderStats();
                 
                 const figCount = paper.media.filter(m => m.type === 'figure').length;
                 const tableCount = paper.media.filter(m => m.type === 'table').length;
@@ -3301,7 +3302,7 @@
             updateMediaGrid();
             updateEquationGrid();
             updateSummariesUI();
-            updateLibraryUI();
+            if (typeof updateLibraryUI === 'function') updateLibraryUI();
             updateHeaderStats();
             updatePaperStats();
 
@@ -4634,7 +4635,7 @@
                             weeklyGoal.current++;
                             saveGoals();
                             saveLibrary();
-                            updateLibraryUI();
+                            if (typeof updateLibraryUI === 'function') updateLibraryUI();
                             updateHeaderStats();
                             showNotification('🎉 Paper completed!');
                         }
@@ -5076,7 +5077,7 @@
                 paper.tags = document.getElementById('editPaperTags').value.split(',').map(t => t.trim()).filter(t => t);
 
                 saveLibrary();
-                updateLibraryUI();
+                if (typeof updateLibraryUI === 'function') updateLibraryUI();
                 
                 if (currentPaperId === paperId) {
                     currentPaperTitle.textContent = paper.title;
@@ -5156,7 +5157,7 @@
 
             library.unshift(duplicate);
             saveLibrary();
-            updateLibraryUI();
+            if (typeof updateLibraryUI === 'function') updateLibraryUI();
             showNotification(`📋 Duplicated: ${paper.title}`);
         }
 
@@ -5174,7 +5175,7 @@
             }
 
             saveLibrary();
-            updateLibraryUI();
+            if (typeof updateLibraryUI === 'function') updateLibraryUI();
             updateHeaderStats();
             showNotification('🗑️ Paper deleted');
         }
@@ -5615,7 +5616,7 @@
                             saveLibrary();
                             saveSettings();
                             saveGoals();
-                            updateLibraryUI();
+                            if (typeof updateLibraryUI === 'function') updateLibraryUI();
                             updateHeaderStats();
                             updateStreak();
 

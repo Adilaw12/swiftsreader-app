@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
         // Update usage fire-and-forget
         prisma.user.update({
-          where: { clerkId: userId },
+          where: { id: userId },
           data:  { ttsCharsUsed: { increment: text.length } },
         }).catch(() => {})
       }

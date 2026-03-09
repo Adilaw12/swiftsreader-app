@@ -1,26 +1,11 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-const isProtectedApi = createRouteMatcher([
-  '/api/auth(.*)',
-  '/api/tts(.*)',
-  '/api/library(.*)',
-  '/api/summary(.*)',
-  '/api/checkout(.*)',
-  '/api/sessions(.*)',
-])
-
-export default clerkMiddleware(async (auth, req) => {
-  try {
-    if (isProtectedApi(req)) {
-      await auth.protect()
-    }
-    return NextResponse.next()
-  } catch (e) {
-    // Don't crash the middleware — just pass through
-    return NextResponse.next()
-  }
-})
+// Minimal middleware — no Clerk dependency
+// Each API route handles its own auth via auth() directly
+export function middleware(req: NextRequest) {
+  return NextResponse.next()
+}
 
 export const config = {
   matcher: ['/(api|trpc)(.*)'],

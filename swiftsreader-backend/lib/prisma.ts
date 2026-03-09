@@ -1,6 +1,3 @@
-// lib/prisma.ts
-// Prisma client singleton — prevents connection pool exhaustion in serverless
-
 import { PrismaClient } from '@prisma/client'
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }

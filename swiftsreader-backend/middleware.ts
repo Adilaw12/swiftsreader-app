@@ -1,10 +1,6 @@
-// middleware.ts
-// Clerk auth middleware — only protects API routes.
-// The SwiftsReader app (public/app.html) handles its own auth state client-side.
-
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
-// API routes that require a valid Clerk session
 const isProtectedApi = createRouteMatcher([
   '/api/auth(.*)',
   '/api/tts(.*)',
@@ -15,15 +11,17 @@ const isProtectedApi = createRouteMatcher([
 ])
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedApi(req)) {
-    await auth.protect()
+  try {
+    if (isProtectedApi(req)) {
+      await auth.protect()
+    }
+    return NextResponse.next()
+  } catch (e) {
+    // Don't crash the middleware — just pass through
+    return NextResponse.next()
   }
-  // Everything else (pages, static files, webhooks) passes through freely
 })
 
 export const config = {
-  matcher: [
-    // Only run on API routes — skip all static files and page routes
-    '/(api|trpc)(.*)',
-  ],
+  matcher: ['/(api|trpc)(.*)'],
 }

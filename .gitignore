@@ -1,6 +1,7 @@
 .vercel
 .env*.local
 node_modules/
+.next/
 package-lock.json
 migrate.cjs
 run-migration.mjs

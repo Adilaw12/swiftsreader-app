@@ -2012,7 +2012,29 @@
         .contact-modal-success .success-icon { font-size: 48px; margin-bottom: 12px; }
         .contact-modal-success h3 { font-size: 20px; font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
         .contact-modal-success p  { font-size: 14px; color: var(--text-secondary); }
-    </style>
+    
+        /* ── Dyslexia mode ────────────────────────────────────────────────────── */
+        .dyslexia-mode .reader-area,
+        .dyslexia-mode .reader-display {
+            background: #f5f0e8 !important;
+            color: #2c1810 !important;
+            transition: background 0.3s, color 0.3s;
+        }
+        .dyslexia-mode .word-display {
+            font-family: 'OpenDyslexic', sans-serif !important;
+            letter-spacing: 0.12em !important;
+            word-spacing: 0.25em !important;
+            line-height: 2.2 !important;
+        }
+        .dyslexia-mode .paragraph-view {
+            font-family: 'OpenDyslexic', sans-serif !important;
+            letter-spacing: 0.12em !important;
+            word-spacing: 0.25em !important;
+            line-height: 2.2 !important;
+            background: #f5f0e8 !important;
+            color: #2c1810 !important;
+        }
+</style>
   <!-- Vercel Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
 </head>
@@ -2601,13 +2623,7 @@
                     document.querySelectorAll('[data-dyslexia]').forEach(btn => {
                         btn.classList.toggle('active', btn.dataset.dyslexia === String(isDyslexic));
                     });
-                    // Restore warm background if dyslexia was on
-                    if (isDyslexic) {
-                        document.querySelectorAll('.reader-area, .reader-display').forEach(el => {
-                            el.style.background = '#f5f0e8';
-                            el.style.color = '#2c1810';
-                        });
-                    }
+                    // (dyslexia background applied after theme below)
                 }
                 
                 if (settings.theme) {
@@ -2616,6 +2632,10 @@
                         btn.classList.toggle('active', btn.dataset.theme === theme);
                     });
                     applyTheme(theme);
+                }
+                // Apply dyslexia AFTER theme so it isn't overwritten
+                if (isDyslexic) {
+                    applyDyslexiaMode(true);
                 }
 
                 if (settings.breakInterval !== undefined) {
@@ -2833,13 +2853,7 @@
                     document.querySelectorAll('[data-dyslexia]').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     isDyslexic = btn.dataset.dyslexia === 'true';
-                    // Apply warm background to all reader areas
-                    document.querySelectorAll('.reader-area, .reader-display').forEach(el => {
-                        el.style.background = isDyslexic ? '#f5f0e8' : '';
-                        el.style.color = isDyslexic ? '#2c1810' : '';
-                        el.style.transition = 'background 0.3s, color 0.3s';
-                    });
-                    updateDisplay();
+                    applyDyslexiaMode(isDyslexic);
                     saveSettings();
                 });
             });
@@ -3003,6 +3017,17 @@
         }
 
         // Apply theme
+        // Apply or remove dyslexia mode styling
+        function applyDyslexiaMode(on) {
+            const root = document.documentElement;
+            if (on) {
+                root.classList.add('dyslexia-mode');
+            } else {
+                root.classList.remove('dyslexia-mode');
+            }
+            updateDisplay();
+        }
+
         function applyTheme(themeName) {
             const root = document.documentElement;
             

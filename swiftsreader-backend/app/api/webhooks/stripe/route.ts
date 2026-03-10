@@ -6,7 +6,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { prisma } from '@/lib/prisma'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+export const dynamic = 'force-dynamic'
+
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!)
+}
 
 const TIER_MAP: Record<string, { tier: 'STUDENT' | 'PRO'; summariesLimit: number; ttsCharsLimit: number }> = {
   student: { tier: 'STUDENT', summariesLimit: 100,    ttsCharsLimit: 500_000   },
@@ -14,6 +18,7 @@ const TIER_MAP: Record<string, { tier: 'STUDENT' | 'PRO'; summariesLimit: number
 }
 
 export async function POST(req: NextRequest) {
+  const stripe  = getStripe()
   const rawBody = await req.text()
   const sig     = req.headers.get('stripe-signature') ?? ''
 

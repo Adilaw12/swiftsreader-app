@@ -6,7 +6,7 @@ import Stripe from 'stripe'
 import { prisma } from '@/lib/prisma'
 import { getAuthUserId, apiError } from '@/lib/auth'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+export const dynamic = 'force-dynamic'
 
 const PRICE_IDS: Record<string, string | undefined> = {
   student: process.env.STRIPE_PRICE_STUDENT,
@@ -14,6 +14,7 @@ const PRICE_IDS: Record<string, string | undefined> = {
 }
 
 export async function POST(req: NextRequest) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
   const result = await getAuthUserId()
   if (result instanceof NextResponse) return result
   const userId = result

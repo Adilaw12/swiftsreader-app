@@ -1,44 +1,31 @@
-// lib/auth.js
-// Clerk JWT verification helper for Vercel API routes
+// lib/auth.ts
+// Thin wrapper around Clerk's auth() for use in App Router route handlers.
+// Returns the userId or throws a typed error.
 
-import { createClerkClient } from '@clerk/backend'
-
-const clerk = createClerkClient({
-  secretKey: process.env.CLERK_SECRET_KEY,
-})
+import { auth } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
 /**
- * Extracts and verifies the Clerk JWT from the Authorization header.
- * Returns the Clerk userId on success, throws on failure.
+ * Returns the authenticated Clerk userId.
+ * If unauthenticated, returns a 401 NextResponse instead.
  *
- * Usage in an API route:
- *   const userId = await requireAuth(req)
+ * Usage in a route handler:
+ *
+ *   const result = await getAuthUserId()
+ *   if (result instanceof NextResponse) return result   // early exit = 401
+ *   const userId = result
  */
-export async function requireAuth(req) {
-  const authHeader = req.headers.authorization || req.headers.Authorization
-  if (!authHeader?.startsWith('Bearer ')) {
-    const err = new Error('Missing or invalid Authorization header')
-    err.status = 401
-    throw err
+export async function getAuthUserId(): Promise<string | NextResponse> {
+  const { userId } = await auth()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
   }
-
-  const token = authHeader.slice(7)
-
-  try {
-    const { sub } = await clerk.verifyToken(token, {
-      authorizedParties: [process.env.NEXT_PUBLIC_APP_URL || 'https://swiftsreader.com'],
-    })
-    return sub // Clerk userId, e.g. "user_2abc..."
-  } catch {
-    const err = new Error('Invalid or expired token')
-    err.status = 401
-    throw err
-  }
+  return userId
 }
 
 /**
- * Sends a standardised error response.
+ * Standard error response helper.
  */
-export function sendError(res, status, message) {
-  return res.status(status).json({ error: message })
+export function apiError(message: string, status = 500) {
+  return NextResponse.json({ error: message }, { status })
 }

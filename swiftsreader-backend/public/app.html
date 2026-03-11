@@ -6464,7 +6464,16 @@
                         const errBody = await resp.text().catch(() => '');
                         throw new Error('TTS error ' + resp.status + (errBody ? ': ' + errBody.slice(0,200) : ''));
                     }
-                    const url = URL.createObjectURL(await resp.blob());
+                    // Read blob without abort signal — prevent "Failed to fetch" on stop
+                    let blob;
+                    try {
+                        blob = await resp.blob();
+                    } catch(blobErr) {
+                        // Aborted or network error during blob read — stop silently
+                        return;
+                    }
+                    if (!hdAbort) return; // stopped while blob was loading
+                    const url = URL.createObjectURL(blob);
                     hdURLs.push(url);
                     hdAudio = new Audio(url);
                     const hdRate = parseFloat(window.audioSpeed) || 1;
@@ -6474,9 +6483,10 @@
                     await hdAudio.play();
                 } catch(e) {
                     if (e.name === 'AbortError') return;
+                    if (!hdAbort) return; // stopped normally
                     console.error('[HD]', e);
                     hdOn = false; updateBtn();
-                    alert('HD Voice error: ' + e.message);
+                    showNotification('❌ HD Voice error: ' + e.message, 'error');
                 }
             };
             next();

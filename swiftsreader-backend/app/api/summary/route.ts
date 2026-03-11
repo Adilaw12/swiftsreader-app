@@ -22,8 +22,6 @@ export async function POST(req: NextRequest) {
 
     // ── Try DB cache and limits (non-blocking) ────────────────────────────────
     let userId: string | null = null
-    let cachedSummary: string | null = null
-
     try {
       const { auth } = await import('@clerk/nextjs/server')
       const session = await auth()

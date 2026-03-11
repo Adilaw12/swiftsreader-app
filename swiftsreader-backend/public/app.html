@@ -4165,7 +4165,8 @@
                         openUpgradeModal(`🤖 ${data.error || 'Upgrade for more summaries.'}`);
                         return null;
                     }
-                    showNotification(`❌ ${data.error || 'AI error'}`, 'error');
+                    showNotification(`❌ ${data.error || 'Summary failed (' + response.status + ')'}`, 'error');
+                    console.error('[Summary]', response.status, data);
                     return null;
                 }
 
@@ -6394,6 +6395,7 @@
             let ci = 0;
 
             const next = async () => {
+                if (!hdAbort) return;  // stopped externally
                 if (ci >= chunks.length) { stopHD(); return; }
                 const ch = chunks[ci++];
                 try {
@@ -6445,7 +6447,7 @@
                     const hdRate = parseFloat(window.audioSpeed) || 1;
                     hdAudio.playbackRate = isFinite(hdRate) ? Math.min(4, Math.max(0.25, hdRate)) : 1;
                     hdAudio.onended = () => { URL.revokeObjectURL(url); next(); };
-                    hdAudio.onerror = () => next();
+                    hdAudio.onerror = () => { URL.revokeObjectURL(url); if (hdAbort) next(); };
                     await hdAudio.play();
                 } catch(e) {
                     if (e.name === 'AbortError') return;

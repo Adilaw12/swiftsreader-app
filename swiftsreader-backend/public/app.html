@@ -3059,7 +3059,12 @@
             } else {
                 root.classList.remove('dyslexia-mode');
             }
-            updateDisplay();
+            // Re-render without disrupting paragraph mode
+            if (readingMode === 'paragraph') {
+                showParagraphView();
+            } else {
+                updateDisplay();
+            }
         }
 
         function applyTheme(themeName) {
@@ -3531,6 +3536,14 @@
                     /^Table\s*(\d+)[.:\-–—\s]/i,
                     /^TABLE\s*(\d+)[.:\-–—\s]/,
                 ];
+                // Lines that look like table headings but are actually section headers
+                const skipPat = [
+                    /^references?\s*$/i,
+                    /^bibliography\s*$/i,
+                    /^appendix\s*/i,
+                    /^acknowledgements?\s*$/i,
+                    /^table of contents\s*$/i,
+                ];
                 const eqPat = [
                     /^(Equation|Eq\.?)\s*(\d+)[.:\-–—\s]/i,
                     /^\(\s*(\d+)\s*\)\s*$/,
@@ -3542,6 +3555,9 @@
                     const { y: lineY, text, items: lineItems } = lines[li];
                     let hit = false;
 
+                    // Skip known non-figure/table patterns
+                    if (skipPat.some(p => p.test(text.trim()))) continue;
+
                     // ── Figure caption ───────────────────────────────────────
                     for (const pat of figPat) {
                         if (pat.test(text)) {
@@ -3550,14 +3566,25 @@
                             // (from previous line's top to this caption's top).
                             const captionTop = toCanvasY(lineY + (lineItems[0]?.h || 10));
                             // Look back for the last non-caption line to find figure top
-                            let figTopPdfY = lineY + 300; // default: 300 pts above caption
+                            // Walk back further to find real figure top
+                            let figTopPdfY = lineY + 400;
                             if (li > 0) {
-                                // walk back to find a line that is clearly above (not adjacent)
-                                for (let k = li - 1; k >= Math.max(0, li - 8); k--) {
-                                    if (lines[k].y - lineY > 40) { figTopPdfY = lines[k].y; break; }
+                                for (let k = li - 1; k >= Math.max(0, li - 20); k--) {
+                                    const prevText = lines[k].text.trim();
+                                    // Stop at previous caption, heading or large vertical gap
+                                    if (/^(figure|fig\.|table|abstract|introduction|references?)/i.test(prevText)) {
+                                        figTopPdfY = lines[k].y - 10;
+                                        break;
+                                    }
+                                    // Large gap (>60pts) signals start of figure
+                                    if (k < li - 1 && (lines[k+1].y - lines[k].y) > 60) {
+                                        figTopPdfY = lines[k].y;
+                                        break;
+                                    }
+                                    figTopPdfY = lines[k].y;
                                 }
                             }
-                            const figTop = toCanvasY(figTopPdfY + 20);
+                            const figTop = toCanvasY(figTopPdfY + 10);
                             const img    = cropBand(Math.min(figTop, captionTop - 10), captionTop);
 
                             fullText += `\n[FIGURE_${figureCount}]\n`;
@@ -3574,10 +3601,24 @@
                     for (const pat of tblPat) {
                         if (pat.test(text)) {
                             tableCount++;
-                            // Tables usually appear BELOW their caption
-                            const captionBot = toCanvasY(lineY);
-                            const tableBot   = captionBot + 300; // up to 300px below
-                            const img        = cropBand(captionBot + 4, Math.min(tableBot, pcd?.canvas.height || tableBot));
+                            const captionY = toCanvasY(lineY);
+                            // Look ahead to find end of table (next caption or large gap)
+                            let tableBotPdfY = lineY - 400; // default 400pts below caption
+                            for (let k = li + 1; k < Math.min(li + 15, lines.length); k++) {
+                                const nextText = lines[k].text.trim();
+                                // Stop at next figure/table caption or references
+                                if (/^(figure|fig\.|table|references?|bibliography)/i.test(nextText)) {
+                                    tableBotPdfY = lines[k].y;
+                                    break;
+                                }
+                                tableBotPdfY = lines[k].y;
+                            }
+                            const captionBot = captionY + 4;
+                            const tableBot   = Math.min(
+                                toCanvasY(tableBotPdfY - 10),
+                                pcd?.canvas.height || 9999
+                            );
+                            const img = cropBand(captionBot, Math.max(captionBot + 80, tableBot));
 
                             fullText += `\n[TABLE_${tableCount}]\n`;
                             mediaItems.push({
@@ -4418,16 +4459,17 @@
                     .map(s => {
                         const kpHTML = s.keyPoints?.length
                             ? `<ul style="margin-top:var(--space-sm);padding-left:var(--space-lg);font-size:13px;">${s.keyPoints.slice(0, 4).map(p => `<li>${String(p).replace(/^- /, '')}</li>`).join('')}</ul>` : '';
+                        const summaryNum = summaries.slice().sort((a,b)=>a.sectionIndex-b.sectionIndex).indexOf(s) + 1;
                         return `
                             <div class="summary-item">
                                 <div class="summary-item-header">
-                                    <div class="summary-item-title">${s.sectionTitle}</div>
-                                    <div class="summary-item-badge">Section ${s.sectionIndex + 1}</div>
+                                    <div class="summary-item-title">Summary ${summaryNum} — ${s.sectionTitle}</div>
+                                    <div class="summary-item-badge">§${s.sectionIndex + 1}</div>
                                 </div>
                                 <div class="summary-block-content" style="margin-bottom:var(--space-sm);">${s.overview || 'No overview'}</div>
                                 ${kpHTML}
                                 ${s.importance ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:var(--space-sm);font-style:italic;">💡 ${s.importance}</div>` : ''}
-                                <button class="toggle-summary" data-jump="${s.sectionIndex}" style="margin-top:var(--space-sm);">📍 Jump to Section</button>
+                                <button class="toggle-summary" data-jump="${s.sectionIndex}" style="margin-top:var(--space-sm);">📖 Go to §${s.sectionIndex + 1} in paper</button>
                             </div>`;
                     }).join('');
             }
@@ -4445,9 +4487,26 @@
             document.querySelector('[data-tab="read"]').classList.add('active');
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.querySelector('[data-tab-content="read"]').classList.add('active');
-            
-            // Show the section summary
-            showSectionSummary(sectionIndex);
+
+            // Switch to RSVP mode (not paragraph/focus) so position is visible
+            if (readingMode === 'paragraph') {
+                readingMode = 'rsvp';
+                document.querySelectorAll('[data-readmode]').forEach(b => {
+                    b.classList.toggle('active', b.dataset.readmode === 'rsvp');
+                });
+                hideParagraphView();
+            }
+
+            // Jump to the actual word position in the RSVP reader
+            const section = documentSections[sectionIndex];
+            if (section && typeof section.startIndex !== 'undefined') {
+                currentIndex = section.startIndex;
+                updateDisplay();
+                updateStats();
+                showNotification(`📖 Jumped to §${sectionIndex + 1}: ${section.title}`, 'info');
+            } else {
+                showNotification(`⚠️ Could not locate §${sectionIndex + 1} in paper`, 'warning');
+            }
         };
 
         // Generate all summaries
@@ -4748,13 +4807,8 @@
             if (currentIndex >= contentItems.length - 1) {
                 currentIndex = 0;
             }
-            // Stop HD Voice if running
-            if (typeof hdOn !== 'undefined' && hdOn) {
-                hdOn = false;
-                if (typeof stopHD === 'function') stopHD();
-                if (typeof updateBtn === 'function') updateBtn();
-            }
-            // Stop browser audio if running
+            // Stop HD Voice and browser audio if running
+            if (typeof window._hdStop === 'function') window._hdStop();
             if (typeof stopAudio === 'function') stopAudio();
 
             isPlaying = true;
@@ -4771,12 +4825,8 @@
         function pause() {
             isPlaying = false;
             playBtn.querySelector('span').textContent = '▶';
-            // Pause HD Voice too
-            if (typeof hdOn !== 'undefined' && hdOn) {
-                hdOn = false;
-                if (typeof stopHD === 'function') stopHD();
-                if (typeof updateBtn === 'function') updateBtn();
-            }
+            // Stop HD Voice too
+            if (typeof window._hdStop === 'function') window._hdStop();
             if (animationFrame) {
                 cancelAnimationFrame(animationFrame);
                 animationFrame = null;
@@ -5102,7 +5152,13 @@
             });
         }
 
+        let _paragraphViewTimer = null;
         function showParagraphView() {
+            // Debounce rapid calls (e.g. from settings toggles)
+            if (_paragraphViewTimer) clearTimeout(_paragraphViewTimer);
+            _paragraphViewTimer = setTimeout(_renderParagraphView, 80);
+        }
+        function _renderParagraphView() {
             const displayEl = document.querySelector('.reader-display');
             if (!displayEl || contentItems.length === 0) return;
 
@@ -6253,6 +6309,8 @@
             if (!audioSpeech) { showNotification('❌ Text-to-speech not supported in this browser', 'error'); return; }
             if (!currentPaperId) { showNotification('⚠️ Please open a document first', 'warning'); return; }
             if (isAudioPlaying) return;
+            // Stop HD Voice if running
+            if (typeof window._hdStop === 'function') window._hdStop();
 
             if (!audioFullText) {
                 audioFullText = extractTextForAudio();
@@ -6514,6 +6572,16 @@
             updateBtn();
             console.log('[HD Voice] Ready. Backend mode:', BACKEND);
         }
+        // Expose HD controls globally so main app can stop HD when RSVP/audio starts
+        window._hdStop = function() {
+            if (hdOn) {
+                hdOn = false;
+                stopHD();
+                updateBtn();
+            }
+        };
+        Object.defineProperty(window, '_hdIsOn', { get: () => hdOn });
+
         document.addEventListener('DOMContentLoaded', () => setTimeout(init, 800));
         setTimeout(init, 1200); // fallback if DOMContentLoaded already fired
     })();

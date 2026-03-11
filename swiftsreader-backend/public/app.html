@@ -15,6 +15,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.cdnfonts.com/css/opendyslexic" rel="stylesheet">
+    <!-- Clerk loaded dynamically in initClerk() -->
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -2034,6 +2035,35 @@
             background: #f5f0e8 !important;
             color: #2c1810 !important;
         }
+
+        /* ── Clerk Sign-in Modal ───────────────────────────────────────────────── */
+        #clerkSignInOverlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        #clerkSignInOverlay.open { display: flex; }
+        #clerkSignInBox {
+            background: var(--bg-surface);
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+        #clerkSignInBox h2 {
+            font-size: 22px; font-weight: 800;
+            color: var(--text-primary); margin-bottom: 8px;
+        }
+        #clerkSignInBox p {
+            font-size: 14px; color: var(--text-secondary);
+            margin-bottom: 24px; line-height: 1.6;
+        }
+        #clerkMountPoint { min-height: 300px; }
 </style>
   <!-- Vercel Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
@@ -2538,7 +2568,11 @@
 
             // Wire logout button
             document.getElementById('logoutBtn')?.addEventListener('click', () => {
-                if (confirm('Sign out of SwiftsReader?')) logout();
+                if (clerkInstance?.user) {
+                    if (confirm('Sign out of SwiftsReader?')) logout();
+                } else {
+                    showSignInModal();
+                }
             });
 
             // Handle post-checkout redirect
@@ -3858,33 +3892,121 @@
             return localStorage.getItem('sr_token') || '';
         }
 
-        function logout() {
+        async function logout() {
+            if (clerkInstance?.user) {
+                await clerkInstance.signOut();
+            }
             localStorage.removeItem('sr_token');
             localStorage.removeItem('sr_user');
             window.location.href = '/login';
         }
 
         // Load and verify auth on startup
-        async function initAuth() {
-            // The app is self-contained and handles its own auth state.
-            // We optionally sync user profile from the backend, but never block
-            // the app from loading if the backend is unavailable or returns non-JSON.
+        // ── Clerk instance (set after load) ──────────────────────────────────────
+        let clerkInstance = null;
+
+        async function initClerk() {
+            try {
+                // Step 1: fetch the publishable key
+                const publishableKey = await getClerkKey();
+                if (!publishableKey) {
+                    console.warn('[Clerk] No publishable key returned');
+                    return null;
+                }
+                // Step 2: load Clerk JS dynamically with the key ready
+                await new Promise((resolve, reject) => {
+                    if (typeof Clerk !== 'undefined') { resolve(); return; }
+                    const s = document.createElement('script');
+                    s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js';
+                    s.crossOrigin = 'anonymous';
+                    s.onload = resolve;
+                    s.onerror = reject;
+                    document.head.appendChild(s);
+                });
+                // Step 3: initialise with the key
+                const clerk = new Clerk(publishableKey);
+                await clerk.load();
+                clerkInstance = clerk;
+                return clerk;
+            } catch (e) {
+                console.warn('[Clerk] Failed to init:', e);
+                return null;
+            }
+        }
+
+        async function getClerkKey() {
+            // Fetch from backend so we don't hardcode it in HTML
+            try {
+                const r = await fetch('/api/auth/me?config=1');
+                if (r.ok) {
+                    const d = await r.json();
+                    return d.publishableKey || null;
+                }
+            } catch {}
+            return null;
+        }
+
+        function showSignInModal(onSuccess) {
+            const overlay = document.getElementById('clerkSignInOverlay');
+            const mountPoint = document.getElementById('clerkMountPoint');
+            if (!overlay || !mountPoint || !clerkInstance) return;
+            overlay.classList.add('open');
+            mountPoint.innerHTML = '';
+            clerkInstance.mountSignIn(mountPoint, {
+                afterSignInUrl: window.location.href,
+                afterSignUpUrl: window.location.href,
+            });
+            // Watch for sign-in completion
+            const check = setInterval(async () => {
+                const user = clerkInstance.user;
+                if (user) {
+                    clearInterval(check);
+                    overlay.classList.remove('open');
+                    mountPoint.innerHTML = '';
+                    await syncUserProfile();
+                    if (typeof onSuccess === 'function') onSuccess();
+                }
+            }, 500);
+        }
+
+        function hideSignInModal() {
+            const overlay = document.getElementById('clerkSignInOverlay');
+            if (overlay) overlay.classList.remove('open');
+        }
+
+        async function syncUserProfile() {
             try {
                 const r = await fetch('/api/auth/me', { credentials: 'include' });
-                // Guard against HTML error pages (Clerk redirects, Next.js 404s etc.)
                 const ct = r.headers.get('content-type') || '';
-                if (!ct.includes('application/json')) throw new Error('non-json');
+                if (!ct.includes('application/json')) return;
                 if (r.ok) {
                     currentUser = await r.json();
                     localStorage.setItem('sr_user', JSON.stringify(currentUser));
                     updateUserUI();
                 }
-            } catch {
-                // Backend unavailable or not logged in — load from cache if available
+            } catch {}
+        }
+
+        async function initAuth() {
+            // Init Clerk
+            await initClerk();
+
+            // Try to sync profile if Clerk session exists
+            if (clerkInstance?.user) {
+                await syncUserProfile();
+            } else {
+                // Load from cache — app works as guest
                 const cached = localStorage.getItem('sr_user');
-                if (cached) { try { currentUser = JSON.parse(cached); } catch {} }
+                if (cached) { try { currentUser = JSON.parse(cached); updateUserUI(); } catch {} }
             }
-            // Always return true — app works offline / as guest
+
+            // Update sign-out button
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.textContent = clerkInstance?.user ? 'Sign out' : 'Sign in';
+            }
+
+            // Always return true — reader works without auth
             return true;
         }
 
@@ -6282,25 +6404,17 @@
                             signal: hdAbort.signal,
                             body: JSON.stringify({text: ch, speed: window.audioSpeed || 1})
                         });
-                        // Route missing entirely — fall back to direct key
+                        // Route missing — show helpful error
                         if (resp.status === 404 || resp.status === 405) {
-                            if (!hdKey) { showKeyPrompt(() => playHD()); return; }
-                            resp = await fetch('https://api.openai.com/v1/audio/speech', {
-                                method:'POST', signal:hdAbort.signal,
-                                headers:{'Authorization':'Bearer '+hdKey,'Content-Type':'application/json'},
-                                body: JSON.stringify({model:'tts-1',input:ch,voice:'nova',
-                                    speed:Math.min(4,Math.max(0.25, window.audioSpeed||1)),response_format:'mp3'})
-                            });
+                            hdOn = false; updateBtn();
+                            showNotification('❌ HD Voice unavailable — please try again later.', 'error');
+                            return;
                         }
-                        // Not signed in — prompt for direct key as fallback
+                        // Not signed in — show sign-in modal
                         else if (resp.status === 401) {
-                            if (!hdKey) { showKeyPrompt(() => playHD()); return; }
-                            resp = await fetch('https://api.openai.com/v1/audio/speech', {
-                                method:'POST', signal:hdAbort.signal,
-                                headers:{'Authorization':'Bearer '+hdKey,'Content-Type':'application/json'},
-                                body: JSON.stringify({model:'tts-1',input:ch,voice:'nova',
-                                    speed:Math.min(4,Math.max(0.25, window.audioSpeed||1)),response_format:'mp3'})
-                            });
+                            hdOn = false; updateBtn();
+                            showSignInModal(() => playHD());
+                            return;
                         }
                         // Free tier — show upgrade modal, don't ask for key
                         else if (resp.status === 403) {
@@ -6313,16 +6427,10 @@
                             hdOn = false; updateBtn(); return;
                         }
                     } else {
-                        resp = await fetch('https://api.openai.com/v1/audio/speech', {
-                            method:'POST', signal:hdAbort.signal,
-                            headers:{'Authorization':'Bearer '+hdKey,'Content-Type':'application/json'},
-                            body: JSON.stringify({model:'tts-1',input:ch,voice:'nova',
-                                speed:Math.min(4,Math.max(0.25, window.audioSpeed||1)),response_format:'mp3'})
-                        });
-                        if (resp.status === 401) {
-                            hdKey=''; localStorage.removeItem('sr_openai_key');
-                            showKeyPrompt(() => playHD()); return;
-                        }
+                        // Not on backend — HD Voice not available
+                        hdOn = false; updateBtn();
+                        showNotification('❌ HD Voice requires the live app at swiftsreader.com', 'error');
+                        return;
                     }
                     if (!resp.ok) throw new Error('TTS error ' + resp.status);
                     const url = URL.createObjectURL(await resp.blob());
@@ -7075,5 +7183,15 @@
             <option>Loading voices…</option>
         </select>
     </div>
+
+    <!-- Clerk Sign-in Modal -->
+    <div id="clerkSignInOverlay">
+        <div id="clerkSignInBox">
+            <h2>Sign in to SwiftsReader</h2>
+            <p>HD Voice, AI Summaries and sync require a free account.</p>
+            <div id="clerkMountPoint"></div>
+        </div>
+    </div>
+
 </body>
 </html>

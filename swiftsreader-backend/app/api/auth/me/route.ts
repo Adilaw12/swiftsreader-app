@@ -1,16 +1,36 @@
 // app/api/auth/me/route.ts
-// GET /api/auth/me — returns current user profile and usage stats
+// GET /api/auth/me — returns current user profile
+// GET /api/auth/me?config=1 — returns Clerk publishable key (no auth needed)
 
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getAuthUserId, apiError } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET() {
-  const result = await getAuthUserId()
-  if (result instanceof NextResponse) return result
-  const userId = result
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url)
 
+  // ── Config endpoint — no auth needed ─────────────────────────────────────
+  if (url.searchParams.get('config') === '1') {
+    return NextResponse.json({
+      publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || ''
+    })
+  }
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  let userId: string | null = null
   try {
+    const { auth } = await import('@clerk/nextjs/server')
+    const session = await auth()
+    userId = session?.userId ?? null
+  } catch (e) {
+    console.warn('[/api/auth/me] Clerk unavailable:', e)
+  }
+
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+  }
+
+  // ── User profile from DB ──────────────────────────────────────────────────
+  try {
+    const { prisma } = await import('@/lib/prisma')
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -22,12 +42,24 @@ export async function GET() {
         ttsCharsUsed:         true,
         ttsCharsLimit:        true,
         stripeSubscriptionId: true,
-        createdAt:            true,
         _count: { select: { papers: true } },
       },
     })
 
-    if (!user) return apiError('User not found', 404)
+    if (!user) {
+      // User signed in with Clerk but not in DB yet — return basic profile
+      return NextResponse.json({
+        id:    userId,
+        email: '',
+        tier:  'free',
+        summariesUsed:  0,
+        summariesLimit: 10,
+        ttsCharsUsed:   0,
+        ttsCharsLimit:  0,
+        paperCount:     0,
+        subscribed:     false,
+      })
+    }
 
     return NextResponse.json({
       id:             user.id,
@@ -42,6 +74,17 @@ export async function GET() {
     })
   } catch (err) {
     console.error('[GET /api/auth/me]', err)
-    return apiError('Internal server error')
+    // DB error — return basic profile so app still works
+    return NextResponse.json({
+      id:    userId,
+      email: '',
+      tier:  'free',
+      summariesUsed:  0,
+      summariesLimit: 10,
+      ttsCharsUsed:   0,
+      ttsCharsLimit:  0,
+      paperCount:     0,
+      subscribed:     false,
+    })
   }
 }

@@ -4748,6 +4748,14 @@
             if (currentIndex >= contentItems.length - 1) {
                 currentIndex = 0;
             }
+            // Stop HD Voice if running
+            if (typeof hdOn !== 'undefined' && hdOn) {
+                hdOn = false;
+                if (typeof stopHD === 'function') stopHD();
+                if (typeof updateBtn === 'function') updateBtn();
+            }
+            // Stop browser audio if running
+            if (typeof stopAudio === 'function') stopAudio();
 
             isPlaying = true;
             playBtn.querySelector('span').textContent = '⏸';
@@ -4763,6 +4771,12 @@
         function pause() {
             isPlaying = false;
             playBtn.querySelector('span').textContent = '▶';
+            // Pause HD Voice too
+            if (typeof hdOn !== 'undefined' && hdOn) {
+                hdOn = false;
+                if (typeof stopHD === 'function') stopHD();
+                if (typeof updateBtn === 'function') updateBtn();
+            }
             if (animationFrame) {
                 cancelAnimationFrame(animationFrame);
                 animationFrame = null;
@@ -6379,13 +6393,22 @@
         }
 
         async function playHD() {
-            // Get text from the app's own extractTextForAudio if available
+            // Read from current RSVP position to end of document
             let text = '';
-            if (typeof extractTextForAudio === 'function') text = extractTextForAudio();
-            if (!text.trim()) {
-                // fallback: grab all visible paragraph text in the reader
-                text = Array.from(document.querySelectorAll('.reader-text p, .reader-paragraph, .paper-text'))
-                            .map(el => el.textContent).join(' ');
+            try {
+                if (typeof contentItems !== 'undefined' && contentItems.length > 0) {
+                    const startIdx = typeof currentIndex !== 'undefined' ? currentIndex : 0;
+                    text = contentItems
+                        .slice(startIdx)
+                        .filter(i => i.type === 'text' || i.type === 'TEXT' || i.type === 0)
+                        .map(i => i.content || i.word || '')
+                        .join(' ')
+                        .trim();
+                }
+            } catch(e) {}
+            // Fallback to full paper text
+            if (!text.trim() && typeof extractTextForAudio === 'function') {
+                text = extractTextForAudio();
             }
             if (!text.trim()) { alert('No text found to read. Open a paper first.'); return; }
 
@@ -6462,7 +6485,15 @@
         function toggle() {
             if (!BACKEND && !hdKey) { showKeyPrompt(() => { hdOn=true; updateBtn(); playHD(); }); return; }
             hdOn = !hdOn; updateBtn();
-            if (hdOn) playHD(); else stopHD();
+            if (hdOn) {
+                // Stop RSVP reader
+                if (typeof pause === 'function' && isPlaying) pause();
+                // Stop browser TTS audio
+                if (typeof stopAudio === 'function') stopAudio();
+                playHD();
+            } else {
+                stopHD();
+            }
         }
 
         // Wire up once DOM is ready

@@ -1,65 +1,71 @@
 // app/api/summary/route.ts
 // POST /api/summary — generate a Claude section summary
-// Enforces per-tier limits, caches results in DB
+// Works with or without DB (graceful fallback for early deployment)
 
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
-import { prisma } from '@/lib/prisma'
-import { getAuthUserId, apiError } from '@/lib/auth'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-const SUMMARY_LIMITS: Record<string, number> = {
-  FREE:    10,
-  STUDENT: 100,
-  PRO:     Infinity,
-  BETA:    Infinity,
+function apiError(message: string, status = 500) {
+  return NextResponse.json({ error: message }, { status })
 }
 
 export async function POST(req: NextRequest) {
-  const result = await getAuthUserId()
-  if (result instanceof NextResponse) return result
-  const userId = result
-
   try {
     const { paperId, sectionIndex, sectionTitle, text } = await req.json()
 
-    if (!paperId || sectionIndex === undefined || !text?.trim()) {
-      return apiError('paperId, sectionIndex, and text are required', 400)
+    if (!text?.trim()) {
+      return apiError('text is required', 400)
     }
 
-    // Verify paper ownership
-    const paper = await prisma.paper.findFirst({ where: { id: paperId, userId } })
-    if (!paper) return apiError('Paper not found', 404)
-
-    // Check usage limits
-    const user = await prisma.user.findUnique({
-      where:  { id: userId },
-      select: { tier: true, summariesUsed: true, summariesLimit: true },
-    })
-    if (!user) return apiError('User not found', 404)
-
-    const limit = SUMMARY_LIMITS[user.tier] ?? 10
-    if (isFinite(limit) && user.summariesUsed >= limit) {
-      return apiError(
-        `Summary limit reached (${limit} for ${user.tier} plan). Upgrade for more.`,
-        403,
-      )
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return apiError('AI service not configured', 503)
     }
 
-    // Return cached summary if available
-    const cached = await prisma.summary.findUnique({
-      where: { paperId_sectionIndex: { paperId, sectionIndex } },
-    })
-    if (cached) {
-      return NextResponse.json({
-        summary: cached.content,
-        cached:  true,
-        usage:   { used: user.summariesUsed, limit: isFinite(limit) ? limit : null },
-      })
+    // ── Try DB cache and limits (non-blocking) ────────────────────────────────
+    let userId: string | null = null
+    let cachedSummary: string | null = null
+
+    try {
+      const { auth } = await import('@clerk/nextjs/server')
+      const session = await auth()
+      userId = session?.userId ?? null
+    } catch {}
+
+    try {
+      const { prisma } = await import('@/lib/prisma')
+
+      // Check cache
+      if (paperId && sectionIndex !== undefined) {
+        const cached = await prisma.summary.findUnique({
+          where: { paperId_sectionIndex: { paperId, sectionIndex } },
+        })
+        if (cached) {
+          return NextResponse.json({ summary: cached.content, cached: true })
+        }
+      }
+
+      // Check usage limit for signed-in users
+      if (userId) {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { tier: true, summariesUsed: true },
+        })
+        if (user) {
+          const LIMITS: Record<string, number> = { FREE: 10, STUDENT: 100, PRO: 999999, BETA: 999999 }
+          const limit = LIMITS[user.tier] ?? 10
+          if (user.summariesUsed >= limit) {
+            return apiError(`Summary limit reached (${limit} for ${user.tier} plan). Upgrade for more.`, 403)
+          }
+        }
+      }
+    } catch (dbErr) {
+      // DB not ready — allow summary to proceed
+      console.warn('[/api/summary] DB unavailable, proceeding without limits:', dbErr)
     }
 
-    // Generate with Claude
+    // ── Generate with Claude ──────────────────────────────────────────────────
+    const { default: Anthropic } = await import('@anthropic-ai/sdk')
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
     const prompt = `You are an expert academic research assistant helping a researcher understand a paper efficiently.
 
 Summarise the following section from a research paper${sectionTitle ? ` titled "${sectionTitle}"` : ''}.
@@ -83,29 +89,27 @@ ${text.slice(0, 8000)}
     })
 
     const summaryText = (message.content[0] as { text: string })?.text || ''
-    const tokensUsed  = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0)
 
-    // Store summary + increment usage atomically
-    const [summary] = await prisma.$transaction([
-      prisma.summary.create({
-        data: { paperId, userId, sectionIndex, sectionTitle: sectionTitle || null, content: summaryText, tokensUsed },
-      }),
-      prisma.user.update({
-        where: { id: userId },
-        data:  { summariesUsed: { increment: 1 } },
-      }),
-    ])
+    // ── Store to DB (non-blocking) ────────────────────────────────────────────
+    if (userId && paperId && sectionIndex !== undefined) {
+      try {
+        const { prisma } = await import('@/lib/prisma')
+        await prisma.$transaction([
+          prisma.summary.create({
+            data: { paperId, userId, sectionIndex, sectionTitle: sectionTitle || null, content: summaryText, tokensUsed: 0 },
+          }),
+          prisma.user.update({
+            where: { id: userId },
+            data: { summariesUsed: { increment: 1 } },
+          }),
+        ])
+      } catch {}
+    }
 
-    return NextResponse.json({
-      summary: summary.content,
-      cached:  false,
-      usage: {
-        used:  user.summariesUsed + 1,
-        limit: isFinite(limit) ? limit : null,
-      },
-    })
+    return NextResponse.json({ summary: summaryText, cached: false })
+
   } catch (err) {
     console.error('[POST /api/summary]', err)
-    return apiError('Failed to generate summary')
+    return apiError(`Failed to generate summary: ${err instanceof Error ? err.message : String(err)}`)
   }
 }

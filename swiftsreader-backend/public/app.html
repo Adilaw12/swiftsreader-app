@@ -3381,6 +3381,9 @@
             updateHeaderStats();
             updatePaperStats();
 
+            // Build document sections for summary tab
+            detectDocumentSections();
+
             showNotification(`📖 ${paper.title}`);
         }
 
@@ -6432,7 +6435,10 @@
                         showNotification('❌ HD Voice requires the live app at swiftsreader.com', 'error');
                         return;
                     }
-                    if (!resp.ok) throw new Error('TTS error ' + resp.status);
+                    if (!resp.ok) {
+                        const errBody = await resp.text().catch(() => '');
+                        throw new Error('TTS error ' + resp.status + (errBody ? ': ' + errBody.slice(0,200) : ''));
+                    }
                     const url = URL.createObjectURL(await resp.blob());
                     hdURLs.push(url);
                     hdAudio = new Audio(url);

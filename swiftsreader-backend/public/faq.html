@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ — SwiftsReader</title>
+    <meta name="description" content="Frequently asked questions about SwiftsReader — the ADHD and dyslexia-friendly academic reading tool.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --cyan: #00BCD4; --cyan-dark: #0097A7; --magenta: #E91E63;
+            --gray-900: #1A1A2E; --gray-700: #424242; --gray-600: #555;
+            --border: #E0E0E0;
+        }
+        body { font-family: 'Inter', sans-serif; background: #fff; color: var(--gray-700); line-height: 1.7; }
+        a { color: var(--cyan-dark); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        header { padding: 16px 0; position: sticky; top: 0; background: rgba(237,236,234,0.97); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 1000; }
+        .nav-container { max-width: 1280px; margin: 0 auto; padding: 0 40px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .logo img { width: 36px; height: 36px; border-radius: 8px; }
+        .logo-text { font-size: 20px; font-weight: 800; color: var(--gray-900); letter-spacing: -0.5px; }
+        .btn-primary { background: linear-gradient(135deg, var(--cyan) 0%, #26C6DA 100%); color: white; padding: 9px 20px; border-radius: 10px; font-weight: 600; font-size: 14px; text-decoration: none; }
+        .page-hero { background: #EDECEA; border-bottom: 1px solid var(--border); padding: 64px 0 48px; }
+        .container { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+        .breadcrumb { font-size: 13px; color: var(--gray-600); margin-bottom: 12px; }
+        .breadcrumb a { color: var(--cyan-dark); }
+        .page-hero h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 900; color: var(--gray-900); letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 12px; }
+        .page-hero p { font-size: 16px; color: var(--gray-600); }
+        .faq-body { padding: 56px 0 80px; }
+        .faq-category { margin-bottom: 48px; }
+        .faq-category-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--cyan-dark); margin-bottom: 16px; }
+        .faq-item { border-bottom: 1px solid var(--border); }
+        .faq-question {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 4px; cursor: pointer; font-size: 16px; font-weight: 600;
+            color: var(--gray-900); user-select: none; gap: 16px;
+        }
+        .faq-question:hover { color: var(--cyan-dark); }
+        .faq-chevron {
+            flex-shrink: 0; width: 24px; height: 24px; display: flex;
+            align-items: center; justify-content: center; border-radius: 50%;
+            background: #f0f0f0; font-size: 11px; transition: transform 0.3s;
+        }
+        .faq-item.open .faq-chevron { transform: rotate(180deg); background: rgba(0,188,212,0.15); color: var(--cyan-dark); }
+        .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1), padding 0.2s; font-size: 15px; color: var(--gray-700); line-height: 1.75; }
+        .faq-item.open .faq-answer { max-height: 400px; padding-bottom: 20px; }
+        .faq-answer-inner { padding: 0 4px; }
+        .faq-answer-inner a { color: var(--cyan-dark); }
+        .cta-strip { background: #EDECEA; border-radius: 16px; padding: 36px; text-align: center; margin-top: 16px; }
+        .cta-strip h3 { font-size: 22px; font-weight: 800; color: var(--gray-900); margin-bottom: 10px; }
+        .cta-strip p { color: var(--gray-600); margin-bottom: 20px; font-size: 15px; }
+        footer { background: var(--gray-900); color: rgba(255,255,255,0.6); padding: 32px 0; text-align: center; font-size: 13px; }
+        footer a { color: rgba(255,255,255,0.6); }
+        footer a:hover { color: var(--cyan); text-decoration: none; }
+        .footer-links { display: flex; justify-content: center; gap: 24px; margin-bottom: 12px; flex-wrap: wrap; }
+        @media (max-width: 640px) {
+            .nav-container { padding: 0 16px; }
+            nav a:not(.btn-primary) { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="nav-container">
+        <a href="/" class="logo">
+            <img src="data:image/jpeg;base64,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" alt="SwiftsReader">
+            <span class="logo-text">SwiftsReader</span>
+        </a>
+        <nav style="display:flex;gap:24px;align-items:center;">
+            <a href="/#features" style="font-size:14px;font-weight:500;color:var(--gray-700);text-decoration:none;">Features</a>
+            <a href="/#pricing" style="font-size:14px;font-weight:500;color:var(--gray-700);text-decoration:none;">Pricing</a>
+            <a href="/app" class="btn-primary">Get Started Free</a>
+        </nav>
+    </div>
+</header>
+
+<div class="page-hero">
+    <div class="container">
+        <p class="breadcrumb"><a href="/">Home</a> › FAQ</p>
+        <h1>Frequently Asked Questions</h1>
+        <p>Everything you need to know about SwiftsReader. Can't find an answer? <a href="/contact">Contact us</a>.</p>
+    </div>
+</div>
+
+<div class="faq-body">
+    <div class="container">
+
+        <!-- Product -->
+        <div class="faq-category">
+            <div class="faq-category-title">Product</div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">Is SwiftsReader actually designed for ADHD — or is that just marketing? <span class="faq-chevron">▼</span></div>
+                <div class="faq-answer"><div class="faq-answer-inner">Every feature traces back to peer-reviewed research. RSVP reading is backed by a 2025 PubMed study showing +13% comprehension in ADHD readers. Break reminders are grounded in Biwer et al. (2023) on Pomodoro-style intervals. Dyslexia mode implements the British Dyslexia Association's evidence-based typography guidelines. We publish our full research bibliography inside the app.</div></div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">Is SwiftsReader available now, or is it still in beta? <span class="faq-chevron">▼</span></div>
+                <div class="faq-answer"><div class="faq-answer-inner">SwiftsReader is live — open the app right now with a free account. No waitlist, no credit card. The free plan gives you 3 papers and 5 AI summaries per month. Paid plans unlock more papers, unlimited summaries, and HD Voice audio.</div></div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">Does it work on mobile? <span class="faq-chevron">▼</span></div>
+                <div class="faq-answer"><div class="faq-answer-inner">Yes — SwiftsReader runs in your mobile browser. The RSVP reader, AI summaries, and dyslexia mode all work on mobile. A dedicated iOS and Android app is on our roadmap.</div></div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">What file types does SwiftsReader support? <span class="faq-chevron">▼</span></div>
+                <div class="faq-answer"><div class="faq-answer-inner">Currently PDF is the primary format — which covers the vast majority of academic papers and research documents. You can also paste text directly. DOI and URL import is on the roadmap.</div></div>
+            </div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="faq-category">
+            <div class="faq-category-title">Pricing &amp; Plans</div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">What's the difference between the Free, Student, and Pro plans? <span class="faq-chevron">▼</span></div>
+                <div class="faq-answer"><div class="faq-answer-inner">
+                    <strong>Free</strong> — 3 papers, 5 AI summaries/month, all reading modes. No card needed.<br><br>
+                    <strong>Student ($7.99/mo)</strong> — 50 papers, unlimited AI summaries, HD Voice up to 60 min/month.<br><br>
+                    <strong>Pro ($15/mo)</strong> — unlimited papers, unlimited AI summaries, unlimited HD Voice, priority support, and early access to new features.
+                </div></div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">Can I cancel at any time? <span class="faq-chevron">▼</span></div>
+                <div class="faq-answer"><div class="faq-answer-inner">Yes — cancel any time from your account settings. Your plan stays active until the end of the billing period and you won't be charged again. No cancellation fees.</div></div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">I'm a researcher in India. Is pricing available in INR? <span class="faq-chevron">▼</span></div>
+                <div class="faq-answer"><div class="faq-answer-inner">INR pricing and local payment methods are coming soon — we know a large part of our user base is in India and we're committed to making SwiftsReader accessible. The free plan requires no payment at all. <a href="/contact">Contact us</a> if you'd like to discuss early access options.</div></div>
+            </div>
+        </div>
+
+        <!-- AI & Privacy -->
+        <div class="faq-category">
+            <div class="faq-category-title">AI &amp; Privacy</div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">How does the AI summarisation work? Is my paper data private? <span class="faq-chevron">▼</span></div>
+                <div class="faq-answer"><div class="faq-answer-inner">Summaries are generated using Claude (Anthropic's AI) via our secure backend. Your paper text is processed section-by-section to give you contextual summaries — not a generic abstract rewrite. We never sell your data, never use it to train AI models, and our full data practices are in our <a href="/privacy">Privacy Policy</a>.</div></div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">Are my uploaded papers stored permanently? <span class="faq-chevron">▼</span></div>
+                <div class="faq-answer"><div class="faq-answer-inner">Papers in your library are stored for as long as your account is active. You can delete any paper at any time. If you close your account, all your data is deleted within 30 days. See our <a href="/privacy">Privacy Policy</a> for full details.</div></div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">Does SwiftsReader comply with GDPR and CCPA? <span class="faq-chevron">▼</span></div>
+                <div class="faq-answer"><div class="faq-answer-inner">Yes. EU/EEA users are covered under GDPR — including rights to access, delete, and port your data. California users have full CCPA rights. We do not sell personal information to any third party. Full details are in our <a href="/privacy">Privacy Policy</a>.</div></div>
+            </div>
+        </div>
+
+        <!-- Audio -->
+        <div class="faq-category">
+            <div class="faq-category-title">Audio &amp; HD Voice</div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">How does the audio reader work? Is it robotic text-to-speech? <span class="faq-chevron">▼</span></div>
+                <div class="faq-answer"><div class="faq-answer-inner">Not at all. SwiftsReader uses Google Cloud's WaveNet neural TTS — one of the most natural-sounding voices available. As audio plays, each word highlights in sync so you can follow visually. This dual-channel input is particularly effective for dyslexic readers and dense academic content. HD Voice is available on Student and Pro plans.</div></div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">Can I use RSVP reading and audio at the same time? <span class="faq-chevron">▼</span></div>
+                <div class="faq-answer"><div class="faq-answer-inner">They are designed as separate modes — RSVP reading flashes words at a controlled speed for focused silent reading, while HD Voice reads the paper aloud. You can switch between them at any point in the paper and your position is preserved.</div></div>
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="cta-strip">
+            <h3>Still have a question?</h3>
+            <p>We read every message and typically reply within one business day.</p>
+            <a href="/contact" class="btn-primary" style="display:inline-block;padding:12px 28px;font-size:15px;">Contact us →</a>
+        </div>
+
+    </div>
+</div>
+
+<footer>
+    <div class="container" style="max-width:1280px;">
+        <div class="footer-links">
+            <a href="/">Home</a>
+            <a href="/faq">FAQ</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="/contact">Contact</a>
+            <a href="/app">Open App</a>
+        </div>
+        <p>&copy; 2026 Ten Labs Pty Ltd. SwiftsReader is a trademark of Ten Labs Pty Ltd.</p>
+    </div>
+</footer>
+
+<script>
+function toggleFaq(el) {
+    const item = el.parentElement;
+    const wasOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+    if (!wasOpen) item.classList.add('open');
+}
+</script>
+</body>
+</html>

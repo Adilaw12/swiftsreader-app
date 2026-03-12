@@ -4346,7 +4346,27 @@
         }
 
         // Update display
+        // Efficiently update just the highlight in paragraph view (no full re-render)
+        function _updateParagraphHighlight() {
+            const displayEl = document.querySelector('.reader-display');
+            if (!displayEl) return;
+            const view = displayEl.querySelector('.paragraph-view');
+            if (!view) { showParagraphView(); return; }
+            view.querySelectorAll('.para-word.current-word').forEach(w => w.classList.remove('current-word'));
+            const cur = view.querySelector(`.para-word[data-idx="${currentIndex}"]`);
+            if (cur) {
+                cur.classList.add('current-word');
+                cur.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
         function updateDisplay() {
+            // In paragraph mode, just update the highlight — never overwrite the paragraph view
+            if (readingMode === 'paragraph') {
+                _updateParagraphHighlight();
+                return;
+            }
+
             const displayEl = document.querySelector('.reader-display');
             const placeholder = displayEl.querySelector('.reader-placeholder');
             
@@ -6177,34 +6197,51 @@
         }
 
         async function playHD() {
-            // Read from current RSVP position to end of document
-            let text = '';
+            // Build word-indexed chunks so we can sync highlight to audio
+            const hdStartIdx = (typeof currentIndex !== 'undefined' ? currentIndex : 0);
+            let chunkMaps = []; // [{text, startContentIdx, wordCount}]
+
             try {
                 if (typeof contentItems !== 'undefined' && contentItems.length > 0) {
-                    const startIdx = typeof currentIndex !== 'undefined' ? currentIndex : 0;
-                    text = contentItems
-                        .slice(startIdx)
-                        .filter(i => i.type === 'text' || i.type === 'TEXT' || i.type === 0)
-                        .map(i => i.content || i.word || '')
-                        .join(' ')
-                        .trim();
+                    const textItems = [];
+                    for (let i = hdStartIdx; i < contentItems.length; i++) {
+                        const it = contentItems[i];
+                        if (it.type === 'text' || it.type === 'TEXT' || it.type === 0) {
+                            textItems.push({ word: it.content || it.word || '', idx: i });
+                        }
+                    }
+                    // Split into chunks, recording which contentItems each covers
+                    let cur = '', curStart = textItems[0] ? textItems[0].idx : hdStartIdx, curWords = 0;
+                    for (const twi of textItems) {
+                        if ((cur + ' ' + twi.word).length > 3000 && cur) {
+                            chunkMaps.push({ text: cur.trim(), startContentIdx: curStart, wordCount: curWords });
+                            cur = twi.word; curStart = twi.idx; curWords = 1;
+                        } else {
+                            cur += (cur ? ' ' : '') + twi.word;
+                            curWords++;
+                        }
+                    }
+                    if (cur.trim()) chunkMaps.push({ text: cur.trim(), startContentIdx: curStart, wordCount: curWords });
                 }
             } catch(e) {}
-            // Fallback to full paper text
-            if (!text.trim() && typeof extractTextForAudio === 'function') {
-                text = extractTextForAudio();
+
+            // Fallback: no contentItems, just play full text without sync
+            if (chunkMaps.length === 0) {
+                const fallback = typeof extractTextForAudio === 'function' ? extractTextForAudio() : '';
+                if (!fallback.trim()) { alert('No text found to read. Open a paper first.'); return; }
+                const rawChunks = chunk(fallback, 3000);
+                chunkMaps = rawChunks.map(function(t) { return { text: t, startContentIdx: -1, wordCount: 0 }; });
             }
-            if (!text.trim()) { alert('No text found to read. Open a paper first.'); return; }
 
             stopHD();
             hdAbort = new AbortController();
-            const chunks = chunk(text, 3000);
             let ci = 0;
 
             const next = async () => {
                 if (!hdAbort) return;  // stopped externally
-                if (ci >= chunks.length) { stopHD(); return; }
-                const ch = chunks[ci++];
+                if (ci >= chunkMaps.length) { stopHD(); return; }
+                const chunkInfo = chunkMaps[ci++];
+                const ch = chunkInfo.text;
                 try {
                     let resp;
                     if (BACKEND) {
@@ -6262,6 +6299,34 @@
                     hdAudio = new Audio(url);
                     const hdRate = parseFloat(window.audioSpeed) || 1;
                     hdAudio.playbackRate = isFinite(hdRate) ? Math.min(4, Math.max(0.25, hdRate)) : 1;
+
+                    // Sync highlight: estimate word position from audio progress
+                    if (chunkInfo.startContentIdx >= 0 && chunkInfo.wordCount > 0) {
+                        hdAudio.addEventListener('timeupdate', function() {
+                            if (!hdAudio || !hdAudio.duration) return;
+                            const pct = hdAudio.currentTime / hdAudio.duration;
+                            // Walk contentItems forward from chunk start, counting text items
+                            let textCount = 0;
+                            const targetCount = Math.floor(pct * chunkInfo.wordCount);
+                            for (let i = chunkInfo.startContentIdx; i < contentItems.length; i++) {
+                                const it = contentItems[i];
+                                if (it.type === 'text' || it.type === 'TEXT' || it.type === 0) {
+                                    if (textCount >= targetCount) {
+                                        if (currentIndex !== i) {
+                                            currentIndex = i;
+                                            updateStats();
+                                            if (readingMode === 'paragraph') {
+                                                _updateParagraphHighlight();
+                                            }
+                                        }
+                                        break;
+                                    }
+                                    textCount++;
+                                }
+                            }
+                        });
+                    }
+
                     hdAudio.onended = () => { URL.revokeObjectURL(url); next(); };
                     hdAudio.onerror = () => { URL.revokeObjectURL(url); if (hdAbort) next(); };
                     await hdAudio.play();

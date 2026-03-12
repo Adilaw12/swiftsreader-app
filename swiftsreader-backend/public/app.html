@@ -2717,10 +2717,33 @@
         // Save library
         function saveLibrary() {
             try {
-                localStorage.setItem('swiftsLibrary', JSON.stringify(library));
-                console.log('[Library] Saved');
+                // Strip extracted media (base64 images) before saving to localStorage
+                // to avoid QuotaExceededError. Media is re-extracted from text on open.
+                const toSave = library.map(p => {
+                    const { media, ...rest } = p;
+                    return rest;
+                });
+                localStorage.setItem('swiftsLibrary', JSON.stringify(toSave));
+                console.log('[Library] Saved', toSave.length, 'papers (media stripped for storage)');
             } catch (error) {
                 console.error('[Library] Failed to save:', error);
+                // If still failing (text itself too large), try without binary/long fields
+                try {
+                    const minimal = library.map(p => ({
+                        id: p.id, title: p.title, authors: p.authors,
+                        year: p.year, journal: p.journal, doi: p.doi,
+                        tags: p.tags, addedDate: p.addedDate,
+                        progress: p.progress, currentIndex: p.currentIndex,
+                        bookmarks: p.bookmarks, highlights: p.highlights,
+                        summaries: p.summaries, notes: p.notes,
+                        readingTime: p.readingTime, completed: p.completed,
+                        text: (p.text || '').substring(0, 500000) // cap at 500KB per paper
+                    }));
+                    localStorage.setItem('swiftsLibrary', JSON.stringify(minimal));
+                    console.warn('[Library] Saved minimal version (text truncated)');
+                } catch(e2) {
+                    console.error('[Library] Could not save even minimal library:', e2);
+                }
             }
         }
 
@@ -6050,7 +6073,15 @@
 
         function populateVoiceSelector() {
             const sel = document.getElementById('voiceSelector');
-            if (!sel) return;
+            if (!sel) {
+                // DOM not ready yet — retry after it is
+                if (document.readyState !== 'complete') {
+                    window.addEventListener('load', populateVoiceSelector, { once: true });
+                } else {
+                    setTimeout(populateVoiceSelector, 500);
+                }
+                return;
+            }
             const englishVoices = availableVoices.filter(v => v.lang.startsWith('en'));
             englishVoices.sort((a, b) => scoreVoice(b) - scoreVoice(a));
             const voiceList = englishVoices.length > 0 ? englishVoices : availableVoices;
@@ -6105,15 +6136,23 @@
         function buildVoiceSelectorUI() {
             // Voice selector + HD button are pre-rendered in #floatingAudioBar
             const sel = document.getElementById('voiceSelector');
-            if (!sel || sel.dataset.built) return;
-            sel.dataset.built = '1';
-            sel.addEventListener('change', (e) => {
-                selectedVoice = availableVoices.find(v => v.name === e.target.value) || null;
-                console.log('[Audio] Voice changed to:', selectedVoice?.name);
-                showNotification('🎤 Voice: ' + (selectedVoice?.name || 'default'), 'info');
-                if (isAudioPlaying) { pauseAudio(); setTimeout(playAudio, 200); }
-            });
-            populateVoiceSelector();
+            if (!sel) return;
+            if (!sel.dataset.built) {
+                sel.dataset.built = '1';
+                sel.addEventListener('change', (e) => {
+                    selectedVoice = availableVoices.find(v => v.name === e.target.value) || null;
+                    console.log('[Audio] Voice changed to:', selectedVoice?.name);
+                    showNotification('🎤 Voice: ' + (selectedVoice?.name || 'default'), 'info');
+                    if (isAudioPlaying) { pauseAudio(); setTimeout(playAudio, 200); }
+                });
+            }
+            // Always (re-)populate — voices may have loaded after first build
+            if (availableVoices.length > 0) {
+                populateVoiceSelector();
+            } else {
+                // Trigger another load attempt now that DOM is ready
+                loadVoices();
+            }
         }
 
         // ── Text extraction ─────────────────────────────────────────────────
@@ -7268,7 +7307,7 @@
         <button class="fab-hd" id="hdVoiceBtn" title="HD Voice — natural human voice">&#127897; HD</button>
         <div class="fab-divider"></div>
         <select class="fab-voice" id="voiceSelector" title="Choose voice">
-            <option>Loading voices…</option>
+            <option value="">Default voice</option>
         </select>
     </div>
 

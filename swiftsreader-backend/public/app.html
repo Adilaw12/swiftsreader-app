@@ -3466,336 +3466,47 @@
         // PDF EXTRACTION  (text + images + tables + equations)
         // ─────────────────────────────────────────────────────────────────────
         async function loadPDFText(file) {
-            // Ensure worker is configured even if CDN loaded after script ran
             if (typeof pdfjsLib === 'undefined') {
                 throw new Error('PDF library (pdf.js) failed to load. Check your internet connection.');
             }
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             let fullText = '';
-            let figureCount = 0, tableCount = 0, equationCount = 0;
-            const mediaItems = [];
 
-            // ── render all pages to canvas (scale 2 for quality) ───────────────
-            const pageCanvases = [];
+            showNotification(`📄 Reading ${pdf.numPages} pages…`);
+
             for (let i = 1; i <= pdf.numPages; i++) {
                 try {
-                    const page    = await pdf.getPage(i);
-                    const vp      = page.getViewport({ scale: 2 });
-                    const canvas  = document.createElement('canvas');
-                    canvas.width  = vp.width;
-                    canvas.height = vp.height;
-                    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-                    pageCanvases.push({ pageNum: i, canvas, vp, page });
+                    const page = await pdf.getPage(i);
+                    const tc   = await page.getTextContent();
+
+                    // Group items into lines by Y position
+                    const lineMap = {};
+                    for (const item of tc.items) {
+                        const ky = Math.round(item.transform[5] / 4) * 4;
+                        (lineMap[ky] = lineMap[ky] || []).push(item);
+                    }
+                    const lines = Object.entries(lineMap)
+                        .sort((a, b) => parseFloat(b[0]) - parseFloat(a[0]))
+                        .map(([, items]) =>
+                            items.sort((a, b) => a.transform[4] - b.transform[4])
+                                 .map(it => it.str).join(' ').trim()
+                        )
+                        .filter(l => l.length > 0);
+
+                    fullText += lines.join('\n') + '\n\n';
                 } catch (err) {
-                    console.warn('[PDF] render failed page', i, err);
-                    pageCanvases.push(null);
+                    console.warn('[PDF] page', i, 'failed:', err);
                 }
             }
 
-            // ── extract text + detect captions ────────────────────────────────
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page       = await pdf.getPage(i);
-                const tc         = await page.getTextContent();
-                const pageItems  = tc.items.map(it => ({
-                    str : it.str,
-                    x   : it.transform[4],
-                    y   : it.transform[5],
-                    w   : it.width,
-                    h   : Math.abs(it.height) || 10,
-                    bold: (it.fontName || '').toLowerCase().includes('bold')
-                }));
-
-                // group into lines by Y (±4 pt tolerance)
-                const lineMap = {};
-                for (const it of pageItems) {
-                    const ky = Math.round(it.y / 4) * 4;
-                    (lineMap[ky] = lineMap[ky] || []).push(it);
-                }
-                const lines = Object.entries(lineMap)
-                    .sort((a, b) => parseFloat(b[0]) - parseFloat(a[0])) // top→bottom
-                    .map(([y, items]) => ({
-                        y    : parseFloat(y),
-                        text : items.sort((a, b) => a.x - b.x).map(it => it.str).join(' ').trim(),
-                        items: items.sort((a, b) => a.x - b.x)
-                    }))
-                    .filter(l => l.text.length > 0);
-
-                const pcd = pageCanvases[i - 1]; // {canvas, vp, page}
-
-                // helper: PDF-point Y → canvas Y (PDF is bottom-up, canvas top-down)
-                const toCanvasY = (pdfY) => {
-                    if (!pcd) return 0;
-                    // viewport.height is in CSS px at the given scale
-                    // pdfY is in PDF user-space points
-                    return pcd.vp.height - pdfY * pcd.vp.scale;
-                };
-
-                // helper: crop a band from a page canvas
-                const cropBand = (topY, botY) => {
-                    if (!pcd) return null;
-                    const y0 = Math.max(0, Math.round(topY));
-                    const y1 = Math.min(pcd.canvas.height, Math.round(botY));
-                    if (y1 - y0 < 20) return null;
-                    const crop = document.createElement('canvas');
-                    crop.width  = pcd.canvas.width;
-                    crop.height = y1 - y0;
-                    crop.getContext('2d').drawImage(pcd.canvas, 0, y0, crop.width, y1 - y0, 0, 0, crop.width, y1 - y0);
-                    return crop.toDataURL('image/jpeg', 0.88);
-                };
-
-                const figPat = [
-                    /^(Figure|Fig\.?)\s*(\d+[a-z]?)[.:\-–—\s]/i,
-                    /^(Fig\.?)\s*(\d+[a-z]?)\s*\./i,
-                ];
-                const tblPat = [
-                    /^Table\s*(\d+)[.:\-–—\s]/i,
-                    /^TABLE\s*(\d+)[.:\-–—\s]/,
-                ];
-                // Lines that look like table headings but are actually section headers
-                const skipPat = [
-                    /^references?\s*$/i,
-                    /^bibliography\s*$/i,
-                    /^appendix\s*/i,
-                    /^acknowledgements?\s*$/i,
-                    /^table of contents\s*$/i,
-                ];
-                const eqPat = [
-                    /^(Equation|Eq\.?)\s*(\d+)[.:\-–—\s]/i,
-                    /^\(\s*(\d+)\s*\)\s*$/,
-                ];
-                const mathDensity = s =>
-                    (s.match(/[=∑∫∂∇×·÷√∞±≈≤≥α-ωΑ-Ω\^_{}\\]/g) || []).length / Math.max(s.length, 1);
-
-                for (let li = 0; li < lines.length; li++) {
-                    const { y: lineY, text, items: lineItems } = lines[li];
-                    let hit = false;
-
-                    // Skip known non-figure/table patterns
-                    if (skipPat.some(p => p.test(text.trim()))) continue;
-
-                    // ── Figure caption ───────────────────────────────────────
-                    for (const pat of figPat) {
-                        if (pat.test(text)) {
-                            figureCount++;
-                            // Caption is at lineY. Figure body is ABOVE caption
-                            // (from previous line's top to this caption's top).
-                            const captionTop = toCanvasY(lineY + (lineItems[0]?.h || 10));
-                            // Look back for the last non-caption line to find figure top
-                            // Walk back further to find real figure top
-                            let figTopPdfY = lineY + 400;
-                            if (li > 0) {
-                                for (let k = li - 1; k >= Math.max(0, li - 20); k--) {
-                                    const prevText = lines[k].text.trim();
-                                    // Stop at previous caption, heading or large vertical gap
-                                    if (/^(figure|fig\.|table|abstract|introduction|references?)/i.test(prevText)) {
-                                        figTopPdfY = lines[k].y - 10;
-                                        break;
-                                    }
-                                    // Large gap (>60pts) signals start of figure
-                                    if (k < li - 1 && (lines[k+1].y - lines[k].y) > 60) {
-                                        figTopPdfY = lines[k].y;
-                                        break;
-                                    }
-                                    figTopPdfY = lines[k].y;
-                                }
-                            }
-                            const figTop = toCanvasY(figTopPdfY + 10);
-                            const img    = cropBand(Math.min(figTop, captionTop - 10), captionTop);
-
-                            fullText += `\n[FIGURE_${figureCount}]\n`;
-                            mediaItems.push({
-                                type: 'figure', number: figureCount,
-                                caption: text, image: img, pageNumber: i
-                            });
-                            hit = true; break;
-                        }
-                    }
-                    if (hit) continue;
-
-                    // ── Table caption ────────────────────────────────────────
-                    for (const pat of tblPat) {
-                        if (pat.test(text)) {
-                            tableCount++;
-                            const captionY = toCanvasY(lineY);
-                            // Look ahead to find end of table (next caption or large gap)
-                            let tableBotPdfY = lineY - 400; // default 400pts below caption
-                            for (let k = li + 1; k < Math.min(li + 15, lines.length); k++) {
-                                const nextText = lines[k].text.trim();
-                                // Stop at next figure/table caption or references
-                                if (/^(figure|fig\.|table|references?|bibliography)/i.test(nextText)) {
-                                    tableBotPdfY = lines[k].y;
-                                    break;
-                                }
-                                tableBotPdfY = lines[k].y;
-                            }
-                            const captionBot = captionY + 4;
-                            const tableBot   = Math.min(
-                                toCanvasY(tableBotPdfY - 10),
-                                pcd?.canvas.height || 9999
-                            );
-                            const img = cropBand(captionBot, Math.max(captionBot + 80, tableBot));
-
-                            fullText += `\n[TABLE_${tableCount}]\n`;
-                            mediaItems.push({
-                                type: 'table', number: tableCount,
-                                caption: text, image: img, pageNumber: i,
-                                content: ''
-                            });
-                            hit = true; break;
-                        }
-                    }
-                    if (hit) continue;
-
-                    // ── Equation ─────────────────────────────────────────────
-                    for (const pat of eqPat) {
-                        if (pat.test(text)) {
-                            equationCount++;
-                            fullText += `\n[EQUATION_${equationCount}]\n`;
-                            mediaItems.push({
-                                type: 'equation', number: equationCount,
-                                caption: `Equation ${equationCount}`,
-                                latex: text, pageNumber: i
-                            });
-                            hit = true; break;
-                        }
-                    }
-                    if (hit) continue;
-
-                    // math-dense short line → equation
-                    if (text.length < 120 && mathDensity(text) > 0.22) {
-                        equationCount++;
-                        fullText += `\n[EQUATION_${equationCount}]\n`;
-                        mediaItems.push({
-                            type: 'equation', number: equationCount,
-                            caption: `Equation ${equationCount}`,
-                            latex: text, pageNumber: i
-                        });
-                        continue;
-                    }
-                }
-
-                // ── structured table extraction for this page ─────────────
-                const pageTables = extractPageTables(pageItems, i, tableCount, pcd, toCanvasY, cropBand);
-                for (const tbl of pageTables) {
-                    // avoid duplicates from caption-based detection
-                    const alreadyCovered = mediaItems.some(
-                        m => m.type === 'table' && m.pageNumber === i
-                            && Math.abs((m.tableY || 0) - (tbl.tableY || 0)) < 50
-                    );
-                    if (!alreadyCovered) {
-                        tableCount++;
-                        tbl.number = tableCount;
-                        mediaItems.push(tbl);
-                    }
-                }
-
-                fullText += lines.map(l => l.text).join('\n') + '\n\n';
-            }
-
-            console.log(`[PDF] Extracted: ${figureCount} figs, ${tableCount} tables, ${equationCount} eqs`);
-            return { text: fullText, media: mediaItems };
+            console.log(`[PDF] Extracted ${fullText.length} chars from ${pdf.numPages} pages`);
+            return { text: fullText.trim(), media: [] };
         }
 
-        // Detect grid-structured tables within a single page's text items
-        function extractPageTables(items, pageNum, tableCountSoFar, pcd, toCanvasY, cropBand) {
-            if (!items.length) return [];
-            const tables = [];
-
-            // Group items into rows by Y (±3 pt)
-            const rowMap = {};
-            for (const it of items) {
-                if (!it.str || !it.str.trim()) continue;
-                const ky = Math.round(it.y / 3) * 3;
-                (rowMap[ky] = rowMap[ky] || []).push(it);
-            }
-            const allRows = Object.entries(rowMap)
-                .sort((a, b) => parseFloat(b[0]) - parseFloat(a[0]))
-                .map(([y, its]) => ({
-                    y    : parseFloat(y),
-                    items: its.sort((a, b) => a.x - b.x),
-                    cols : its.length
-                }));
-
-            // A "table-like" row has ≥3 items with consistent column alignment
-            // Slide a window: need ≥4 consecutive rows all having ≥3 items
-            let runStart = -1, run = [];
-            const flushRun = () => {
-                if (run.length < 4) { run = []; runStart = -1; return; }
-
-                // Verify column alignment: at least 3 x-positions repeat across ≥60% of rows
-                const xFreq = {};
-                run.forEach(row => row.items.forEach(it => {
-                    const rx = Math.round(it.x / 8) * 8;
-                    xFreq[rx] = (xFreq[rx] || 0) + 1;
-                }));
-                const minFreq = Math.ceil(run.length * 0.55);
-                const colXs = Object.entries(xFreq)
-                    .filter(([, c]) => c >= minFreq)
-                    .map(([x]) => parseFloat(x))
-                    .sort((a, b) => a - b);
-
-                if (colXs.length < 2) { run = []; runStart = -1; return; }
-
-                // Build cell data
-                const tableData = run.map(row => {
-                    return colXs.map((cx, ci) => {
-                        const nextCx = colXs[ci + 1] ?? Infinity;
-                        return row.items
-                            .filter(it => it.x >= cx - 12 && it.x < nextCx - 4)
-                            .map(it => it.str)
-                            .join(' ')
-                            .trim();
-                    });
-                });
-
-                // Skip if >60% of cells are empty (not a real table)
-                const totalCells = tableData.flat().length;
-                const emptyCells = tableData.flat().filter(c => !c).length;
-                if (emptyCells / totalCells > 0.6) { run = []; runStart = -1; return; }
-
-                // Crop image of the table region
-                const topY = run[0].y, botY = run[run.length - 1].y;
-                const img  = cropBand(
-                    Math.max(0, toCanvasY(topY + 20) - 6),
-                    toCanvasY(botY) + 10
-                );
-
-                const headerRow = tableData[0];
-                const dataRows  = tableData.slice(1);
-                tables.push({
-                    type      : 'table',
-                    number    : tableCountSoFar + tables.length + 1,
-                    caption   : 'Table: ' + headerRow.filter(Boolean).join(' | '),
-                    pageNumber: pageNum,
-                    tableY    : topY,
-                    image     : img,
-                    headers   : headerRow,
-                    rows      : dataRows,
-                    html      : generateTableHTML(headerRow, dataRows),
-                    content   : ''
-                });
-
-                run = []; runStart = -1;
-            };
-
-            for (const row of allRows) {
-                if (row.cols >= 3) {
-                    run.push(row);
-                } else {
-                    flushRun();
-                }
-            }
-            flushRun();
-
-            return tables;
-        }
-
-        // ─────────────────────────────────────────────────────────────────────
-        // DOCX EXTRACTION  (text + images + tables)
-        // ─────────────────────────────────────────────────────────────────────
-        async function loadDOCXText(file) {
+                async function loadDOCXText(file) {
             const arrayBuffer = await file.arrayBuffer();
             const mediaItems  = [];
             let figureCount   = 0;

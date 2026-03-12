@@ -1900,6 +1900,254 @@
             .rsvp-word { font-size: 44px; }
             .hz-player { bottom: 84px; } /* above mobile nav */
         }
+
+        /* ═══ HERO SLIDESHOW ═══ */
+        .hero-slideshow {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .hs-track {
+            display: flex;
+            transition: transform 0.55s cubic-bezier(0.77, 0, 0.175, 1);
+            will-change: transform;
+        }
+
+        .hs-slide {
+            min-width: 100%;
+            padding: 120px 0 80px;
+            position: relative;
+        }
+
+        .hs-bg {
+            position: absolute; inset: 0; pointer-events: none; z-index: 0;
+        }
+
+        /* Inner grid — same as old hero-grid */
+        .hs-slide > .hs-content,
+        .hs-slide > .hs-visual {
+            position: relative; z-index: 1;
+        }
+
+        .hs-slide {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr;
+            gap: 48px;
+            align-items: center;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 120px 64px 80px;
+            box-sizing: border-box;
+        }
+
+        /* Badge */
+        .hs-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 13px; font-weight: 600;
+            padding: 7px 14px; border-radius: 20px;
+            border: 1px solid;
+            margin-bottom: 24px;
+        }
+
+        /* Headline */
+        .hs-h1 {
+            font-size: clamp(36px, 5vw, 60px);
+            font-weight: 900; line-height: 1.08;
+            letter-spacing: -2px;
+            color: var(--gray-900);
+            margin-bottom: 20px;
+        }
+        .hs-grad-cyan {
+            background: linear-gradient(135deg, var(--cyan) 0%, #0097A7 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .hs-grad-magenta {
+            background: linear-gradient(135deg, var(--magenta) 0%, #880E4F 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .hs-grad-yellow {
+            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+
+        /* Subtext */
+        .hs-sub {
+            font-size: 18px; color: var(--gray-700);
+            line-height: 1.6; margin-bottom: 32px;
+            max-width: 520px;
+        }
+
+        .hs-cta-row { margin-bottom: 16px; }
+
+        .hs-proof {
+            font-size: 13px; color: var(--gray-700);
+        }
+        .hs-proof .hero-proof-stat {
+            font-weight: 800; color: var(--cyan-dark); font-size: 15px;
+        }
+
+        /* ── Clock Card ── */
+        .hs-clock-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+            text-align: center;
+            max-width: 280px;
+            margin: 0 auto;
+        }
+        .hs-clock-label {
+            font-size: 12px; font-weight: 600; color: var(--gray-700);
+            letter-spacing: 1px; text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+        .hs-clock-ring {
+            position: relative; width: 120px; height: 120px;
+            margin: 0 auto 16px;
+        }
+        .hs-clock-ring svg { width:120px; height:120px; }
+        .hs-clock-inner {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .hs-clock-time { font-size: 24px; font-weight: 800; color: var(--cyan-dark); line-height:1; }
+        .hs-clock-unit { font-size: 11px; color: var(--gray-700); margin-top: 2px; }
+        .hs-clock-stats {
+            display: flex; justify-content: space-around;
+            border-top: 1px solid var(--border); padding-top: 16px;
+        }
+        .hs-cs-val { display:block; font-size:18px; font-weight:800; color:var(--gray-900); }
+        .hs-cs-lbl { display:block; font-size:11px; color:var(--gray-700); }
+
+        @keyframes hs-dash {
+            from { stroke-dashoffset: 326.7; }
+            to   { stroke-dashoffset: 98; }
+        }
+
+        /* ── RSVP Card ── */
+        .hs-rsvp-card {
+            background: white; border: 1px solid var(--border);
+            border-radius: 20px; padding: 28px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+            max-width: 300px; margin: 0 auto; text-align: center;
+        }
+        .hs-rsvp-label { font-size: 11px; font-weight: 600; color: var(--gray-700); text-transform:uppercase; letter-spacing:1px; margin-bottom:20px; }
+        .hs-rsvp-word {
+            font-size: 38px; font-weight: 900; color: var(--gray-900);
+            letter-spacing: -1px; min-height: 52px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 16px;
+        }
+        .hs-rsvp-rail {
+            height: 4px; background: var(--border); border-radius: 2px;
+            overflow: hidden; margin-bottom: 16px;
+        }
+        .hs-rsvp-fill {
+            height: 100%; width: 0%;
+            background: var(--magenta); border-radius: 2px;
+        }
+        @keyframes hs-fill {
+            0%   { width:0%; }
+            80%  { width:100%; }
+            100% { width:100%; }
+        }
+        .hs-rsvp-stats {
+            display: flex; justify-content: space-between;
+            font-size: 12px; color: var(--gray-700); font-weight: 600;
+        }
+
+        /* ── Summary Card ── */
+        .hs-summary-card {
+            background: white; border: 1px solid var(--border);
+            border-radius: 20px; padding: 24px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+            max-width: 320px; margin: 0 auto;
+        }
+        .hs-summary-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 14px;
+        }
+        .hs-summary-tag { font-size: 12px; font-weight: 700; color: var(--cyan-dark); }
+        .hs-summary-badge {
+            font-size: 10px; font-weight: 700;
+            background: rgba(0,188,212,0.1); color: var(--cyan-dark);
+            padding: 2px 8px; border-radius: 10px;
+        }
+        .hs-summary-body {
+            font-size: 13px; color: var(--gray-700); line-height: 1.7;
+            margin-bottom: 16px; border-left: 3px solid #FFC107; padding-left: 12px;
+        }
+        .hs-summary-footer {
+            font-size: 12px; font-weight: 600; color: var(--cyan-dark);
+            cursor: pointer;
+        }
+
+        /* ── Feature Grid Card ── */
+        .hs-feature-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 12px; max-width: 300px; margin: 0 auto;
+        }
+        .hs-feat {
+            background: white; border: 1px solid var(--border);
+            border-radius: 14px; padding: 16px 14px;
+            display: flex; align-items: center; gap: 10px;
+            font-size: 13px; font-weight: 600; color: var(--gray-900);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+        }
+        .hs-feat-icon { font-size: 20px; flex-shrink: 0; }
+
+        /* ── Arrows ── */
+        .hs-arrow {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            z-index: 10; background: white; border: 1px solid var(--border);
+            border-radius: 50%; width: 44px; height: 44px;
+            font-size: 18px; cursor: pointer; color: var(--gray-900);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            transition: all 0.2s; line-height: 1;
+        }
+        .hs-arrow:hover { background: var(--cyan); color: white; border-color: var(--cyan); }
+        .hs-prev { left: 20px; }
+        .hs-next { right: 20px; }
+
+        /* ── Dots ── */
+        .hs-dots {
+            position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 8px; z-index: 10;
+        }
+        .hs-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--border); border: none; cursor: pointer;
+            padding: 0; transition: all 0.3s;
+        }
+        .hs-dot.active { width: 24px; border-radius: 4px; background: var(--cyan); }
+
+        /* ── Counter ── */
+        .hs-counter {
+            position: absolute; bottom: 26px; right: 32px;
+            font-size: 12px; font-weight: 600; color: var(--gray-700);
+            z-index: 10;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .hs-slide {
+                grid-template-columns: 1fr;
+                padding: 100px 24px 80px;
+                gap: 32px;
+            }
+            .hs-visual { display: none; }
+            .hs-h1 { font-size: clamp(32px, 7vw, 48px); }
+            .hs-sub { font-size: 16px; }
+            .hs-prev { left: 8px; }
+            .hs-next { right: 8px; }
+        }
     </style>
 </head>
 <body>
@@ -1920,57 +2168,137 @@
         </div>
     </header>
 
-    <section class="hero">
-        <div class="container">
-            <div class="hero-grid">
-                <div class="hero-content">
-                    <div class="hero-badge">
-                        <img src="data:image/jpeg;base64,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" alt="Swift">
-                        Built for Neurodivergent Academics
+    <!-- ═══ HERO POSTER SLIDESHOW ═══ -->
+    <section class="hero-slideshow" id="hero">
+        <!-- Slide track -->
+        <div class="hs-track" id="hsTrack">
+
+            <!-- SLIDE 1 — Time Blindness -->
+            <div class="hs-slide" data-accent="#00BCD4">
+                <div class="hs-bg" style="background:radial-gradient(ellipse at 70% 40%, rgba(0,188,212,0.12) 0%, transparent 65%);"></div>
+                <div class="hs-content">
+                    <div class="hs-badge" style="color:var(--cyan);border-color:rgba(0,188,212,0.3);background:rgba(0,188,212,0.08);">⏳ Time Blindness</div>
+                    <h1 class="hs-h1">You sat down to read<br><span class="hs-grad-cyan">one paper.</span><br>Three hours vanished.</h1>
+                    <p class="hs-sub">Your brain isn't broken — it experiences time differently. SwiftsReader shows you exactly where you are, how long you've been reading, and reminds you before time disappears.</p>
+                    <div class="hs-cta-row">
+                        <a href="/app" class="btn btn-primary" style="padding:16px 32px;font-size:17px;display:inline-block;text-decoration:none;">Try Free — No Card Needed →</a>
                     </div>
-                    <h1>
-                        Finally — academic reading<br>
-                        <span class="gradient">that works for your brain.</span>
-                    </h1>
-                    <p class="tagline">
-                        RSVP reading, AI summaries, and focus tools built for ADHD and dyslexia — not bolted on as an afterthought.
-                    </p>
-                    <div class="hero-cta">
-                        <a href="/app" class="btn btn-primary" style="padding: 18px 36px; font-size: 18px; display: inline-block; text-decoration: none; letter-spacing: -0.2px;">
-                            Try Free — No Card Needed →
-                        </a>
-                    </div>
-                    <div class="hero-social-proof">
-                        <span class="hero-proof-stat">270+</span> researchers already using it &nbsp;·&nbsp; Free plan · No credit card
-                    </div>
-                    <div class="hero-features">
-                        <div class="hero-feature">⚡ RSVP Reading</div>
-                        <div class="hero-feature">🎧 AudioReader</div>
-                        <div class="hero-feature">🧠 AI Summaries</div>
-                        <div class="hero-feature">🎨 Dyslexia Modes</div>
-                        <div class="hero-feature">Smart break reminders</div>
-                        <div class="hero-feature">Visual progress tracking</div>
-                    </div>
+                    <div class="hs-proof"><span class="hero-proof-stat">270+</span> researchers already using it &nbsp;·&nbsp; Free plan</div>
                 </div>
-                <div class="hero-visual">
-                    <div class="demo-card">
-                        <img src="data:image/jpeg;base64,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" alt="SwiftsReader" class="demo-logo">
-                        <div class="demo-label">Reading in Progress</div>
-                        <div class="demo-text">neurodivergent<br>academics</div>
-                        <div class="demo-progress">
-                            <div class="demo-progress-fill"></div>
+                <div class="hs-visual">
+                    <div class="hs-clock-card">
+                        <div class="hs-clock-label">Session Timer</div>
+                        <div class="hs-clock-ring">
+                            <svg viewBox="0 0 120 120">
+                                <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(0,188,212,0.15)" stroke-width="5"/>
+                                <circle cx="60" cy="60" r="52" fill="none" stroke="#00BCD4" stroke-width="5"
+                                    stroke-dasharray="326.7" stroke-dashoffset="98"
+                                    stroke-linecap="round" transform="rotate(-90 60 60)"
+                                    style="animation:hs-dash 2s ease forwards 0.6s;"/>
+                            </svg>
+                            <div class="hs-clock-inner"><span class="hs-clock-time">1:47</span><span class="hs-clock-unit">of 2 hrs</span></div>
                         </div>
-                        <div class="demo-stats">
-                            <span>73% Complete</span>
-                            <span>350 WPM</span>
+                        <div class="hs-clock-stats">
+                            <div><span class="hs-cs-val">73%</span><span class="hs-cs-lbl">Complete</span></div>
+                            <div><span class="hs-cs-val">6 min</span><span class="hs-cs-lbl">Remaining</span></div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- SLIDE 2 — No Eye Drift -->
+            <div class="hs-slide" data-accent="#E91E63">
+                <div class="hs-bg" style="background:radial-gradient(ellipse at 30% 60%, rgba(233,30,99,0.10) 0%, transparent 65%);"></div>
+                <div class="hs-content">
+                    <div class="hs-badge" style="color:var(--magenta);border-color:rgba(233,30,99,0.3);background:rgba(233,30,99,0.08);">👁 No Eye Drift</div>
+                    <h1 class="hs-h1">Stop losing your place<br>every <span class="hs-grad-magenta">single line.</span></h1>
+                    <p class="hs-sub">RSVP reading delivers one word at a time to a fixed focal point. No scanning. No backtracking. No re-reading the same sentence for the fourth time. Just comprehension.</p>
+                    <div class="hs-cta-row">
+                        <a href="/app" class="btn btn-primary" style="padding:16px 32px;font-size:17px;display:inline-block;text-decoration:none;">Try Free — No Card Needed →</a>
+                    </div>
+                    <div class="hs-proof"><span class="hero-proof-stat">+13%</span> comprehension in ADHD readers (PubMed, 2025)</div>
+                </div>
+                <div class="hs-visual">
+                    <div class="hs-rsvp-card">
+                        <div class="hs-rsvp-label">RSVP Focus Reader</div>
+                        <div class="hs-rsvp-word" id="hsRsvpWord">executive</div>
+                        <div class="hs-rsvp-rail">
+                            <div class="hs-rsvp-fill" style="animation:hs-fill 4s linear infinite;"></div>
+                        </div>
+                        <div class="hs-rsvp-stats">
+                            <span>350 WPM</span><span>47% done</span><span>6 min left</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 3 — Space to Think -->
+            <div class="hs-slide" data-accent="#FFC107">
+                <div class="hs-bg" style="background:radial-gradient(ellipse at 65% 30%, rgba(255,193,7,0.10) 0%, transparent 65%);"></div>
+                <div class="hs-content">
+                    <div class="hs-badge" style="color:#E6A800;border-color:rgba(255,193,7,0.3);background:rgba(255,193,7,0.08);">🧠 Space to Think</div>
+                    <h1 class="hs-h1">A paper that reads<br>itself. <span class="hs-grad-yellow">You just think.</span></h1>
+                    <p class="hs-sub">AI summaries distil every section to 80–120 words before you commit to reading it. Know what matters. Skip what doesn't. Your mental energy goes to insight, not parsing.</p>
+                    <div class="hs-cta-row">
+                        <a href="/app" class="btn btn-primary" style="padding:16px 32px;font-size:17px;display:inline-block;text-decoration:none;">Try Free — No Card Needed →</a>
+                    </div>
+                    <div class="hs-proof"><span class="hero-proof-stat">3×</span> faster paper processing with AI-assisted summaries</div>
+                </div>
+                <div class="hs-visual">
+                    <div class="hs-summary-card">
+                        <div class="hs-summary-header">
+                            <span class="hs-summary-tag">✨ AI Summary — §3 Methods</span>
+                            <span class="hs-summary-badge">Cached</span>
+                        </div>
+                        <div class="hs-summary-body">The study recruited 84 adults diagnosed with ADHD and applied a randomised within-subject RSVP protocol. Participants read matched passages at their self-selected pace. Comprehension was assessed via recall scoring and reaction-time measures…</div>
+                        <div class="hs-summary-footer">📖 Go to §3 in paper</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 4 — Read Like a Swift -->
+            <div class="hs-slide" data-accent="#00BCD4">
+                <div class="hs-bg" style="background:radial-gradient(ellipse at 50% 50%, rgba(0,188,212,0.08) 0%, transparent 60%), radial-gradient(ellipse at 90% 10%, rgba(233,30,99,0.06) 0%, transparent 50%);"></div>
+                <div class="hs-content">
+                    <div class="hs-badge" style="color:var(--cyan);border-color:rgba(0,188,212,0.3);background:rgba(0,188,212,0.08);">🐦 Read Like a Swift</div>
+                    <h1 class="hs-h1">Fast. Focused.<br><span class="hs-grad-cyan">Unstoppable.</span></h1>
+                    <p class="hs-sub">Built for ADHD and dyslexic academics from the ground up. Every feature traces back to peer-reviewed research — not bolted-on accessibility afterthoughts.</p>
+                    <div class="hs-cta-row">
+                        <a href="/app" class="btn btn-primary" style="padding:16px 32px;font-size:17px;display:inline-block;text-decoration:none;">Try Free — No Card Needed →</a>
+                    </div>
+                    <div class="hs-proof"><span class="hero-proof-stat">270+</span> researchers already using it &nbsp;·&nbsp; Free plan</div>
+                </div>
+                <div class="hs-visual">
+                    <div class="hs-feature-grid">
+                        <div class="hs-feat"><span class="hs-feat-icon">⚡</span><span>RSVP Reading</span></div>
+                        <div class="hs-feat"><span class="hs-feat-icon">🧠</span><span>AI Summaries</span></div>
+                        <div class="hs-feat"><span class="hs-feat-icon">🎧</span><span>HD Voice</span></div>
+                        <div class="hs-feat"><span class="hs-feat-icon">🎨</span><span>Dyslexia Mode</span></div>
+                        <div class="hs-feat"><span class="hs-feat-icon">⏱</span><span>Break Timers</span></div>
+                        <div class="hs-feat"><span class="hs-feat-icon">📊</span><span>Progress Tracking</span></div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /hs-track -->
+
+        <!-- Prev / Next arrows -->
+        <button class="hs-arrow hs-prev" id="hsPrev" aria-label="Previous">&#8592;</button>
+        <button class="hs-arrow hs-next" id="hsNext" aria-label="Next">&#8594;</button>
+
+        <!-- Dot indicators -->
+        <div class="hs-dots" id="hsDots">
+            <button class="hs-dot active" data-idx="0"></button>
+            <button class="hs-dot" data-idx="1"></button>
+            <button class="hs-dot" data-idx="2"></button>
+            <button class="hs-dot" data-idx="3"></button>
         </div>
+
+        <!-- Slide counter -->
+        <div class="hs-counter"><span id="hsCurrent">1</span> / 4</div>
     </section>
 
-    <!-- ═══ SOCIAL PROOF TRUST STRIP ═══ -->
+        <!-- ═══ SOCIAL PROOF TRUST STRIP ═══ -->
     <div class="trust-strip">
         <div class="container">
             <div class="trust-strip-inner">
@@ -2923,6 +3251,78 @@
         }); // end DOMContentLoaded
     </script>
 
+
+
+    <script>
+    /* ═══ Hero Slideshow ═══ */
+    (function() {
+        const track   = document.getElementById('hsTrack');
+        const dots    = document.querySelectorAll('.hs-dot');
+        const counter = document.getElementById('hsCurrent');
+        const slides  = document.querySelectorAll('.hs-slide');
+        const total   = slides.length;
+        let current   = 0;
+        let timer     = null;
+
+        const RSVP_WORDS = ['executive','function','working','memory','attention','deficit','cognitive','load','neural','pathway','research','findings'];
+        let rsvpIdx = 0;
+        let rsvpTimer = null;
+
+        function goTo(idx) {
+            current = (idx + total) % total;
+            track.style.transform = `translateX(-${current * 100}%)`;
+            dots.forEach((d, i) => d.classList.toggle('active', i === current));
+            counter.textContent = current + 1;
+            resetAutoplay();
+            if (current === 1) startRsvp(); else stopRsvp();
+        }
+
+        function startRsvp() {
+            stopRsvp();
+            const el = document.getElementById('hsRsvpWord');
+            if (!el) return;
+            rsvpTimer = setInterval(() => {
+                rsvpIdx = (rsvpIdx + 1) % RSVP_WORDS.length;
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(8px)';
+                setTimeout(() => {
+                    el.textContent = RSVP_WORDS[rsvpIdx];
+                    el.style.opacity = '1';
+                    el.style.transform = 'translateY(0)';
+                }, 120);
+            }, 480);
+        }
+
+        function stopRsvp() {
+            if (rsvpTimer) { clearInterval(rsvpTimer); rsvpTimer = null; }
+        }
+
+        function resetAutoplay() {
+            if (timer) clearInterval(timer);
+            timer = setInterval(() => goTo(current + 1), 5500);
+        }
+
+        document.getElementById('hsPrev').onclick = () => goTo(current - 1);
+        document.getElementById('hsNext').onclick = () => goTo(current + 1);
+        dots.forEach(d => d.addEventListener('click', () => goTo(parseInt(d.dataset.idx))));
+
+        // RSVP word transition style
+        const rsvpEl = document.getElementById('hsRsvpWord');
+        if (rsvpEl) {
+            rsvpEl.style.transition = 'opacity 0.12s ease, transform 0.12s ease';
+        }
+
+        // Swipe support
+        let touchX = 0;
+        track.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, {passive:true});
+        track.addEventListener('touchend',   e => {
+            const dx = e.changedTouches[0].clientX - touchX;
+            if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1));
+        }, {passive:true});
+
+        resetAutoplay();
+    })();
+    </script>
 
 </body>
 </html>

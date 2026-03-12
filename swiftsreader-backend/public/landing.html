@@ -1906,7 +1906,7 @@
             position: relative;
             width: 100%;
             overflow: hidden;
-            background: var(--gray-50);
+            background: #EDECEA;
             border-bottom: 1px solid var(--border);
         }
 
@@ -2934,50 +2934,80 @@
 
 
     <!-- YouTube IFrame API -->
-    <script src="https://www.youtube.com/iframe_api"></script>
+    <!-- Web Audio API used instead of YouTube — no external script needed -->
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
 
-    <!-- Hidden YouTube player container -->
-    <div id="ytPlayerContainer" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;bottom:0;left:0;" aria-hidden="true">
-        <div id="ytPlayer"></div>
-    </div>
+    <!-- 432Hz tone generated via Web Audio API — no external dependency -->
 
     <script>
         // ═══════════════════════════════════════
-        // Focus Music — YouTube IFrame API
-        // Video: https://www.youtube.com/watch?v=3q8thydY9bI
+        // Focus Music — Web Audio API (432Hz binaural)
+        // No external dependency — works even with ad blockers
         // ═══════════════════════════════════════
-        let ytPlayer = null;
-        let ytReady  = false;
-        let isMuted  = true;
-        let pendingPlay = false;
+        let audioCtx  = null;
+        let isMuted   = true;
+        let masterGain = null;
+        let nodes     = [];
 
-        // Called automatically by YouTube IFrame API when ready
-        function onYouTubeIframeAPIReady() {
-            ytPlayer = new YT.Player('ytPlayer', {
-                videoId: '3q8thydY9bI',
-                playerVars: {
-                    autoplay: 0,
-                    controls: 0,
-                    disablekb: 1,
-                    fs: 0,
-                    iv_load_policy: 3,
-                    loop: 1,
-                    playlist: '3q8thydY9bI', // required for loop to work
-                    modestbranding: 1,
-                    rel: 0
-                },
-                events: {
-                    onReady: function(e) {
-                        ytReady = true;
-                        e.target.setVolume(60);
-                        if (pendingPlay) {
-                            e.target.playVideo();
-                            pendingPlay = false;
-                        }
-                    }
-                }
-            });
+        function buildAudio() {
+            if (audioCtx) return;
+            audioCtx   = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = audioCtx.createGain();
+            masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+            masterGain.connect(audioCtx.destination);
+
+            // Layer 1 — 432Hz fundamental sine (main tone)
+            const osc1 = audioCtx.createOscillator();
+            const g1   = audioCtx.createGain();
+            osc1.type      = 'sine';
+            osc1.frequency.value = 432;
+            g1.gain.value  = 0.35;
+            osc1.connect(g1); g1.connect(masterGain);
+            osc1.start();
+
+            // Layer 2 — 864Hz octave harmonic (warmth)
+            const osc2 = audioCtx.createOscillator();
+            const g2   = audioCtx.createGain();
+            osc2.type      = 'sine';
+            osc2.frequency.value = 864;
+            g2.gain.value  = 0.10;
+            osc2.connect(g2); g2.connect(masterGain);
+            osc2.start();
+
+            // Layer 3 — 216Hz sub-bass (grounding)
+            const osc3 = audioCtx.createOscillator();
+            const g3   = audioCtx.createGain();
+            osc3.type      = 'sine';
+            osc3.frequency.value = 216;
+            g3.gain.value  = 0.15;
+            osc3.connect(g3); g3.connect(masterGain);
+            osc3.start();
+
+            // Layer 4 — 40Hz gamma binaural beat (focus/ADHD research)
+            // Left: 432Hz, Right: 472Hz → 40Hz beat perceived in brain
+            const merger = audioCtx.createChannelMerger(2);
+            const oscL   = audioCtx.createOscillator();
+            const oscR   = audioCtx.createOscillator();
+            const gBin   = audioCtx.createGain();
+            oscL.frequency.value = 432;
+            oscR.frequency.value = 472; // 472 - 432 = 40Hz binaural beat
+            gBin.gain.value = 0.18;
+            oscL.connect(merger, 0, 0);
+            oscR.connect(merger, 0, 1);
+            merger.connect(gBin);
+            gBin.connect(masterGain);
+            oscL.start(); oscR.start();
+
+            // Slow amplitude modulation — gentle breathing effect
+            const lfo = audioCtx.createOscillator();
+            const lfoGain = audioCtx.createGain();
+            lfo.frequency.value = 0.08; // one breath every ~12 seconds
+            lfoGain.gain.value  = 0.06;
+            lfo.connect(lfoGain);
+            lfoGain.connect(masterGain.gain);
+            lfo.start();
+
+            nodes = [osc1, osc2, osc3, oscL, oscR, lfo];
         }
 
         function toggleMusic() {
@@ -2988,20 +3018,24 @@
             isMuted = !isMuted;
 
             if (!isMuted) {
-                // User wants to play
-                if (ytReady) {
-                    ytPlayer.playVideo();
-                } else {
-                    pendingPlay = true; // play as soon as API is ready
-                }
+                buildAudio();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                // Fade in smoothly
+                masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                masterGain.gain.setValueAtTime(masterGain.gain.value, audioCtx.currentTime);
+                masterGain.gain.linearRampToValueAtTime(0.7, audioCtx.currentTime + 1.5);
             } else {
-                // User wants to pause
-                if (ytReady) ytPlayer.pauseVideo();
-                pendingPlay = false;
+                if (audioCtx && masterGain) {
+                    // Fade out smoothly then suspend
+                    masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                    masterGain.gain.setValueAtTime(masterGain.gain.value, audioCtx.currentTime);
+                    masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.2);
+                    setTimeout(() => { if (audioCtx) audioCtx.suspend(); }, 1400);
+                }
             }
 
             if (hzPlayer) hzPlayer.classList.toggle('playing', !isMuted);
-            if (hzSub)    hzSub.textContent  = isMuted ? 'Ambient focus music' : '♪ Playing...';
+            if (hzSub)    hzSub.textContent  = isMuted ? 'Ambient focus music' : '♪ 432Hz Playing...';
             if (hzIcon)   hzIcon.textContent = isMuted ? '🎵' : '🎶';
         }
 

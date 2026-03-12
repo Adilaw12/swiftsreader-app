@@ -3247,18 +3247,23 @@
         // Handle paper file upload
         async function handlePaperFileUpload(file, paper) {
             try {
+                console.log('[Upload] Starting:', file.name, file.size, 'bytes');
                 showNotification('📂 Loading file...');
 
                 let result = { text: '', media: [] };
                 const fname = file.name.toLowerCase();
                 if (fname.endsWith('.txt')) {
+                    console.log('[Upload] Reading TXT...');
                     result.text = await file.text();
+                    console.log('[Upload] TXT done, length:', result.text.length);
                 } else if (fname.endsWith('.pdf')) {
                     if (typeof pdfjsLib === 'undefined') {
                         throw new Error('PDF library not loaded. Check your internet connection and try again.');
                     }
-                    showNotification('📄 Extracting PDF content and images...');
+                    console.log('[Upload] Starting PDF extraction...');
+                    showNotification('📄 Extracting PDF text…');
                     result = await loadPDFText(file);
+                    console.log('[Upload] PDF done, text length:', result.text.length);
                 } else if (fname.endsWith('.docx')) {
                     if (typeof mammoth === 'undefined') {
                         throw new Error('DOCX library not loaded. Check your internet connection and try again.');
@@ -3469,6 +3474,7 @@
             if (typeof pdfjsLib === 'undefined') {
                 throw new Error('PDF library (pdf.js) failed to load. Check your internet connection.');
             }
+
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
             const arrayBuffer = await file.arrayBuffer();
@@ -4187,7 +4193,7 @@
                         <p style="margin-bottom:var(--space-sm);">No summaries yet.</p>
                         <p style="font-size:13px;">Click any detected section below<br>to generate an AI summary on demand.</p>
                     </div>
-                    ` + (sectionCount > 0 ? '<div style="margin-top:var(--space-md);">' + documentSections.map((sec, i) => sec.words?.length >= 80 ? \`<button onclick="window.jumpToSectionSummary(${i}); setTimeout(()=>showSectionSummary(${i}),300);" style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:6px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text-primary);">✨ §${i+1} — ${sec.title || 'Section '+(i+1)}</button>\` : '').join('') + '</div>' : '');
+                    ` + (sectionCount > 0 ? '<div style="margin-top:var(--space-md);">' + documentSections.map((sec, i) => sec.words?.length >= 80 ? '<button onclick="window.jumpToSectionSummary(' + i + '); setTimeout(()=>showSectionSummary(' + i + '),300);" style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:6px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text-primary);">\u2728 \u00a7' + (i+1) + ' \u2014 ' + (sec.title || 'Section ' + (i+1)) + '</button>' : '').join('') + '</div>' : '');
             } else {
                 summariesList.innerHTML = statusHtml + debugHtml + summaries
                     .slice().sort((a, b) => a.sectionIndex - b.sectionIndex)

@@ -2378,13 +2378,11 @@
                                     Section Summaries
                                     <span style="color: var(--text-tertiary); font-weight: normal; margin-left: var(--space-sm);" id="summariesCount">(0)</span>
                                 </div>
-                                <button class="button button-primary button-small" id="generateAllSummariesBtn">
-                                    ✨ Generate All Summaries
-                                </button>
+                                <div style="font-size:12px;color:var(--text-tertiary);font-style:italic;">Click a section below to generate</div>
                             </div>
                             <div class="summaries-list" id="summariesList">
                                 <p style="text-align: center; color: var(--text-tertiary); padding: var(--space-2xl);">
-                                    No summaries yet. Click "Generate All Summaries" or summaries will be created automatically as you read through sections.
+                                    No summaries yet. Click any section below to generate an AI summary on demand.
                                 </p>
                             </div>
                         </div>
@@ -4088,26 +4086,30 @@
                     <div class="modal-content">
                         ${reason ? `<div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#F57F17;">${reason}</div>` : ''}
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                            <div style="border:2px solid var(--primary);border-radius:12px;padding:20px;text-align:center;">
-                                <div style="font-size:22px;font-weight:800;margin-bottom:4px;">$12<span style="font-size:14px;font-weight:500;">/mo</span></div>
+                            <div style="border:1px solid var(--border-light);border-radius:12px;padding:20px;text-align:center;position:relative;">
+                                <div style="font-size:22px;font-weight:800;margin-bottom:4px;">$7.99<span style="font-size:14px;font-weight:500;">/mo</span></div>
+                                <div style="font-weight:700;font-size:15px;margin-bottom:10px;">Student</div>
+                                <ul style="text-align:left;font-size:13px;color:var(--text-secondary);list-style:none;padding:0;margin:0 0 16px;">
+                                    <li>✅ 50 papers</li>
+                                    <li>✅ Unlimited AI summaries</li>
+                                    <li>✅ HD Voice — 60 min/month</li>
+                                    <li>✅ All reading modes</li>
+                                    <li style="color:var(--text-tertiary);">🎓 Student email preferred</li>
+                                </ul>
+                                <button id="checkoutStudent" class="button button-secondary" style="width:100%;">Student Plan</button>
+                            </div>
+                            <div style="border:2px solid var(--primary);border-radius:12px;padding:20px;text-align:center;position:relative;">
+                                <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--primary);color:white;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">MOST POPULAR</div>
+                                <div style="font-size:22px;font-weight:800;margin-bottom:4px;">$15<span style="font-size:14px;font-weight:500;">/mo</span></div>
                                 <div style="font-weight:700;font-size:15px;margin-bottom:10px;">Pro</div>
                                 <ul style="text-align:left;font-size:13px;color:var(--text-secondary);list-style:none;padding:0;margin:0 0 16px;">
                                     <li>✅ Unlimited papers</li>
                                     <li>✅ Unlimited AI summaries</li>
-                                    <li>✅ All reading features</li>
+                                    <li>✅ HD Voice — unlimited</li>
                                     <li>✅ Priority support</li>
+                                    <li>✅ Early access to new features</li>
                                 </ul>
                                 <button id="checkoutPro" class="button button-primary" style="width:100%;">Subscribe to Pro</button>
-                            </div>
-                            <div style="border:1px solid var(--border-light);border-radius:12px;padding:20px;text-align:center;">
-                                <div style="font-size:22px;font-weight:800;margin-bottom:4px;">$6<span style="font-size:14px;font-weight:500;">/mo</span></div>
-                                <div style="font-weight:700;font-size:15px;margin-bottom:10px;">Student</div>
-                                <ul style="text-align:left;font-size:13px;color:var(--text-secondary);list-style:none;padding:0;margin:0 0 16px;">
-                                    <li>✅ Everything in Pro</li>
-                                    <li>✅ 50% off</li>
-                                    <li>✅ Requires .edu email</li>
-                                </ul>
-                                <button id="checkoutStudent" class="button button-secondary" style="width:100%;">Student Plan</button>
                             </div>
                         </div>
                         <p style="font-size:12px;color:var(--text-tertiary);margin-top:12px;text-align:center;">Billed monthly · Cancel anytime · Secure payment via Stripe</p>
@@ -4450,9 +4452,12 @@
 
             if (summaries.length === 0) {
                 summariesList.innerHTML = statusHtml + debugHtml +
-                    `<p style="text-align:center;color:var(--text-tertiary);padding:var(--space-xl);">
-                        No summaries yet.<br>Click <strong>✨ Generate All Summaries</strong> above.
-                    </p>`;
+                    `<div style="padding:var(--space-xl);text-align:center;color:var(--text-tertiary);">
+                        <div style="font-size:28px;margin-bottom:var(--space-md);">✨</div>
+                        <p style="margin-bottom:var(--space-sm);">No summaries yet.</p>
+                        <p style="font-size:13px;">Click any detected section below<br>to generate an AI summary on demand.</p>
+                    </div>
+                    ` + (sectionCount > 0 ? '<div style="margin-top:var(--space-md);">' + documentSections.map((sec, i) => sec.words?.length >= 80 ? \`<button onclick="window.jumpToSectionSummary(${i}); setTimeout(()=>showSectionSummary(${i}),300);" style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:6px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text-primary);">✨ §${i+1} — ${sec.title || 'Section '+(i+1)}</button>\` : '').join('') + '</div>' : '');
             } else {
                 summariesList.innerHTML = statusHtml + debugHtml + summaries
                     .slice().sort((a, b) => a.sectionIndex - b.sectionIndex)
@@ -4510,65 +4515,7 @@
         };
 
         // Generate all summaries
-        document.getElementById('generateAllSummariesBtn')?.addEventListener('click', async () => {
-            if (!currentPaperId) { showNotification('⚠️ No paper loaded', 'warning'); return; }
-            if (documentSections.length === 0) { showNotification('⚠️ No sections detected', 'warning'); return; }
-
-            const paper = library.find(p => p.id === currentPaperId);
-            const MIN_WORDS = 100;
-            const eligible  = documentSections.filter((sec, i) =>
-                sec.words && sec.words.length >= MIN_WORDS && !paper.summaries?.find(s => s.sectionIndex === i)
-            );
-            const alreadyDone = documentSections.filter((_, i) => paper.summaries?.find(s => s.sectionIndex === i)).length;
-
-            if (eligible.length === 0) {
-                showNotification(alreadyDone > 0 ? `✅ All sections already summarised` : `⚠️ No sections with ${MIN_WORDS}+ words`, 'info');
-                return;
-            }
-
-            // Warn free users about quota
-            const tier  = currentUser?.tier || 'free';
-            const limit = currentUser?.summariesLimit;
-            const used  = currentUser?.summariesUsed || 0;
-            const remaining = limit != null ? Math.max(0, limit - used) : Infinity;
-
-            if (tier === 'free' && remaining === 0) {
-                openUpgradeModal(`🤖 You've used all your free AI summaries this month. Upgrade for unlimited summaries.`);
-                return;
-            }
-
-            const toGenerate = tier === 'free' ? Math.min(eligible.length, remaining) : eligible.length;
-            const msg = tier === 'free' && toGenerate < eligible.length
-                ? `Generate ${toGenerate} of ${eligible.length} summaries (${remaining} free uses remaining)?`
-                : `Generate AI summaries for ${eligible.length} section(s)${alreadyDone ? ` (${alreadyDone} already done)` : ''}?`;
-
-            if (!confirm(msg)) return;
-
-            const summariesList = document.getElementById('summariesList');
-            summariesList.innerHTML = `<div style="text-align:center;padding:var(--space-2xl);">
-                <div class="summary-spinner"></div>
-                <p id="summaryProgress" style="margin-top:var(--space-md);color:var(--text-secondary);">Generating… 0 / ${toGenerate}</p>
-            </div>`;
-
-            let generated = 0;
-            for (let i = 0; i < documentSections.length; i++) {
-                if (generated >= toGenerate) break;
-                const sec = documentSections[i];
-                if (!sec.words || sec.words.length < MIN_WORDS) continue;
-                if (paper.summaries?.find(s => s.sectionIndex === i)) continue;
-                document.getElementById('summaryProgress').textContent = `Generating… ${generated} / ${toGenerate} — "${sec.title}"`;
-                const summary = await generateSectionSummary(i);
-                if (summary) {
-                    if (!paper.summaries) paper.summaries = [];
-                    paper.summaries.push(summary);
-                    saveLibrary();
-                    generated++;
-                }
-                await new Promise(r => setTimeout(r, 600));
-            }
-            updateSummariesUI();
-            showNotification(`✅ Generated ${generated} / ${toGenerate} summaries`, 'success');
-        });
+        // Generate All removed — summaries are now on-demand only (cost control)
 
         // Parse text into content items
         function parseText(text) {
@@ -6029,7 +5976,7 @@
             console.log('Total Library Papers:', library.length);
             console.log('========================');
             console.log('💡 AI-powered section summaries are automatically generated as you read');
-            console.log('   Or click "Generate All Summaries" in the Summaries tab');
+            console.log('   Click any section in the Summaries tab to generate on demand');
         };
         console.log('💡 Type swiftsDebug() in console to see detection info');
 

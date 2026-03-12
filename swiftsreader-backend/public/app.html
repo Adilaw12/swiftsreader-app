@@ -3206,8 +3206,7 @@
 
                 const file = document.getElementById('paperFile').files[0];
                 if (file) {
-                    handlePaperFileUpload(file, paper);
-                    return false; // Keep modal open while loading
+                    return handlePaperFileUpload(file, paper).then(() => true).catch(() => false);
                 } else if (paper.text) {
                     library.unshift(paper);
                     saveLibrary();
@@ -3262,9 +3261,6 @@
                 
                 library.unshift(paper);
                 saveLibrary();
-                
-                // Close modal first, then update UI
-                document.querySelector('.modal-overlay')?.remove();
                 
                 if (typeof updateLibraryUI === 'function') updateLibraryUI();
                 if (typeof updateHeaderStats === 'function') updateHeaderStats();
@@ -5900,8 +5896,21 @@
             
             if (onSave) {
                 overlay.querySelector('.modal-cancel-btn').addEventListener('click', closeModal);
-                overlay.querySelector('.modal-save-btn').addEventListener('click', () => {
-                    if (onSave() !== false) {
+                overlay.querySelector('.modal-save-btn').addEventListener('click', async () => {
+                    const saveBtn = overlay.querySelector('.modal-save-btn');
+                    const result = onSave();
+                    // If onSave returns a Promise, await it
+                    if (result && typeof result.then === 'function') {
+                        saveBtn.disabled = true;
+                        saveBtn.textContent = 'Saving…';
+                        try {
+                            const resolved = await result;
+                            if (resolved !== false) closeModal();
+                        } catch(e) {
+                            saveBtn.disabled = false;
+                            saveBtn.textContent = 'Save';
+                        }
+                    } else if (result !== false) {
                         closeModal();
                     }
                 });
@@ -6056,25 +6065,39 @@
         function loadVoices() {
             availableVoices = audioSpeech ? audioSpeech.getVoices() : [];
             if (availableVoices.length === 0) {
-                voiceLoadAttempts++;
-                if (voiceLoadAttempts < 10) setTimeout(loadVoices, voiceLoadAttempts * 300);
+                const delays = [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 9000, 12000];
+                if (voiceLoadAttempts < delays.length) {
+                    setTimeout(loadVoices, delays[voiceLoadAttempts]);
+                    voiceLoadAttempts++;
+                } else {
+                    // All retries exhausted — show usable fallback so UI isn't stuck
+                    console.warn('[Audio] Voices unavailable after retries — showing fallback');
+                    const sel = document.getElementById('voiceSelector');
+                    if (sel) sel.innerHTML = '<option value="">Browser default</option>';
+                }
                 return;
             }
+            voiceLoadAttempts = 0;
             if (!selectedVoice) {
                 selectedVoice = getBestVoice();
-                console.log('[Audio] Auto-selected voice:', selectedVoice?.name, '| Total:', availableVoices.length);
+                console.log('[Audio] Voice selected:', selectedVoice?.name, '| Total:', availableVoices.length);
             }
             populateVoiceSelector();
         }
 
         if (audioSpeech) {
-            if (speechSynthesis.onvoiceschanged !== undefined) {
+            if (typeof speechSynthesis.onvoiceschanged !== 'undefined') {
                 speechSynthesis.onvoiceschanged = loadVoices;
             }
             loadVoices();
-            setTimeout(loadVoices, 200);
-            setTimeout(loadVoices, 800);
-            setTimeout(loadVoices, 2000);
+            // Chrome workaround: a silent speak/cancel can unstick the voices list
+            try {
+                speechSynthesis.cancel();
+                const kick = new SpeechSynthesisUtterance('');
+                kick.volume = 0;
+                speechSynthesis.speak(kick);
+                speechSynthesis.cancel();
+            } catch(e) {}
         }
 
         // ── Voice selector UI ───────────────────────────────────────────────

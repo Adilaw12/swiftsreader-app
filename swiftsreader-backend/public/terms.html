@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service — SwiftsReader</title>
+    <meta name="description" content="Terms of Service for SwiftsReader by Ten Labs Pty Ltd.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --cyan: #00BCD4; --cyan-dark: #0097A7; --magenta: #E91E63;
+            --gray-900: #1A1A2E; --gray-700: #424242; --gray-600: #555;
+            --gray-50: #FAFAFA; --border: #E0E0E0;
+        }
+        body { font-family: 'Inter', sans-serif; background: #fff; color: var(--gray-700); line-height: 1.7; }
+        a { color: var(--cyan-dark); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* Nav */
+        header { padding: 16px 0; position: sticky; top: 0; background: rgba(237,236,234,0.97); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 1000; }
+        .container { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+        .nav-container { max-width: 1280px; margin: 0 auto; padding: 0 40px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .logo img { width: 36px; height: 36px; border-radius: 8px; }
+        .logo-text { font-size: 20px; font-weight: 800; color: var(--gray-900); letter-spacing: -0.5px; }
+        .btn-primary { background: linear-gradient(135deg, var(--cyan) 0%, #26C6DA 100%); color: white; padding: 9px 20px; border-radius: 10px; font-weight: 600; font-size: 14px; text-decoration: none; }
+
+        /* Page hero */
+        .page-hero { background: #EDECEA; border-bottom: 1px solid var(--border); padding: 64px 0 48px; }
+        .page-hero .breadcrumb { font-size: 13px; color: var(--gray-600); margin-bottom: 12px; }
+        .page-hero .breadcrumb a { color: var(--cyan-dark); }
+        .page-hero h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 900; color: var(--gray-900); letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 12px; }
+        .page-hero .meta { font-size: 14px; color: var(--gray-600); }
+        .page-hero .meta span { color: var(--cyan-dark); font-weight: 600; }
+
+        /* Content */
+        .page-content { padding: 56px 0 80px; }
+        .page-content h2 { font-size: 20px; font-weight: 800; color: var(--gray-900); margin: 40px 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--cyan); display: inline-block; }
+        .page-content h3 { font-size: 16px; font-weight: 700; color: var(--gray-900); margin: 24px 0 8px; }
+        .page-content p { margin-bottom: 16px; font-size: 15px; }
+        .page-content ul { margin: 0 0 16px 24px; }
+        .page-content li { font-size: 15px; margin-bottom: 6px; }
+        .highlight-box { background: rgba(0,188,212,0.06); border-left: 4px solid var(--cyan); border-radius: 0 8px 8px 0; padding: 16px 20px; margin: 24px 0; font-size: 15px; }
+        .contact-card { background: var(--gray-50); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-top: 32px; }
+        .contact-card h3 { margin-top: 0; }
+        .contact-field { display: flex; gap: 12px; align-items: flex-start; margin: 12px 0; font-size: 15px; }
+        .contact-label { font-weight: 700; color: var(--gray-900); min-width: 80px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 14px; font-weight: 600; color: var(--gray-900); margin-bottom: 6px; }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+            font-family: 'Inter', sans-serif; font-size: 15px; color: var(--gray-900);
+            background: white; transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--cyan); }
+        .form-group textarea { min-height: 120px; resize: vertical; }
+        .submit-btn {
+            background: linear-gradient(135deg, var(--cyan) 0%, #26C6DA 100%);
+            color: white; border: none; padding: 14px 32px; border-radius: 10px;
+            font-size: 16px; font-weight: 700; cursor: pointer; width: 100%;
+            font-family: 'Inter', sans-serif; transition: all 0.2s;
+        }
+        .submit-btn:hover { box-shadow: 0 6px 20px rgba(0,188,212,0.4); transform: translateY(-1px); }
+
+        /* Footer */
+        footer { background: var(--gray-900); color: rgba(255,255,255,0.6); padding: 32px 0; text-align: center; font-size: 13px; }
+        footer a { color: rgba(255,255,255,0.6); }
+        footer a:hover { color: var(--cyan); text-decoration: none; }
+        .footer-links { display: flex; justify-content: center; gap: 24px; margin-bottom: 12px; flex-wrap: wrap; }
+
+        @media (max-width: 640px) {
+            .nav-container { padding: 0 16px; }
+            .logo-text { font-size: 17px; }
+            .page-hero { padding: 48px 0 32px; }
+            nav a:not(.btn-primary) { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="nav-container">
+        <a href="/" class="logo">
+            <img src="data:image/jpeg;base64,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" alt="SwiftsReader">
+            <span class="logo-text">SwiftsReader</span>
+        </a>
+        <nav style="display:flex;gap:24px;align-items:center;">
+            <a href="/#features" style="font-size:14px;font-weight:500;color:var(--gray-700);text-decoration:none;">Features</a>
+            <a href="/#pricing" style="font-size:14px;font-weight:500;color:var(--gray-700);text-decoration:none;">Pricing</a>
+            <a href="/app" class="btn-primary">Get Started Free</a>
+        </nav>
+    </div>
+</header>
+
+
+<div class="page-hero">
+    <div class="container">
+        <p class="breadcrumb"><a href="/">Home</a> › Terms of Service</p>
+        <h1>Terms of Service</h1>
+        <p class="meta">Effective date: <span>12 March 2026</span> &nbsp;·&nbsp; Ten Labs Pty Ltd</p>
+    </div>
+</div>
+
+<div class="page-content">
+    <div class="container">
+
+        <div class="highlight-box">
+            These terms govern your use of SwiftsReader. By creating an account, you agree to these terms. Please read them — they're written in plain English.
+        </div>
+
+        <h2>1. About SwiftsReader</h2>
+        <p>SwiftsReader is an academic reading tool operated by <strong>Ten Labs Pty Ltd</strong> (ABN: [INSERT ABN]), Melbourne, New South Wales, Australia. The service is available at swiftsreader.com and via our mobile applications.</p>
+
+        <h2>2. Your Account</h2>
+        <p>You must be at least 16 years old to create an account. You are responsible for keeping your login credentials secure and for all activity that occurs under your account. Notify us immediately if you suspect unauthorised access at <a href="/cdn-cgi/l/email-protection#4028252c2c2f003337292634333225212425326e232f2d"><span class="__cf_email__" data-cfemail="c0a8a5acacaf80b3b7a9a6b4b3b2a5a1a4a5b2eea3afad">[email&#160;protected]</span></a>.</p>
+
+        <h2>3. Acceptable Use</h2>
+        <p>You may use SwiftsReader for lawful personal and academic purposes. You must not:</p>
+        <ul>
+            <li>Upload content that you do not have the right to use</li>
+            <li>Attempt to reverse-engineer, scrape, or copy the SwiftsReader platform</li>
+            <li>Use the service to infringe copyright or other intellectual property rights</li>
+            <li>Use automated tools to access the service beyond normal use</li>
+            <li>Resell or sublicense access to the service</li>
+            <li>Upload malicious code or attempt to compromise our systems</li>
+        </ul>
+
+        <h2>4. Your Content</h2>
+        <p>You retain ownership of any documents you upload to SwiftsReader. By uploading, you grant us a limited licence to process your content solely for the purpose of delivering the service to you (e.g. extracting text for RSVP reading, generating AI summaries).</p>
+        <p>You are responsible for ensuring you have the right to upload and process any document. We are not responsible for copyright infringement arising from content you upload.</p>
+
+        <h2>5. Subscription and Payment</h2>
+        <p>SwiftsReader offers free and paid subscription tiers. Paid subscriptions are billed in advance on a monthly basis via Stripe. Prices are in Australian dollars (AUD) unless stated otherwise.</p>
+        <ul>
+            <li><strong>Free plan</strong> — no payment required, limited features.</li>
+            <li><strong>Student plan</strong> — AUD $7.99/month.</li>
+            <li><strong>Pro plan</strong> — AUD $15.00/month.</li>
+        </ul>
+        <p>You may cancel your subscription at any time from your account settings. Cancellation takes effect at the end of the current billing period. We do not offer refunds for partial months except where required by Australian Consumer Law.</p>
+
+        <h2>6. Australian Consumer Law</h2>
+        <p>Our services come with guarantees under the Australian Consumer Law that cannot be excluded. Nothing in these terms limits your rights under the ACL. If you are not satisfied with our service, contact us and we will work to resolve the issue.</p>
+
+        <h2>7. Intellectual Property</h2>
+        <p>SwiftsReader, its interface, design, branding, and technology are owned by Ten Labs Pty Ltd. These terms do not grant you any rights to our intellectual property beyond the right to use the service as described here.</p>
+
+        <h2>8. AI-Generated Content</h2>
+        <p>SwiftsReader uses AI (Anthropic's Claude) to generate summaries of your uploaded documents. These summaries are generated automatically and may contain errors. You should not rely on AI summaries as a substitute for reading source material, particularly for academic, medical, legal, or other professional purposes.</p>
+
+        <h2>9. Limitation of Liability</h2>
+        <p>To the maximum extent permitted by law, Ten Labs Pty Ltd is not liable for any indirect, incidental, or consequential loss arising from your use of SwiftsReader, including loss of data, academic work, or business opportunities. Our total liability to you in any 12-month period is limited to the amount you paid us in that period.</p>
+
+        <h2>10. Service Availability</h2>
+        <p>We aim to keep SwiftsReader available at all times, but we do not guarantee uninterrupted access. We may perform maintenance that temporarily affects availability and will give reasonable notice where possible.</p>
+
+        <h2>11. Termination</h2>
+        <p>We may suspend or terminate your account if you breach these terms. You may delete your account at any time. Upon termination, your data will be deleted within 30 days in accordance with our Privacy Policy.</p>
+
+        <h2>12. Changes to These Terms</h2>
+        <p>We may update these terms from time to time. We will notify you by email at least 14 days before material changes take effect. Continued use of SwiftsReader after that date constitutes acceptance of the new terms.</p>
+
+        <h2>13. Governing Law</h2>
+        <p>These terms are governed by the laws of New South Wales, Australia. Any disputes will be resolved in the courts of New South Wales.</p>
+
+        <h2>14. Contact</h2>
+        <div class="contact-card">
+            <div class="contact-field"><span class="contact-label">Entity:</span> Ten Labs Pty Ltd</div>
+            <div class="contact-field"><span class="contact-label">Email:</span> <a href="/cdn-cgi/l/email-protection#157d7079797a5566627c7361666770747170673b767a78"><span class="__cf_email__" data-cfemail="d5bdb0b9b9ba95a6a2bcb3a1a6a7b0b4b1b0a7fbb6bab8">[email&#160;protected]</span></a></div>
+            <div class="contact-field"><span class="contact-label">Location:</span> Melbourne, New South Wales, Australia</div>
+        </div>
+    </div>
+</div>
+
+
+<footer>
+    <div class="container">
+        <div class="footer-links">
+            <a href="/">Home</a>
+            <a href="/privacy">Privacy Policy</

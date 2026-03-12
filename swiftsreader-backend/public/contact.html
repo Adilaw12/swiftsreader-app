@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact — SwiftsReader</title>
+    <meta name="description" content="Contact for SwiftsReader by Ten Labs Pty Ltd.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --cyan: #00BCD4; --cyan-dark: #0097A7; --magenta: #E91E63;
+            --gray-900: #1A1A2E; --gray-700: #424242; --gray-600: #555;
+            --gray-50: #FAFAFA; --border: #E0E0E0;
+        }
+        body { font-family: 'Inter', sans-serif; background: #fff; color: var(--gray-700); line-height: 1.7; }
+        a { color: var(--cyan-dark); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* Nav */
+        header { padding: 16px 0; position: sticky; top: 0; background: rgba(237,236,234,0.97); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 1000; }
+        .container { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+        .nav-container { max-width: 1280px; margin: 0 auto; padding: 0 40px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .logo img { width: 36px; height: 36px; border-radius: 8px; }
+        .logo-text { font-size: 20px; font-weight: 800; color: var(--gray-900); letter-spacing: -0.5px; }
+        .btn-primary { background: linear-gradient(135deg, var(--cyan) 0%, #26C6DA 100%); color: white; padding: 9px 20px; border-radius: 10px; font-weight: 600; font-size: 14px; text-decoration: none; }
+
+        /* Page hero */
+        .page-hero { background: #EDECEA; border-bottom: 1px solid var(--border); padding: 64px 0 48px; }
+        .page-hero .breadcrumb { font-size: 13px; color: var(--gray-600); margin-bottom: 12px; }
+        .page-hero .breadcrumb a { color: var(--cyan-dark); }
+        .page-hero h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 900; color: var(--gray-900); letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 12px; }
+        .page-hero .meta { font-size: 14px; color: var(--gray-600); }
+        .page-hero .meta span { color: var(--cyan-dark); font-weight: 600; }
+
+        /* Content */
+        .page-content { padding: 56px 0 80px; }
+        .page-content h2 { font-size: 20px; font-weight: 800; color: var(--gray-900); margin: 40px 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--cyan); display: inline-block; }
+        .page-content h3 { font-size: 16px; font-weight: 700; color: var(--gray-900); margin: 24px 0 8px; }
+        .page-content p { margin-bottom: 16px; font-size: 15px; }
+        .page-content ul { margin: 0 0 16px 24px; }
+        .page-content li { font-size: 15px; margin-bottom: 6px; }
+        .highlight-box { background: rgba(0,188,212,0.06); border-left: 4px solid var(--cyan); border-radius: 0 8px 8px 0; padding: 16px 20px; margin: 24px 0; font-size: 15px; }
+        .contact-card { background: var(--gray-50); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-top: 32px; }
+        .contact-card h3 { margin-top: 0; }
+        .contact-field { display: flex; gap: 12px; align-items: flex-start; margin: 12px 0; font-size: 15px; }
+        .contact-label { font-weight: 700; color: var(--gray-900); min-width: 80px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 14px; font-weight: 600; color: var(--gray-900); margin-bottom: 6px; }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+            font-family: 'Inter', sans-serif; font-size: 15px; color: var(--gray-900);
+            background: white; transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--cyan); }
+        .form-group textarea { min-height: 120px; resize: vertical; }
+        .submit-btn {
+            background: linear-gradient(135deg, var(--cyan) 0%, #26C6DA 100%);
+            color: white; border: none; padding: 14px 32px; border-radius: 10px;
+            font-size: 16px; font-weight: 700; cursor: pointer; width: 100%;
+            font-family: 'Inter', sans-serif; transition: all 0.2s;
+        }
+        .submit-btn:hover { box-shadow: 0 6px 20px rgba(0,188,212,0.4); transform: translateY(-1px); }
+
+        /* Footer */
+        footer { background: var(--gray-900); color: rgba(255,255,255,0.6); padding: 32px 0; text-align: center; font-size: 13px; }
+        footer a { color: rgba(255,255,255,0.6); }
+        footer a:hover { color: var(--cyan); text-decoration: none; }
+        .footer-links { display: flex; justify-content: center; gap: 24px; margin-bottom: 12px; flex-wrap: wrap; }
+
+        @media (max-width: 640px) {
+            .nav-container { padding: 0 16px; }
+            .logo-text { font-size: 17px; }
+            .page-hero { padding: 48px 0 32px; }
+            nav a:not(.btn-primary) { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="nav-container">
+        <a href="/" class="logo">
+            <img src="data:image/jpeg;base64,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" alt="SwiftsReader">
+            <span class="logo-text">SwiftsReader</span>
+        </a>
+        <nav style="display:flex;gap:24px;align-items:center;">
+            <a href="/#features" style="font-size:14px;font-weight:500;color:var(--gray-700);text-decoration:none;">Features</a>
+            <a href="/#pricing" style="font-size:14px;font-weight:500;color:var(--gray-700);text-decoration:none;">Pricing</a>
+            <a href="/app" class="btn-primary">Get Started Free</a>
+        </nav>
+    </div>
+</header>
+
+
+<div class="page-hero">
+    <div class="container">
+        <p class="breadcrumb"><a href="/">Home</a> › Contact</p>
+        <h1>Get in Touch</h1>
+        <p class="meta">We typically respond within <span>1 business day</span></p>
+    </div>
+</div>
+
+<div class="page-content">
+    <div class="container">
+        <div class="highlight-box">
+            Found a bug? Have a feature idea? Just want to say hi? We genuinely read every message — SwiftsReader was built for people like you and your feedback shapes what we build next.
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:8px;" class="contact-grid">
+            <div>
+                <h2 style="margin-top:0;">Send a Message</h2>
+                <form id="contactForm" action="https://formspree.io/f/[YOUR_FORMSPREE_ID]" method="POST">
+                    <div class="form-group">
+                        <label for="name">Your name</label>
+                        <input type="text" id="name" name="name" placeholder="Your name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Your email</label>
+                        <input type="email" id="email" name="email" placeholder="you@university.edu" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="subject">Subject</label>
+                        <select id="subject" name="subject">
+                            <option value="bug">Bug report</option>
+                            <option value="feature">Feature request</option>
+                            <option value="billing">Billing question</option>
+                            <option value="privacy">Privacy / data request</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="message">Message</label>
+                        <textarea id="message" name="message" placeholder="Tell us what&#39;s on your mind..." required></textarea>
+                    </div>
+                    <button type="submit" class="submit-btn" id="submitBtn">Send Message →</button>
+                    <p id="successMsg" style="display:none;color:#00897B;font-weight:600;margin-top:12px;text-align:center;">✓ Message sent! We&#39;ll be in touch soon.</p>
+                </form>
+            </div>
+
+            <div>
+                <h2 style="margin-top:0;">Other Ways to Reach Us</h2>
+                <div class="contact-card" style="margin-top:0;">
+                    <h3 style="margin-bottom:16px;color:var(--gray-900);">Ten Labs Pty Ltd</h3>
+                    <div class="contact-field"><span class="contact-label">Email:</span> <a href="/cdn-cgi/l/email-protection#fe969b929291be8d8997988a8d8c9b9f9a9b8cd09d9193"><span class="__cf_email__" data-cfemail="0c64696060634c7f7b656a787f7e696d68697e226f6361">[email&#160;protected]</span></a></div>
+                    <div class="contact-field"><span class="contact-label">Location:</span> Melbourne, Victoria, Australia</div>
+                    <div class="contact-field"><span class="contact-label">LinkedIn:</span> <a href="https://www.linkedin.com/company/swiftsreader" target="_blank">SwiftsReader</a></div>
+                    <div class="contact-field"><span class="contact-label">Instagram:</span> <a href="https://www.instagram.com/swiftreader9750" target="_blank">@swiftreader9750</a></div>
+                </div>
+
+                <div class="contact-card" style="margin-top:16px;">
+                    <h3 style="margin-bottom:12px;color:var(--gray-900);">Quick Links</h3>
+                    <p style="font-size:14px;">Looking for something specific?</p>
+                    <ul style="margin-top:10px;font-size:14px;">
+                        <li><a href="/privacy">Privacy Policy</a></li>
+                        <li><a href="/terms">Terms of Service</a></li>
+                        <li><a href="/#faq">FAQ</a></li>
+                        <li><a href="/app">Open SwiftsReader</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media (max-width: 640px) {
+    .contact-grid { grid-template-columns: 1fr !important; }
+}
+</style>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+document.getElementById('contactForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const msg = document.getElementById('successMsg');
+    btn.disabled = true; btn.textContent = 'Sending...';
+    try {
+        const r = await fetch(this.action, { method: 'POST', body: new FormData(this), headers: { Accept: 'application/json' } });
+        if (r.ok) { msg.style.display = 'block'; this.reset(); }
+        else { alert('Something went wrong. Please email us directly at hello@swiftsreader.com'); }
+    } catch { alert('Connection error. Please email us directly.'); }
+    finally { btn.disabled = false; btn.textContent = 'Send Message →'; }
+});
+</script>
+
+
+<footer>
+    <div class="container">
+        <div class="footer-links">
+            <a href="/">Home</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">T

@@ -6210,12 +6210,16 @@
                             textItems.push({ word: it.content || it.word || '', idx: i });
                         }
                     }
-                    // Split into chunks, recording which contentItems each covers
+                    // Split into chunks — first chunk is small (~400 chars) so audio starts fast,
+                    // subsequent chunks are full size (3000 chars) for efficiency
                     let cur = '', curStart = textItems[0] ? textItems[0].idx : hdStartIdx, curWords = 0;
+                    let isFirstChunk = true;
                     for (const twi of textItems) {
-                        if ((cur + ' ' + twi.word).length > 3000 && cur) {
+                        const maxLen = isFirstChunk ? 400 : 3000;
+                        if ((cur + ' ' + twi.word).length > maxLen && cur) {
                             chunkMaps.push({ text: cur.trim(), startContentIdx: curStart, wordCount: curWords });
                             cur = twi.word; curStart = twi.idx; curWords = 1;
+                            isFirstChunk = false;
                         } else {
                             cur += (cur ? ' ' : '') + twi.word;
                             curWords++;
@@ -6317,6 +6321,8 @@
                                             updateStats();
                                             if (readingMode === 'paragraph') {
                                                 _updateParagraphHighlight();
+                                            } else {
+                                                updateDisplay();
                                             }
                                         }
                                         break;

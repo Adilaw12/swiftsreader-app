@@ -3403,13 +3403,12 @@
             updateHighlightsUI();
             updateMediaGrid();
             updateEquationGrid();
+            // Build document sections BEFORE rendering summary UI
+            detectDocumentSections();
             updateSummariesUI();
             if (typeof updateLibraryUI === 'function') updateLibraryUI();
             updateHeaderStats();
             updatePaperStats();
-
-            // Build document sections for summary tab
-            detectDocumentSections();
 
             showNotification(`📖 ${paper.title}`);
         }
@@ -5988,12 +5987,33 @@
             audioSpeech.speak(utter);
         }
 
+        // Clean academic text so TTS pronounces it naturally
+        function cleanTextForTTS(text) {
+            return text
+                .replace(/\bet\s+al\./gi,        'et al')
+                .replace(/\bi\.e\./gi,            'that is')
+                .replace(/\be\.g\./gi,            'for example')
+                .replace(/\bvs\./gi,              'versus')
+                .replace(/\bcf\./gi,              'compare')
+                .replace(/\bFig\.\s*(\d+)/gi,     'Figure $1')
+                .replace(/\bEq\.\s*(\d+)/gi,      'Equation $1')
+                .replace(/\bSec\.\s*(\d+)/gi,     'Section $1')
+                .replace(/\bTab\.\s*(\d+)/gi,     'Table $1')
+                .replace(/https?:\/\/\S+/g,       'link')
+                .replace(/\bdoi:\S+/gi,           '')
+                .replace(/\barXiv:\S+/gi,         'arXiv paper')
+                .replace(/\[\d[\d,\s\-]*\]/g,     '')
+                .replace(/\b([A-Z])\.\s+([A-Z][a-z])/g, '$1 $2')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+        }
+
         function speakFrom(charOffset) {
             if (!audioSpeech) return;
             audioSpeech.cancel();
             clearInterval(audioKeepAliveTimer);
 
-            const slice = audioFullText.slice(charOffset);
+            const slice = cleanTextForTTS(audioFullText.slice(charOffset));
             if (!slice.trim()) { stopAudio(); showNotification('✅ Finished reading', 'success'); return; }
 
             // Build sentence queue from current offset
@@ -6006,15 +6026,11 @@
             // Begin chained playback
             speakSentence(0);
 
-            // Keep-alive for Chrome (prevents silence-bug stalling)
+            // Keep-alive: just clear the timer if audio stops — no pause/resume nudge
+            // (the pause/resume nudge caused audible blips every 12 seconds)
             audioKeepAliveTimer = setInterval(() => {
-                if (!isAudioPlaying) { clearInterval(audioKeepAliveTimer); return; }
-                // Only nudge if stuck (speaking but no onboundary events)
-                if (audioSpeech.speaking && !audioSpeech.paused) {
-                    audioSpeech.pause();
-                    requestAnimationFrame(() => audioSpeech.resume());
-                }
-            }, 12000);
+                if (!isAudioPlaying) { clearInterval(audioKeepAliveTimer); }
+            }, 5000);
         }
 
         function syncReaderToAudio(charOffset) {

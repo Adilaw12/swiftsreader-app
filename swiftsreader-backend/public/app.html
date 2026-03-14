@@ -3467,11 +3467,18 @@
 
         // Simpler section lookup using already-detected documentSections
         function getSectionContentIndex(titleKeywords) {
-            if (!documentSections.length) return 0;
+            if (!documentSections.length) {
+                console.log('[Audio] No documentSections yet for:', titleKeywords);
+                return 0;
+            }
             const match = documentSections.find(s =>
                 titleKeywords.some(k => s.title.toLowerCase().startsWith(k))
             );
-            if (!match) return 0;
+            if (!match) {
+                console.log('[Audio] No section matching:', titleKeywords, '— available:', documentSections.map(s => s.title));
+                return 0;
+            }
+            console.log('[Audio] Found section:', match.title, 'at word index:', match.startIndex);
             // Convert word index back to contentItems index
             const textItems = contentItems.filter(i => i.type === ContentType.TEXT);
             const targetWord = textItems[match.startIndex];
@@ -3641,7 +3648,28 @@
                         )
                         .filter(l => l.length > 0);
 
-                    fullText += lines.join('\n') + '\n\n';
+                    // Tag short lines that look like headings (1-5 words, title-case or ALL CAPS)
+                    // These markers survive the parseText newline-stripping
+                    const HEADING_WORDS = new Set([
+                        'abstract','introduction','background','methods','method','methodology',
+                        'results','discussion','conclusion','conclusions','findings',
+                        'related','literature','experimental','experiments','acknowledgements',
+                        'acknowledgments','references','bibliography','materials','appendix'
+                    ]);
+                    const taggedLines = lines.map(line => {
+                        const words = line.trim().split(/\s+/);
+                        if (words.length < 1 || words.length > 6) return line;
+                        const clean = line.replace(/^\d+\.?\s*/, '').trim();
+                        const lower = clean.toLowerCase();
+                        const isAllCaps = clean === clean.toUpperCase() && clean.length > 2;
+                        const isTitleCase = clean[0] === clean[0].toUpperCase();
+                        const firstWord = lower.split(/\s+/)[0];
+                        if ((isAllCaps || isTitleCase) && HEADING_WORDS.has(firstWord)) {
+                            return '\n\u00a7HEADING\u00a7' + clean + '\u00a7END\u00a7\n';
+                        }
+                        return line;
+                    });
+                    fullText += taggedLines.join('\n') + '\n\n';
                 } catch (err) {
                     console.warn('[PDF] page', i, 'failed:', err);
                 }
@@ -4460,9 +4488,17 @@
                 
                 // Regular text segment
                 if (segment.trim().length === 0) return;
-                
-                const sentences = segment
-                    .replace(/\n+/g, '. ')
+
+                // Extract §HEADING§ markers before stripping newlines
+                // Replace them with a sentence-ending period + the heading word,
+                // so they become the start of a new sentence and preserve capitalisation
+                const processedSegment = segment
+                    .replace(/\n?\u00a7HEADING\u00a7([^\u00a7]+)\u00a7END\u00a7\n?/g, (_, heading) => {
+                        return '. ' + heading.trim() + '. ';
+                    });
+
+                const sentences = processedSegment
+                    .replace(/\n+/g, ' ')
                     .split(/(?<=[.!?])\s+/)
                     .filter(s => s.trim().length > 0);
 
@@ -5291,6 +5327,47 @@
 
             const allWords = textItems.map(i => i.content); // original capitalisation preserved
             const totalWords = allWords.length;
+
+            // ── Strategy 0: Use §HEADING§ markers from PDF extraction (most reliable) ──
+            // These were tagged in loadPDFText based on line structure before newlines were lost.
+            const paper = library.find(p => p.id === currentPaperId);
+            if (paper && paper.text && paper.text.includes('§HEADING§')) {
+                const headingRe = /§HEADING§([^§]+)§END§/g;
+                const rawText = paper.text;
+                const markerHeadings = [];
+                let mh;
+                headingRe.lastIndex = 0;
+                while ((mh = headingRe.exec(rawText)) !== null) {
+                    const headingText = mh[1].trim().replace(/^\d+\.?\s*/, '');
+                    const title = headingText.charAt(0).toUpperCase() + headingText.slice(1).toLowerCase();
+                    const isStop = /^(references?|bibliography)$/i.test(headingText);
+                    // Find approximate word index by counting non-marker words before this position
+                    const textBefore = rawText.slice(0, mh.index).replace(/§HEADING§[^§]+§END§/g, '');
+                    const wordsBefore = textBefore.trim().split(/\s+/).filter(w => w.length > 0).length;
+                    const wordIdx = Math.min(wordsBefore, totalWords - 1);
+                    if (!markerHeadings.find(h => Math.abs(h.wordIndex - wordIdx) < 10)) {
+                        markerHeadings.push({ wordIndex: wordIdx, title, isStop });
+                    }
+                }
+                markerHeadings.sort((a, b) => a.wordIndex - b.wordIndex);
+                const validHeadings = markerHeadings.filter(h => !h.isStop);
+                console.log('[Sections] §HEADING§ markers found:', markerHeadings.map(h => `"${h.title}" @${h.wordIndex}`));
+
+                if (validHeadings.length >= 2) {
+                    for (let i = 0; i < validHeadings.length; i++) {
+                        const start = validHeadings[i].wordIndex;
+                        const nextStop = markerHeadings.find(h => h.isStop);
+                        const nextH = validHeadings[i + 1];
+                        const end = nextH ? nextH.wordIndex - 1 : (nextStop ? nextStop.wordIndex - 1 : totalWords - 1);
+                        const words = allWords.slice(start, end + 1);
+                        if (words.length >= 60) {
+                            documentSections.push({ title: validHeadings[i].title, startIndex: start, endIndex: end, words });
+                        }
+                    }
+                    console.log(`[Sections] ${documentSections.length} sections from markers:`, documentSections.map(s => `"${s.title}" (${s.words.length}w)`));
+                    return;
+                }
+            }
 
             // Canonical heading keywords (lowercase for comparison)
             const HEADING_KEYWORDS = new Set([

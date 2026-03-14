@@ -3989,11 +3989,25 @@
                 return;
             }
             overlay.classList.add('open');
-            mountPoint.innerHTML = '';
-            clerkInstance.mountSignIn(mountPoint, {
-                afterSignInUrl: window.location.href,
-                afterSignUpUrl: window.location.href,
-            });
+            mountPoint.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:200px;color:#666;font-size:14px;">Loading sign-in form…</div>';
+
+            // Try mountSignIn — if it fails, fall back to redirect
+            try {
+                mountPoint.innerHTML = '';
+                clerkInstance.mountSignIn(mountPoint, {
+                    routing: 'virtual',
+                    afterSignInUrl: window.location.href,
+                    afterSignUpUrl: window.location.href,
+                });
+                console.log('[Clerk] mountSignIn called');
+            } catch(mountErr) {
+                console.warn('[Clerk] mountSignIn failed, using redirect:', mountErr);
+                // Redirect to Clerk hosted sign-in
+                const returnUrl = encodeURIComponent(window.location.href);
+                clerkInstance.redirectToSignIn({ redirectUrl: window.location.href });
+                return;
+            }
+
             // Watch for sign-in completion
             const check = setInterval(async () => {
                 const user = clerkInstance.user;
@@ -7469,11 +7483,12 @@
     </div>
 
     <!-- Clerk Sign-in Modal -->
-    <div id="clerkSignInOverlay">
+    <div id="clerkSignInOverlay" onclick="if(event.target===this)hideSignInModal()">
         <div id="clerkSignInBox">
+            <button onclick="hideSignInModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#666;line-height:1;">×</button>
             <h2>Sign in to SwiftsReader</h2>
             <p>HD Voice, AI Summaries and sync require a free account.</p>
-            <div id="clerkMountPoint"></div>
+            <div id="clerkMountPoint" style="min-height:320px;"></div>
         </div>
     </div>
 

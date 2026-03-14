@@ -3923,37 +3923,20 @@
                     return null;
                 }
 
-                // Step 2: inject meta tag so Clerk JS finds the key on load
-                let meta = document.querySelector('meta[name="clerk-publishable-key"]');
-                if (!meta) {
-                    meta = document.createElement('meta');
-                    meta.setAttribute('name', 'clerk-publishable-key');
-                    document.head.appendChild(meta);
-                }
-                meta.setAttribute('content', publishableKey);
-
-                // Step 3: load Clerk JS — it will pick up the meta tag automatically
+                // Step 2: load Clerk JS without data attribute — avoids custom domain routing
                 await new Promise((resolve, reject) => {
                     if (typeof Clerk !== 'undefined') { resolve(); return; }
                     const s = document.createElement('script');
                     s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js';
-                    s.setAttribute('data-clerk-publishable-key', publishableKey);
                     s.crossOrigin = 'anonymous';
                     s.onload = resolve;
                     s.onerror = reject;
                     document.head.appendChild(s);
                 });
 
-                // Step 4: Clerk auto-initialises when script has data-clerk-publishable-key.
-                // window.Clerk is the instance — just await its load() if not already loaded.
-                const clerk = window.Clerk;
-                if (!clerk) {
-                    console.warn('[Clerk] window.Clerk not available after script load');
-                    return null;
-                }
-                if (!clerk.loaded) {
-                    await clerk.load();
-                }
+                // Step 3: initialise with the key via constructor — uses Clerk's own CDN
+                const clerk = new Clerk(publishableKey);
+                await clerk.load();
                 clerkInstance = clerk;
                 console.log('[Clerk] Initialised. User:', clerk.user?.primaryEmailAddress?.emailAddress || 'guest');
                 return clerk;

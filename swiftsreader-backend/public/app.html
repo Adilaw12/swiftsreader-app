@@ -6026,10 +6026,12 @@
             // Begin chained playback
             speakSentence(0);
 
-            // Keep-alive: just clear the timer if audio stops — no pause/resume nudge
-            // (the pause/resume nudge caused audible blips every 12 seconds)
+            // Chrome silently auto-pauses speechSynthesis after ~15s.
+            // Calling resume() every 5s (WITHOUT pause first) re-activates it
+            // silently — no audible blip, no interruption.
             audioKeepAliveTimer = setInterval(() => {
-                if (!isAudioPlaying) { clearInterval(audioKeepAliveTimer); }
+                if (!isAudioPlaying) { clearInterval(audioKeepAliveTimer); return; }
+                if (audioSpeech.paused) audioSpeech.resume();
             }, 5000);
         }
 

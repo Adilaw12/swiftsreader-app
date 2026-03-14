@@ -3984,10 +3984,28 @@
             if (typeof onSuccess === 'function') {
                 window._clerkSignInCallback = onSuccess;
             }
-            // Use Clerk's hosted sign-in page — most reliable approach
-            // Clerk redirects back to this page after sign-in
+            // Build the sign-in URL and navigate manually
             console.log('[Clerk] Redirecting to hosted sign-in');
-            clerkInstance.redirectToSignIn({ redirectUrl: window.location.href });
+            try {
+                const signInUrl = clerkInstance.buildSignInUrl({
+                    fallbackRedirectUrl: window.location.href
+                });
+                console.log('[Clerk] Sign-in URL:', signInUrl);
+                window.location.href = signInUrl;
+            } catch(e) {
+                // Final fallback — construct URL from publishable key
+                const key = window.__CLERK_PUBLISHABLE_KEY__ || '';
+                // pk_live_xxx or pk_test_xxx — extract the domain hint
+                // Clerk hosted pages are at https://accounts.clerk.dev for test
+                // or https://[instance].clerk.accounts.dev for live
+                const isTest = key.startsWith('pk_test_');
+                const returnUrl = encodeURIComponent(window.location.href);
+                const signInFallback = isTest
+                    ? `https://accounts.clerk.dev/sign-in?redirect_url=${returnUrl}`
+                    : `https://clerk.com/sign-in?redirect_url=${returnUrl}`;
+                console.log('[Clerk] Fallback sign-in URL:', signInFallback);
+                window.location.href = signInFallback;
+            }
         }
 
         function hideSignInModal() {

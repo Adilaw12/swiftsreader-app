@@ -3923,37 +3923,38 @@
                     return null;
                 }
 
-                // Step 2: load Clerk JS without data attribute — avoids custom domain routing
+                // Step 2: load Clerk JS via the Clerk-hosted script URL which includes
+                // the publishable key — this is the officially supported dynamic loading pattern.
+                // The script URL format: https://[clerk-frontend-api]/npm/@clerk/clerk-js@latest/dist/clerk.browser.js
+                // Simpler: use the npm package but pass key via the script src query param
                 await new Promise((resolve, reject) => {
-                    if (typeof Clerk !== 'undefined') { resolve(); return; }
+                    // Remove any previously failed Clerk script tags
+                    document.querySelectorAll('script[src*="clerk"]').forEach(s => s.remove());
+
                     const s = document.createElement('script');
-                    s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js';
-                    s.crossOrigin = 'anonymous';
+                    // Load from Clerk's own CDN with the publishable key embedded in the URL
+                    // This prevents Clerk from auto-initialising without a key
+                    s.src = `https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js`;
+                    s.async = true;
                     s.onload = resolve;
                     s.onerror = reject;
                     document.head.appendChild(s);
                 });
 
-                // Step 3: initialise — use existing window.Clerk instance if available,
-                // otherwise use constructor. The instance path happens when Clerk was
-                // previously loaded via data-clerk-publishable-key or auto-init.
-                let clerk;
-                if (window.Clerk && typeof window.Clerk !== 'function') {
-                    // Already an instance (auto-initialised)
-                    clerk = window.Clerk;
-                    if (!clerk.loaded) await clerk.load();
-                } else {
-                    // Use constructor
-                    clerk = new (window.Clerk || Clerk)(publishableKey);
-                    await clerk.load();
+                // Step 3: window.Clerk is now the Clerk class — instantiate with our key
+                if (typeof window.Clerk === 'undefined') {
+                    throw new Error('Clerk script loaded but window.Clerk not available');
                 }
+                const clerk = new window.Clerk(publishableKey);
+                await clerk.load({
+                    // Do not use custom domain — use Clerk's own infrastructure
+                    standardBrowser: true,
+                });
                 clerkInstance = clerk;
                 console.log('[Clerk] Initialised. User:', clerk.user?.primaryEmailAddress?.emailAddress || 'guest');
                 return clerk;
             } catch (e) {
                 console.warn('[Clerk] Failed to init:', e.message || e);
-                console.warn('[Clerk] window.Clerk type:', typeof window.Clerk);
-                console.warn('[Clerk] Clerk type:', typeof Clerk);
                 return null;
             }
         }

@@ -3916,41 +3916,35 @@
 
         async function initClerk() {
             try {
-                // Get publishable key — prefer server-injected value over fetch
                 const publishableKey = window.__CLERK_PUBLISHABLE_KEY__ || await getClerkKey();
                 if (!publishableKey) {
-                    console.warn('[Clerk] No publishable key available');
+                    console.warn('[Clerk] No publishable key');
                     return null;
                 }
-                console.log('[Clerk] Loading with key:', publishableKey.slice(0, 20) + '...');
+                console.log('[Clerk] Key found:', publishableKey.slice(0, 24) + '...');
 
-                // Load Clerk JS with the key set as data attribute BEFORE the script loads
-                // This prevents the auto-init "Missing publishableKey" crash
-                await new Promise((resolve, reject) => {
-                    // If already loaded successfully, skip
-                    if (window.Clerk && window.Clerk.loaded) { resolve(); return; }
-                    // Remove any stale failed Clerk scripts
-                    document.querySelectorAll('script[data-clerk-pk]').forEach(s => s.remove());
-                    const s = document.createElement('script');
-                    s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
-                    s.setAttribute('data-clerk-publishable-key', publishableKey);
-                    s.setAttribute('data-clerk-pk', '1'); // marker so we can remove it
-                    s.async = true;
-                    s.onload = resolve;
-                    s.onerror = () => reject(new Error('Failed to load Clerk JS'));
-                    document.head.appendChild(s);
-                });
+                // Load Clerk JS — set the key via data attribute before load
+                if (!window.__clerkLoaded) {
+                    await new Promise((resolve, reject) => {
+                        const s = document.createElement('script');
+                        s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
+                        s.setAttribute('data-clerk-publishable-key', publishableKey);
+                        s.onload = () => { window.__clerkLoaded = true; resolve(); };
+                        s.onerror = reject;
+                        document.head.appendChild(s);
+                    });
+                }
 
-                // window.Clerk is now an initialised instance (auto-init with the key)
                 const clerk = window.Clerk;
-                if (!clerk) throw new Error('window.Clerk not set after script load');
+                if (!clerk) throw new Error('window.Clerk unavailable');
                 if (!clerk.loaded) await clerk.load();
-
                 clerkInstance = clerk;
-                console.log('[Clerk] Initialised. User:', clerk.user?.primaryEmailAddress?.emailAddress || 'guest');
+                console.log('[Clerk] Ready. User:', clerk.user?.id || 'guest');
                 return clerk;
-            } catch (e) {
-                console.warn('[Clerk] Failed to init:', e.message || e);
+            } catch(e) {
+                console.warn('[Clerk] Init failed:', e.message);
+                // Mark as failed so we use direct URL fallback
+                window.__clerkFailed = true;
                 return null;
             }
         }
@@ -3984,28 +3978,32 @@
             if (typeof onSuccess === 'function') {
                 window._clerkSignInCallback = onSuccess;
             }
-            // Build the sign-in URL and navigate manually
-            console.log('[Clerk] Redirecting to hosted sign-in');
-            try {
-                const signInUrl = clerkInstance.buildSignInUrl({
-                    fallbackRedirectUrl: window.location.href
-                });
-                console.log('[Clerk] Sign-in URL:', signInUrl);
-                window.location.href = signInUrl;
-            } catch(e) {
-                // Final fallback — construct URL from publishable key
-                const key = window.__CLERK_PUBLISHABLE_KEY__ || '';
-                // pk_live_xxx or pk_test_xxx — extract the domain hint
-                // Clerk hosted pages are at https://accounts.clerk.dev for test
-                // or https://[instance].clerk.accounts.dev for live
-                const isTest = key.startsWith('pk_test_');
-                const returnUrl = encodeURIComponent(window.location.href);
-                const signInFallback = isTest
-                    ? `https://accounts.clerk.dev/sign-in?redirect_url=${returnUrl}`
-                    : `https://clerk.com/sign-in?redirect_url=${returnUrl}`;
-                console.log('[Clerk] Fallback sign-in URL:', signInFallback);
-                window.location.href = signInFallback;
+            console.log('[Clerk] Navigating to sign-in');
+            const returnUrl = encodeURIComponent(window.location.href);
+
+            // Try Clerk instance method first
+            if (clerkInstance && !window.__clerkFailed) {
+                try {
+                    const url = clerkInstance.buildSignInUrl({ fallbackRedirectUrl: window.location.href });
+                    if (url) { window.location.href = url; return; }
+                } catch(e) { console.warn('[Clerk] buildSignInUrl failed:', e.message); }
             }
+
+            // Direct URL construction from publishable key — always works
+            // Clerk publishable keys encode the frontend API domain in base64
+            // pk_test_[base64] or pk_live_[base64]
+            const key = window.__CLERK_PUBLISHABLE_KEY__ || await getClerkKey() || '';
+            if (key) {
+                try {
+                    const encoded = key.split('_')[2]; // get the base64 part
+                    const domain = atob(encoded).replace(/\$/, '');
+                    const signInUrl = `https://${domain}/sign-in#/?redirect_url=${returnUrl}`;
+                    console.log('[Clerk] Sign-in URL:', signInUrl);
+                    window.location.href = signInUrl;
+                    return;
+                } catch(e) { console.warn('[Clerk] URL decode failed:', e.message); }
+            }
+            showNotification('⚠️ Could not open sign-in. Please refresh the page.', 'warning');
         }
 
         function hideSignInModal() {

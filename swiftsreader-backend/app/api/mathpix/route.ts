@@ -195,12 +195,19 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    // Only Pro and Beta users get Mathpix extraction
+    // TEMPORARY TEST BYPASS — set MATHPIX_TEST_BYPASS=true in Vercel to skip tier check
+    // Remove this env var once Stripe is live and real Pro users exist
+    const testBypass = process.env.MATHPIX_TEST_BYPASS === 'true'
+    if (testBypass) {
+      console.log('[Mathpix] Test bypass active — skipping tier check')
+    }
+
+    // Only Pro and Beta users get Mathpix extraction (unless bypass is active)
     const allowedTiers = ['PRO', 'BETA']
-    if (!allowedTiers.includes(userTier.toUpperCase())) {
+    if (!testBypass && !allowedTiers.includes(userTier.toUpperCase())) {
       return NextResponse.json({
         error:    'Mathpix extraction requires a Pro plan.',
-        fallback: true, // tells frontend to fall back to pdf.js
+        fallback: true,
       }, { status: 403 })
     }
 

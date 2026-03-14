@@ -3989,21 +3989,21 @@
                 return;
             }
             overlay.classList.add('open');
-            mountPoint.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:200px;color:#666;font-size:14px;">Loading sign-in form…</div>';
 
-            // Try mountSignIn — if it fails, fall back to redirect
+            // Give the DOM a tick to settle before Clerk mounts into it
+            await new Promise(r => setTimeout(r, 50));
+
             try {
+                // unmountSignIn first if previously mounted to avoid DOM conflicts
+                try { clerkInstance.unmountSignIn(mountPoint); } catch(e) {}
                 mountPoint.innerHTML = '';
                 clerkInstance.mountSignIn(mountPoint, {
-                    routing: 'virtual',
                     afterSignInUrl: window.location.href,
                     afterSignUpUrl: window.location.href,
                 });
                 console.log('[Clerk] mountSignIn called');
             } catch(mountErr) {
-                console.warn('[Clerk] mountSignIn failed, using redirect:', mountErr);
-                // Redirect to Clerk hosted sign-in
-                const returnUrl = encodeURIComponent(window.location.href);
+                console.warn('[Clerk] mountSignIn failed, using redirect:', mountErr.message);
                 clerkInstance.redirectToSignIn({ redirectUrl: window.location.href });
                 return;
             }

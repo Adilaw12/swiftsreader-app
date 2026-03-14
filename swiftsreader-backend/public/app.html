@@ -3944,9 +3944,16 @@
                     document.head.appendChild(s);
                 });
 
-                // Step 4: initialise — pass key explicitly as well
-                const clerk = new Clerk(publishableKey);
-                await clerk.load();
+                // Step 4: Clerk auto-initialises when script has data-clerk-publishable-key.
+                // window.Clerk is the instance — just await its load() if not already loaded.
+                const clerk = window.Clerk;
+                if (!clerk) {
+                    console.warn('[Clerk] window.Clerk not available after script load');
+                    return null;
+                }
+                if (!clerk.loaded) {
+                    await clerk.load();
+                }
                 clerkInstance = clerk;
                 console.log('[Clerk] Initialised. User:', clerk.user?.primaryEmailAddress?.emailAddress || 'guest');
                 return clerk;

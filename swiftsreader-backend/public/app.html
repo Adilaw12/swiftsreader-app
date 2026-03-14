@@ -3988,37 +3988,14 @@
                 showNotification('⚠️ Sign-in unavailable. Try refreshing the page.', 'warning');
                 return;
             }
-            overlay.classList.add('open');
-
-            // Give the DOM a tick to settle before Clerk mounts into it
-            await new Promise(r => setTimeout(r, 50));
-
-            try {
-                // unmountSignIn first if previously mounted to avoid DOM conflicts
-                try { clerkInstance.unmountSignIn(mountPoint); } catch(e) {}
-                mountPoint.innerHTML = '';
-                clerkInstance.mountSignIn(mountPoint, {
-                    afterSignInUrl: window.location.href,
-                    afterSignUpUrl: window.location.href,
-                });
-                console.log('[Clerk] mountSignIn called');
-            } catch(mountErr) {
-                console.warn('[Clerk] mountSignIn failed, using redirect:', mountErr.message);
-                clerkInstance.redirectToSignIn({ redirectUrl: window.location.href });
-                return;
+            // Store callback for after sign-in redirect returns
+            if (typeof onSuccess === 'function') {
+                window._clerkSignInCallback = onSuccess;
             }
-
-            // Watch for sign-in completion
-            const check = setInterval(async () => {
-                const user = clerkInstance.user;
-                if (user) {
-                    clearInterval(check);
-                    overlay.classList.remove('open');
-                    mountPoint.innerHTML = '';
-                    await syncUserProfile();
-                    if (typeof onSuccess === 'function') onSuccess();
-                }
-            }, 500);
+            // Use Clerk's hosted sign-in page — most reliable approach
+            // Clerk redirects back to this page after sign-in
+            console.log('[Clerk] Redirecting to hosted sign-in');
+            clerkInstance.redirectToSignIn({ redirectUrl: window.location.href });
         }
 
         function hideSignInModal() {
@@ -4046,6 +4023,12 @@
             // Try to sync profile if Clerk session exists
             if (clerkInstance?.user) {
                 await syncUserProfile();
+                // If we stored a callback before redirecting to sign-in, run it now
+                if (typeof window._clerkSignInCallback === 'function') {
+                    const cb = window._clerkSignInCallback;
+                    window._clerkSignInCallback = null;
+                    setTimeout(cb, 300);
+                }
             } else {
                 // Load from cache — app works as guest
                 const cached = localStorage.getItem('sr_user');

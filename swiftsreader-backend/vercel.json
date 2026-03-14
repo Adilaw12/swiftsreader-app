@@ -1,8 +1,17 @@
 {
   "framework": "nextjs",
   "functions": {
-    "app/api/summary/route.ts": { "maxDuration": 60 },
-    "app/api/tts/route.ts":     { "maxDuration": 30 },
-    "app/api/**/*.ts":          { "maxDuration": 15 }
+    "app/api/summary/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/tts/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/**/*.ts": {
+      "maxDuration": 15
+    },
+    "app/api/mathpix/route.ts": {
+      "maxDuration": 60
+    }
   }
 }

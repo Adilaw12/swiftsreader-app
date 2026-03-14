@@ -15,7 +15,7 @@ const MATHPIX_BASE    = 'https://api.mathpix.com/v3'
 
 // Poll interval and max wait
 const POLL_INTERVAL_MS = 2000
-const MAX_WAIT_MS      = 120_000 // 2 minutes max
+const MAX_WAIT_MS      = 50_000  // 50s max (Vercel free tier = 60s limit)
 
 async function mathpixHeaders() {
   return {

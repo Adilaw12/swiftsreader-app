@@ -2826,10 +2826,17 @@
         // Event Listeners
         function setupEventListeners() {
             // Add paper button
-            addPaperBtn.addEventListener('click', () => {
+            addPaperBtn.addEventListener('click', async () => {
                 if (!clerkInstance?.user) {
-                    showSignInModal(() => showAddPaperModal());
-                    return;
+                    // Try to init Clerk first
+                    if (!clerkInstance) await initClerk();
+                    // If still no user after init, show sign-in
+                    if (!clerkInstance?.user) {
+                        showSignInModal(() => {
+                            if (canAddPaper()) showAddPaperModal();
+                        });
+                        return;
+                    }
                 }
                 if (!canAddPaper()) return;
                 showAddPaperModal();
@@ -3948,10 +3955,19 @@
             return null;
         }
 
-        function showSignInModal(onSuccess) {
+        async function showSignInModal(onSuccess) {
+            // If Clerk hasn't initialised yet, do it now
+            if (!clerkInstance) {
+                showNotification('⏳ Loading sign-in…');
+                await initClerk();
+            }
             const overlay = document.getElementById('clerkSignInOverlay');
             const mountPoint = document.getElementById('clerkMountPoint');
-            if (!overlay || !mountPoint || !clerkInstance) return;
+            if (!overlay || !mountPoint || !clerkInstance) {
+                // Clerk unavailable — just open the modal anyway so user sees something
+                showNotification('⚠️ Sign-in unavailable. Try refreshing the page.', 'warning');
+                return;
+            }
             overlay.classList.add('open');
             mountPoint.innerHTML = '';
             clerkInstance.mountSignIn(mountPoint, {

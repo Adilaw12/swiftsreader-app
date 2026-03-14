@@ -3372,6 +3372,84 @@
             });
         }
 
+        // Find the contentItems index where a named section starts.
+        // Scans text items for a word (or short phrase) matching any of the given
+        // heading keywords at the start of a "line" (preceded by punctuation or
+        // another heading-like word).  Returns 0 if not found.
+        function findSectionStart(keywords, stopKeywords) {
+            if (!contentItems.length) return { start: 0, stop: contentItems.length };
+            const textItems = contentItems
+                .map((it, idx) => ({ idx, word: (it.content || it.word || '').toLowerCase().trim(), type: it.type }))
+                .filter(it => it.type === 'text' || it.type === 'TEXT' || it.type === ContentType.TEXT);
+
+            const totalWords = textItems.length;
+            // Table of contents typically occupies the first ~8% of word tokens.
+            // We skip any keyword match in that zone to avoid false TOC hits.
+            const TOC_SKIP_WORDS = Math.max(30, Math.floor(totalWords * 0.08));
+
+            // A heading match is valid only when the keyword word(s) appear as a
+            // "standalone" heading — i.e. the surrounding context words are short
+            // or punctuation-like (page numbers, single letters, empty), not prose.
+            // We check the word immediately BEFORE the match: if it looks like a
+            // long prose word (>8 chars) the match is likely mid-sentence in TOC.
+            function isHeadingContext(i, phraseLen) {
+                // Must be past the TOC zone
+                if (i < TOC_SKIP_WORDS) return false;
+                // Word before the match should not be a long prose word
+                const prevWord = i > 0 ? textItems[i - 1].word : '';
+                if (prevWord.length > 8 && /^[a-z]/.test(prevWord)) return false;
+                // Word after the phrase should be short or start a new sentence
+                // (heading followed immediately by a long word = likely prose)
+                const afterWord = textItems[i + phraseLen] ? textItems[i + phraseLen].word : '';
+                // If the very next word after the heading keyword is long prose, skip —
+                // UNLESS it starts with a capital (new sentence beginning is fine)
+                if (afterWord.length > 10 && /^[a-z]/.test(afterWord)) return false;
+                return true;
+            }
+
+            // Stop-keyword context: References heading can appear in TOC too.
+            // Only accept it after we are past 50% of the document.
+            function isStopContext(i) {
+                return i > Math.floor(totalWords * 0.40);
+            }
+
+            let startIdx = 0, stopIdx = contentItems.length;
+            let foundStart = false;
+
+            for (let i = 0; i < textItems.length; i++) {
+                const phrase4 = textItems.slice(i, i + 4).map(t => t.word).join(' ');
+                const phrase3 = textItems.slice(i, i + 3).map(t => t.word).join(' ');
+                const phrase2 = textItems.slice(i, i + 2).map(t => t.word).join(' ');
+                const phrase1 = textItems[i].word;
+
+                // Check stop keywords — only valid past 40% of document
+                if (isStopContext(i) && stopKeywords.some(k =>
+                    phrase1 === k || phrase2.startsWith(k) || phrase3.startsWith(k)
+                )) {
+                    stopIdx = textItems[i].idx;
+                    break;
+                }
+
+                // Check start keywords — only valid past TOC zone and in heading context
+                if (!foundStart) {
+                    if (keywords.some(k => phrase1 === k) && isHeadingContext(i, 1)) {
+                        startIdx = textItems[i].idx; foundStart = true;
+                    } else if (keywords.some(k => phrase2 === k) && isHeadingContext(i, 2)) {
+                        startIdx = textItems[i].idx; foundStart = true;
+                    } else if (keywords.some(k => phrase3 === k) && isHeadingContext(i, 3)) {
+                        startIdx = textItems[i].idx; foundStart = true;
+                    } else if (keywords.some(k => phrase4 === k) && isHeadingContext(i, 4)) {
+                        startIdx = textItems[i].idx; foundStart = true;
+                    }
+                }
+            }
+            return { start: startIdx, stop: stopIdx };
+        }
+
+        const AUDIO_START_KEYWORDS = ['introduction', '1 introduction', '1. introduction', 'i. introduction'];
+        const TEXT_START_KEYWORDS  = ['abstract'];
+        const STOP_KEYWORDS        = ['references', 'bibliography', 'reference list', 'works cited'];
+
         // Open a paper from the library
         function openPaper(paperId) {
             const paper = library.find(p => p.id === paperId);
@@ -3379,15 +3457,21 @@
 
             currentPaperId = paperId;
 
-            // Restore reading position
-            currentIndex = paper.currentIndex || 0;
-
-            // Parse text into content items
+            // Parse text into content items first (needed for section detection)
             if (paper.text) {
                 parseText(paper.text);
             } else {
                 contentItems = [];
-                currentIndex = 0;
+            }
+
+            // Restore saved position, or auto-jump to Abstract for fresh opens
+            if (paper.currentIndex && paper.currentIndex > 0) {
+                currentIndex = paper.currentIndex;
+            } else {
+                // Fresh open — start RSVP reader at Abstract, skip title/authors/keywords
+                const { start, stop } = findSectionStart(TEXT_START_KEYWORDS, STOP_KEYWORDS);
+                currentIndex = start;
+                paper._audioStopIdx = stop; // cache stop position for audio too
             }
 
             // Update header
@@ -4560,6 +4644,18 @@
 
             if (elapsed >= delay) {
                 currentIndex += chunkSize;
+
+                // Stop at References/Bibliography
+                if (typeof paper !== 'undefined' && paper?._audioStopIdx > 0 &&
+                    currentIndex >= paper._audioStopIdx) {
+                    const paper2 = library.find(p => p.id === currentPaperId);
+                    if (paper2?._audioStopIdx > 0 && currentIndex >= paper2._audioStopIdx) {
+                        currentIndex = paper2._audioStopIdx;
+                        pause();
+                        showNotification('📚 Reached References — reading complete', 'success');
+                        return;
+                    }
+                }
 
                 if (currentIndex >= contentItems.length) {
                     currentIndex = contentItems.length - 1;
@@ -6077,9 +6173,24 @@
             if (typeof window._hdStop === 'function') window._hdStop();
 
             if (!audioFullText) {
-                audioFullText = extractTextForAudio();
+                // Find Introduction start and References stop in contentItems
+                const { start: introStart, stop: refStop } = findSectionStart(AUDIO_START_KEYWORDS, STOP_KEYWORDS);
+
+                // Build audio text only from Introduction → References
+                const audioItems = contentItems.slice(introStart, refStop);
+                audioFullText = audioItems
+                    .filter(i => i.type === 'text' || i.type === 'TEXT' || i.type === ContentType.TEXT)
+                    .map(i => i.content || i.word || '')
+                    .join(' ')
+                    .trim();
+
+                // Fallback: no Introduction found — use full text
+                if (!audioFullText) {
+                    audioFullText = extractTextForAudio();
+                }
                 audioCharOffset = 0;
                 if (!audioFullText) { showNotification('⚠️ No text to read', 'warning'); return; }
+                showNotification('🎤 Starting from Introduction — will stop at References', 'info');
             }
 
             isAudioPlaying = true;

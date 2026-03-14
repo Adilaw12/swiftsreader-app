@@ -3916,40 +3916,36 @@
 
         async function initClerk() {
             try {
-                // Step 1: fetch the publishable key
-                const publishableKey = await getClerkKey();
+                // Get publishable key — prefer server-injected value over fetch
+                const publishableKey = window.__CLERK_PUBLISHABLE_KEY__ || await getClerkKey();
                 if (!publishableKey) {
-                    console.warn('[Clerk] No publishable key returned');
+                    console.warn('[Clerk] No publishable key available');
                     return null;
                 }
+                console.log('[Clerk] Loading with key:', publishableKey.slice(0, 20) + '...');
 
-                // Step 2: load Clerk JS via the Clerk-hosted script URL which includes
-                // the publishable key — this is the officially supported dynamic loading pattern.
-                // The script URL format: https://[clerk-frontend-api]/npm/@clerk/clerk-js@latest/dist/clerk.browser.js
-                // Simpler: use the npm package but pass key via the script src query param
+                // Load Clerk JS with the key set as data attribute BEFORE the script loads
+                // This prevents the auto-init "Missing publishableKey" crash
                 await new Promise((resolve, reject) => {
-                    // Remove any previously failed Clerk script tags
-                    document.querySelectorAll('script[src*="clerk"]').forEach(s => s.remove());
-
+                    // If already loaded successfully, skip
+                    if (window.Clerk && window.Clerk.loaded) { resolve(); return; }
+                    // Remove any stale failed Clerk scripts
+                    document.querySelectorAll('script[data-clerk-pk]').forEach(s => s.remove());
                     const s = document.createElement('script');
-                    // Load from Clerk's own CDN with the publishable key embedded in the URL
-                    // This prevents Clerk from auto-initialising without a key
-                    s.src = `https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js`;
+                    s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
+                    s.setAttribute('data-clerk-publishable-key', publishableKey);
+                    s.setAttribute('data-clerk-pk', '1'); // marker so we can remove it
                     s.async = true;
                     s.onload = resolve;
-                    s.onerror = reject;
+                    s.onerror = () => reject(new Error('Failed to load Clerk JS'));
                     document.head.appendChild(s);
                 });
 
-                // Step 3: window.Clerk is now the Clerk class — instantiate with our key
-                if (typeof window.Clerk === 'undefined') {
-                    throw new Error('Clerk script loaded but window.Clerk not available');
-                }
-                const clerk = new window.Clerk(publishableKey);
-                await clerk.load({
-                    // Do not use custom domain — use Clerk's own infrastructure
-                    standardBrowser: true,
-                });
+                // window.Clerk is now an initialised instance (auto-init with the key)
+                const clerk = window.Clerk;
+                if (!clerk) throw new Error('window.Clerk not set after script load');
+                if (!clerk.loaded) await clerk.load();
+
                 clerkInstance = clerk;
                 console.log('[Clerk] Initialised. User:', clerk.user?.primaryEmailAddress?.emailAddress || 'guest');
                 return clerk;

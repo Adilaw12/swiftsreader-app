@@ -3457,6 +3457,9 @@
 
             currentPaperId = paperId;
 
+            // Clear audio state so Introduction detection runs fresh for this paper
+            if (typeof stopAudioOnDocumentChange === 'function') stopAudioOnDocumentChange();
+
             // Parse text into content items first (needed for section detection)
             if (paper.text) {
                 parseText(paper.text);
@@ -5231,9 +5234,38 @@
 
             const allWords = textItems.map(i => i.content);
             const fullText = allWords.join(' ');
+            const totalWords = allWords.length;
+            // Skip TOC zone — first 8% of words (min 40)
+            const TOC_SKIP_CHARS = fullText.split(' ').slice(0, Math.max(40, Math.floor(totalWords * 0.08))).join(' ').length;
+            // Stop zone — references appear after 40% of document
+            const REF_MIN_CHARS  = fullText.split(' ').slice(0, Math.floor(totalWords * 0.40)).join(' ').length;
 
-            // ── Strategy 1: detect named section headings ──────────────────
-            const HEADING_RE = /(?:^|\s)((?:(?:\d+\.?\s+)?(?:abstract|introduction|background|related work|literature review|methods?|methodology|materials?\s+and\s+methods?|experimental|results?|findings?|analysis|evaluation|discussion|limitations?|future\s+work|conclusion|conclusions?|references?|bibliography|appendix|acknowledgements?))(?:\s|$))/gi;
+            // PRIMARY section headings only — top-level IMRaD + common variants.
+            // Subsections like "2.1 Participants" are intentionally excluded.
+            // Matches: optional single digit + dot/space, then the heading word(s).
+            const PRIMARY_HEADINGS = [
+                'abstract',
+                'introduction',
+                'background',
+                'related work',
+                'literature review',
+                'methods', 'method', 'methodology',
+                'materials and methods',
+                'experimental', 'experiments',
+                'results', 'findings',
+                'discussion',
+                'conclusion', 'conclusions',
+                'acknowledgements', 'acknowledgments',
+                'references', 'bibliography',
+            ];
+            // Build regex: optional "1." or "1 " prefix, then exact heading, word boundary
+            const headingPattern = PRIMARY_HEADINGS
+                .map(h => h.replace(/\s+/g, '\\s+'))
+                .join('|');
+            const HEADING_RE = new RegExp(
+                '(?:^|\\s)(?:\\d+\\.?\\s+)?(' + headingPattern + ')(?=\\s|$)',
+                'gi'
+            );
 
             const wordStarts = [];
             let pos = 0;
@@ -5256,24 +5288,35 @@
             let m;
             HEADING_RE.lastIndex = 0;
             while ((m = HEADING_RE.exec(fullText)) !== null) {
-                const wIdx = charToWordIdx(m.index);
-                const raw = m[1].trim().replace(/^\d+\.?\s*/, '');
+                const charIdx = m.index;
+                const wIdx = charToWordIdx(charIdx);
+
+                // Skip TOC zone
+                if (charIdx < TOC_SKIP_CHARS) continue;
+
+                const raw = m[1].trim();
                 const title = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
-                if (!headings.find(h => Math.abs(h.wordIndex - wIdx) < 10)) {
-                    headings.push({ wordIndex: wIdx, title });
+                const isStop = /^(references?|bibliography)$/i.test(raw);
+
+                // References only valid after 40% mark
+                if (isStop && charIdx < REF_MIN_CHARS) continue;
+
+                // Deduplicate: skip if very close to an existing heading
+                if (!headings.find(h => Math.abs(h.wordIndex - wIdx) < 15)) {
+                    headings.push({ wordIndex: wIdx, title, isStop });
                 }
             }
             headings.sort((a, b) => a.wordIndex - b.wordIndex);
 
-            // ── Strategy 2: chunk by word count if no headings found ────────
-            const CHUNK_SIZE = 600;
+            // ── Strategy 2: chunk if no headings found ──────────────────────
+            const CHUNK_SIZE = 800;
             if (headings.length < 2) {
                 const numChunks = Math.ceil(allWords.length / CHUNK_SIZE);
                 for (let i = 0; i < numChunks; i++) {
                     const start = i * CHUNK_SIZE;
                     const end = Math.min(start + CHUNK_SIZE - 1, allWords.length - 1);
                     documentSections.push({
-                        title: i === 0 ? 'Document (Part 1)' : `Document (Part ${i + 1})`,
+                        title: i === 0 ? 'Part 1' : `Part ${i + 1}`,
                         startIndex: start, endIndex: end,
                         words: allWords.slice(start, end + 1)
                     });
@@ -5282,35 +5325,17 @@
                 return;
             }
 
-            // ── Build sections from headings ────────────────────────────────
-            if (headings[0].wordIndex > 50) {
-                documentSections.push({
-                    title: 'Preamble', startIndex: 0, endIndex: headings[0].wordIndex - 1,
-                    words: allWords.slice(0, headings[0].wordIndex)
-                });
-            }
+            // ── Build sections from headings — stop at References ───────────
             for (let i = 0; i < headings.length; i++) {
+                if (headings[i].isStop) break; // don't include References as a section
                 const start = headings[i].wordIndex;
-                const end = i + 1 < headings.length ? headings[i + 1].wordIndex - 1 : allWords.length - 1;
+                const nextH = headings.find((h, j) => j > i);
+                const end = nextH ? nextH.wordIndex - 1 : allWords.length - 1;
                 const words = allWords.slice(start, end + 1);
-                if (words.length > 0) documentSections.push({ title: headings[i].title, startIndex: start, endIndex: end, words });
-            }
-
-            // ── Split any oversized sections ────────────────────────────────
-            const expanded = [];
-            for (const sec of documentSections) {
-                if (sec.words.length <= 1500) { expanded.push(sec); continue; }
-                const parts = Math.ceil(sec.words.length / 700);
-                for (let p = 0; p < parts; p++) {
-                    const s = p * 700, e = Math.min(s + 699, sec.words.length - 1);
-                    expanded.push({
-                        title: `${sec.title} (${p + 1}/${parts})`,
-                        startIndex: sec.startIndex + s, endIndex: sec.startIndex + e,
-                        words: sec.words.slice(s, e + 1)
-                    });
+                if (words.length >= 60) { // skip tiny stubs
+                    documentSections.push({ title: headings[i].title, startIndex: start, endIndex: end, words });
                 }
             }
-            documentSections = expanded;
 
             console.log(`[Sections] ${documentSections.length} sections:`, documentSections.map(s => `"${s.title}" (${s.words.length}w)`));
         }

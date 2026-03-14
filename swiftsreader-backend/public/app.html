@@ -2827,7 +2827,11 @@
         function setupEventListeners() {
             // Add paper button
             addPaperBtn.addEventListener('click', () => {
-                if (!canAddPaper()) return; // checks free tier paper limit
+                if (!clerkInstance?.user) {
+                    showSignInModal(() => showAddPaperModal());
+                    return;
+                }
+                if (!canAddPaper()) return;
                 showAddPaperModal();
             });
 
@@ -3620,8 +3624,10 @@
         async function loadPDFText(file) {
             const isBackend = (location.protocol !== 'file:' && !/^(localhost|127\.|192\.168\.)/.test(location.hostname));
             const isPro = currentUser && (currentUser.tier === 'pro' || currentUser.tier === 'beta');
+            // Allow attempt on backend even for non-Pro — server decides via MATHPIX_TEST_BYPASS
+            const tryMathpix = isBackend && (isPro || isBackend);
 
-            if (isBackend && isPro) {
+            if (tryMathpix) {
                 try {
                     showNotification('🔬 Extracting with Mathpix — detecting figures, tables & equations…');
                     const result = await loadPDFTextMathpix(file);

@@ -3616,25 +3616,83 @@
                 // ─────────────────────────────────────────────────────────────────────
         // PDF EXTRACTION  (text + images + tables + equations)
         // ─────────────────────────────────────────────────────────────────────
+        // ── PDF extraction: Mathpix (Pro) or pdf.js (Free/Student) ──────────
         async function loadPDFText(file) {
+            const isBackend = (location.protocol !== 'file:' && !/^(localhost|127\.|192\.168\.)/.test(location.hostname));
+            const isPro = currentUser && (currentUser.tier === 'pro' || currentUser.tier === 'beta');
+
+            if (isBackend && isPro) {
+                try {
+                    showNotification('🔬 Extracting with Mathpix — detecting figures, tables & equations…');
+                    const result = await loadPDFTextMathpix(file);
+                    if (result) return result;
+                } catch(e) {
+                    console.warn('[PDF] Mathpix failed, falling back to pdf.js:', e.message);
+                    showNotification('⚠️ Mathpix unavailable — using standard extraction', 'warning');
+                }
+            }
+            return loadPDFTextPdfJs(file);
+        }
+
+        async function loadPDFTextMathpix(file) {
+            const formData = new FormData();
+            formData.append('file', file, file.name);
+            const resp = await fetch('/api/mathpix', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData,
+            });
+            if (resp.status === 403) {
+                const data = await resp.json().catch(() => ({}));
+                if (data.fallback) return null;
+                throw new Error(data.error || 'Mathpix requires Pro plan');
+            }
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.error || `Mathpix error ${resp.status}`);
+            }
+            const data = await resp.json();
+            console.log('[Mathpix] Received:', data.text?.length, 'chars,',
+                data.figures?.length, 'figures,', data.tables?.length, 'tables,',
+                data.equations?.length, 'equations');
+            const media = [];
+            let figNum = 0, tableNum = 0, eqNum = 0;
+            (data.figures || []).forEach(f => {
+                figNum++;
+                media.push({ type: 'figure', number: f.number || figNum, caption: f.caption || '', image: f.image || null });
+            });
+            (data.tables || []).forEach(t => {
+                tableNum++;
+                media.push({ type: 'table', number: t.number || tableNum, caption: t.caption || '', content: t.content || '' });
+            });
+            (data.equations || []).forEach(eq => {
+                eqNum++;
+                media.push({ type: 'equation', number: eq.number || eqNum, latex: eq.latex || '' });
+            });
+            showNotification(`✅ Mathpix: ${(data.text||'').split(' ').length} words · ${figNum} figures · ${tableNum} tables · ${eqNum} equations`);
+            return { text: data.text || '', media };
+        }
+
+        async function loadPDFTextPdfJs(file) {
             if (typeof pdfjsLib === 'undefined') {
                 throw new Error('PDF library (pdf.js) failed to load. Check your internet connection.');
             }
-
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             let fullText = '';
-
             showNotification(`📄 Reading ${pdf.numPages} pages…`);
-
+            const HEADING_WORDS = new Set([
+                'abstract','introduction','background',
+                'methods','method','methodology','materials',
+                'results','findings','discussion',
+                'conclusion','conclusions',
+                'references','bibliography','acknowledgements','acknowledgments'
+            ]);
             for (let i = 1; i <= pdf.numPages; i++) {
                 try {
                     const page = await pdf.getPage(i);
                     const tc   = await page.getTextContent();
-
-                    // Group items into lines by Y position
                     const lineMap = {};
                     for (const item of tc.items) {
                         const ky = Math.round(item.transform[5] / 4) * 4;
@@ -3647,15 +3705,6 @@
                                  .map(it => it.str).join(' ').trim()
                         )
                         .filter(l => l.length > 0);
-
-                    // Tag short lines that look like headings (1-5 words, title-case or ALL CAPS)
-                    // These markers survive the parseText newline-stripping
-                    const HEADING_WORDS = new Set([
-                        'abstract','introduction','background','methods','method','methodology',
-                        'results','discussion','conclusion','conclusions','findings',
-                        'related','literature','experimental','experiments','acknowledgements',
-                        'acknowledgments','references','bibliography','materials','appendix'
-                    ]);
                     const taggedLines = lines.map(line => {
                         const words = line.trim().split(/\s+/);
                         if (words.length < 1 || words.length > 6) return line;
@@ -3674,10 +3723,8 @@
                     console.warn('[PDF] page', i, 'failed:', err);
                 }
             }
-
-            console.log(`[PDF] Extracted ${fullText.length} chars from ${pdf.numPages} pages`);
+            console.log(`[pdf.js] Extracted ${fullText.length} chars from ${pdf.numPages} pages`);
             if (fullText.trim().length < 50) {
-                console.warn('[PDF] Very little text extracted — PDF may be scanned/image-based');
                 throw new Error('This PDF appears to be scanned or image-based and contains no extractable text. Please use a text-based PDF.');
             }
             return { text: fullText.trim(), media: [] };
@@ -5360,7 +5407,7 @@
                         const nextH = validHeadings[i + 1];
                         const end = nextH ? nextH.wordIndex - 1 : (nextStop ? nextStop.wordIndex - 1 : totalWords - 1);
                         const words = allWords.slice(start, end + 1);
-                        if (words.length >= 60) {
+                        if (words.length >= 150) {
                             documentSections.push({ title: validHeadings[i].title, startIndex: start, endIndex: end, words });
                         }
                     }
@@ -5430,7 +5477,7 @@
             console.log('[Sections] Candidate headings:', headings.map(h => `"${h.title}" @${h.wordIndex}`));
 
             // ── Fallback: chunk if fewer than 2 headings found ─────────────
-            const CHUNK_SIZE = 800;
+            const CHUNK_SIZE = 1200; // larger chunks = fewer, cleaner sections
             if (headings.filter(h => !h.isStop).length < 2) {
                 const numChunks = Math.ceil(allWords.length / CHUNK_SIZE);
                 for (let i = 0; i < numChunks; i++) {
@@ -5453,7 +5500,7 @@
                 const nextH  = headings[i + 1];
                 const end    = nextH ? nextH.wordIndex - 1 : allWords.length - 1;
                 const words  = allWords.slice(start, end + 1);
-                if (words.length >= 60) {
+                if (words.length >= 150) {
                     documentSections.push({ title: headings[i].title, startIndex: start, endIndex: end, words });
                 }
             }

@@ -3934,14 +3934,26 @@
                     document.head.appendChild(s);
                 });
 
-                // Step 3: initialise with the key via constructor — uses Clerk's own CDN
-                const clerk = new Clerk(publishableKey);
-                await clerk.load();
+                // Step 3: initialise — use existing window.Clerk instance if available,
+                // otherwise use constructor. The instance path happens when Clerk was
+                // previously loaded via data-clerk-publishable-key or auto-init.
+                let clerk;
+                if (window.Clerk && typeof window.Clerk !== 'function') {
+                    // Already an instance (auto-initialised)
+                    clerk = window.Clerk;
+                    if (!clerk.loaded) await clerk.load();
+                } else {
+                    // Use constructor
+                    clerk = new (window.Clerk || Clerk)(publishableKey);
+                    await clerk.load();
+                }
                 clerkInstance = clerk;
                 console.log('[Clerk] Initialised. User:', clerk.user?.primaryEmailAddress?.emailAddress || 'guest');
                 return clerk;
             } catch (e) {
-                console.warn('[Clerk] Failed to init:', e);
+                console.warn('[Clerk] Failed to init:', e.message || e);
+                console.warn('[Clerk] window.Clerk type:', typeof window.Clerk);
+                console.warn('[Clerk] Clerk type:', typeof Clerk);
                 return null;
             }
         }

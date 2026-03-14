@@ -2569,7 +2569,7 @@
 
             // Wire logout button
             document.getElementById('logoutBtn')?.addEventListener('click', () => {
-                if (clerkInstance?.user) {
+                if (currentUser?.id) {
                     if (confirm('Sign out of SwiftsReader?')) logout();
                 } else {
                     showSignInModal();
@@ -2827,16 +2827,9 @@
         function setupEventListeners() {
             // Add paper button
             addPaperBtn.addEventListener('click', async () => {
-                if (!clerkInstance?.user) {
-                    // Try to init Clerk first
-                    if (!clerkInstance) await initClerk();
-                    // If still no user after init, show sign-in
-                    if (!clerkInstance?.user) {
-                        showSignInModal(() => {
-                            if (canAddPaper()) showAddPaperModal();
-                        });
-                        return;
-                    }
+                if (!currentUser?.id) {
+                    showSignInModal();
+                    return;
                 }
                 if (!canAddPaper()) return;
                 showAddPaperModal();
@@ -3932,27 +3925,13 @@
             return null;
         }
 
-        async function showSignInModal(onSuccess) {
-            // If Clerk hasn't initialised yet, do it now
-            if (!clerkInstance) {
-                showNotification('⏳ Loading sign-in…');
-                await initClerk();
-            }
-            const overlay = document.getElementById('clerkSignInOverlay');
-            const mountPoint = document.getElementById('clerkMountPoint');
-            if (!overlay || !mountPoint || !clerkInstance) {
-                // Clerk unavailable — just open the modal anyway so user sees something
-                showNotification('⚠️ Sign-in unavailable. Try refreshing the page.', 'warning');
-                return;
-            }
-            // Store callback for after sign-in redirect returns
+        function showSignInModal(onSuccess) {
+            // Store callback — will run when user returns after sign-in
             if (typeof onSuccess === 'function') {
                 window._clerkSignInCallback = onSuccess;
             }
-            // Redirect to sign-in page, passing current URL as return destination
-            const returnTo = encodeURIComponent('/app');
             console.log('[Auth] Redirecting to /sign-in');
-            window.location.href = '/sign-in?redirect_url=' + returnTo;
+            window.location.href = '/sign-in';
         }
 
         function hideSignInModal() {

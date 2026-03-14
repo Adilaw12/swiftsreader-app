@@ -2560,6 +2560,9 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
+            // Cache library DOM refs globally as fallback for async upload contexts
+            window._libraryList  = document.getElementById('libraryList');
+            window._libraryCount = document.getElementById('libraryCount');
             // Auth first — redirects to /login if not authenticated
             const authed = await initAuth();
             if (!authed) return;
@@ -3287,11 +3290,20 @@
                     console.log('[Upload] Media details:', paper.media);
                 }
                 
+                // Don't add paper if text extraction failed
+                if (!paper.text || paper.text.trim().length < 50) {
+                    showNotification('⚠️ Could not extract text from this file. The PDF may be scanned or image-based.', 'error');
+                    return;
+                }
+
                 library.unshift(paper);
                 saveLibrary();
-                
-                if (typeof updateLibraryUI === 'function') updateLibraryUI();
-                if (typeof updateHeaderStats === 'function') updateHeaderStats();
+
+                // Delay UI update slightly so modal close doesn't interfere
+                setTimeout(() => {
+                    if (typeof updateLibraryUI === 'function') updateLibraryUI();
+                    if (typeof updateHeaderStats === 'function') updateHeaderStats();
+                }, 150);
                 
                 const figCount = paper.media.filter(m => m.type === 'figure').length;
                 const tableCount = paper.media.filter(m => m.type === 'table').length;
@@ -3312,6 +3324,9 @@
 
         // Update library sidebar UI
         function updateLibraryUI(searchQuery = '') {
+            // Re-query each time in case elements weren't ready at script parse time
+            const libraryList  = document.getElementById('libraryList')  || window._libraryList;
+            const libraryCount = document.getElementById('libraryCount') || window._libraryCount;
             if (!libraryList || !libraryCount) return;
             const query = searchQuery.toLowerCase().trim();
             const filtered = library.filter(paper => {
@@ -3490,10 +3505,11 @@
             if (typeof stopAudioOnDocumentChange === 'function') stopAudioOnDocumentChange();
 
             // Parse text into content items first (needed for section detection)
-            if (paper.text) {
+            if (paper.text && paper.text.trim().length > 0) {
                 parseText(paper.text);
             } else {
                 contentItems = [];
+                showNotification('⚠️ This paper has no text content. Try re-uploading the file.', 'warning');
             }
 
             // Restore saved position, or auto-jump to Abstract for fresh opens
@@ -3632,6 +3648,10 @@
             }
 
             console.log(`[PDF] Extracted ${fullText.length} chars from ${pdf.numPages} pages`);
+            if (fullText.trim().length < 50) {
+                console.warn('[PDF] Very little text extracted — PDF may be scanned/image-based');
+                throw new Error('This PDF appears to be scanned or image-based and contains no extractable text. Please use a text-based PDF.');
+            }
             return { text: fullText.trim(), media: [] };
         }
 

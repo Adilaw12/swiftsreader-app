@@ -3902,12 +3902,11 @@
         }
 
         async function logout() {
-            if (clerkInstance?.user) {
-                await clerkInstance.signOut();
-            }
             localStorage.removeItem('sr_token');
             localStorage.removeItem('sr_user');
-            window.location.href = '/login';
+            currentUser = null;
+            // Redirect to Clerk sign-out then back to landing page
+            window.location.href = '/sign-in';
         }
 
         // Load and verify auth on startup
@@ -3915,38 +3914,10 @@
         let clerkInstance = null;
 
         async function initClerk() {
-            try {
-                const publishableKey = window.__CLERK_PUBLISHABLE_KEY__ || await getClerkKey();
-                if (!publishableKey) {
-                    console.warn('[Clerk] No publishable key');
-                    return null;
-                }
-                console.log('[Clerk] Key found:', publishableKey.slice(0, 24) + '...');
-
-                // Load Clerk JS — set the key via data attribute before load
-                if (!window.__clerkLoaded) {
-                    await new Promise((resolve, reject) => {
-                        const s = document.createElement('script');
-                        s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
-                        s.setAttribute('data-clerk-publishable-key', publishableKey);
-                        s.onload = () => { window.__clerkLoaded = true; resolve(); };
-                        s.onerror = reject;
-                        document.head.appendChild(s);
-                    });
-                }
-
-                const clerk = window.Clerk;
-                if (!clerk) throw new Error('window.Clerk unavailable');
-                if (!clerk.loaded) await clerk.load();
-                clerkInstance = clerk;
-                console.log('[Clerk] Ready. User:', clerk.user?.id || 'guest');
-                return clerk;
-            } catch(e) {
-                console.warn('[Clerk] Init failed:', e.message);
-                // Mark as failed so we use direct URL fallback
-                window.__clerkFailed = true;
-                return null;
-            }
+            // Clerk JS is no longer loaded in app.html.
+            // Authentication is handled by the Next.js /sign-in page.
+            // We still check session via /api/auth/me (server-side Clerk).
+            return null;
         }
 
         async function getClerkKey() {
@@ -3978,9 +3949,10 @@
             if (typeof onSuccess === 'function') {
                 window._clerkSignInCallback = onSuccess;
             }
-            // Redirect to the Next.js hosted sign-in page — always works
-            console.log('[Clerk] Redirecting to /sign-in');
-            window.location.href = '/sign-in';
+            // Redirect to sign-in page, passing current URL as return destination
+            const returnTo = encodeURIComponent('/app');
+            console.log('[Auth] Redirecting to /sign-in');
+            window.location.href = '/sign-in?redirect_url=' + returnTo;
         }
 
         function hideSignInModal() {
@@ -4002,31 +3974,37 @@
         }
 
         async function initAuth() {
-            // Init Clerk
-            await initClerk();
-
-            // Try to sync profile if Clerk session exists
-            if (clerkInstance?.user) {
-                await syncUserProfile();
-                // If we stored a callback before redirecting to sign-in, run it now
-                if (typeof window._clerkSignInCallback === 'function') {
-                    const cb = window._clerkSignInCallback;
-                    window._clerkSignInCallback = null;
-                    setTimeout(cb, 300);
+            // Try to get user profile from backend (uses server-side Clerk session cookie)
+            try {
+                const r = await fetch('/api/auth/me', { credentials: 'include' });
+                if (r.ok) {
+                    const ct = r.headers.get('content-type') || '';
+                    if (ct.includes('application/json')) {
+                        const data = await r.json();
+                        if (data.id) {
+                            currentUser = data;
+                            localStorage.setItem('sr_user', JSON.stringify(data));
+                            updateUserUI();
+                            console.log('[Auth] Signed in:', data.email, '| Tier:', data.tier);
+                        }
+                    }
                 }
-            } else {
-                // Load from cache — app works as guest
+            } catch(e) {
+                // Network error — load from cache
+            }
+
+            // Always fall back to cache so app works offline/as guest
+            if (!currentUser) {
                 const cached = localStorage.getItem('sr_user');
                 if (cached) { try { currentUser = JSON.parse(cached); updateUserUI(); } catch {} }
             }
 
-            // Update sign-out button
+            // Update sign-in/out button
             const logoutBtn = document.getElementById('logoutBtn');
             if (logoutBtn) {
-                logoutBtn.textContent = clerkInstance?.user ? 'Sign out' : 'Sign in';
+                logoutBtn.textContent = currentUser?.id ? 'Sign out' : 'Sign in';
             }
 
-            // Always return true — reader works without auth
             return true;
         }
 

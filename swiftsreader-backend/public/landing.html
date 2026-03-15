@@ -2299,41 +2299,33 @@
                     <div class="hs-proof"><span class="hero-proof-stat">Pro</span> plan — figures, tables &amp; equations from any journal</div>
                 </div>
                 <div class="hs-visual">
-                    <div style="background:#1a1a2e;border:1px solid rgba(124,58,237,0.3);border-radius:16px;padding:22px;max-width:380px;">
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                    <div style="background:#1a1a2e;border:1px solid rgba(124,58,237,0.3);border-radius:16px;padding:20px;max-width:380px;font-family:monospace;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
                             <div style="width:10px;height:10px;border-radius:50%;background:#ff5f56;"></div>
                             <div style="width:10px;height:10px;border-radius:50%;background:#ffbd2e;"></div>
                             <div style="width:10px;height:10px;border-radius:50%;background:#27c93f;"></div>
-                            <span style="margin-left:6px;font-size:11px;color:#666;font-family:sans-serif;">paper.pdf — extraction complete</span>
+                            <span style="margin-left:8px;font-size:11px;color:#666;font-family:sans-serif;">PDF extraction complete</span>
                         </div>
-                        <div style="display:flex;gap:8px;margin-bottom:14px;">
-                            <div style="flex:1;background:rgba(124,58,237,0.12);border-radius:8px;padding:10px;text-align:center;">
-                                <div style="font-size:22px;font-weight:700;color:#A78BFA;">6</div>
-                                <div style="font-size:10px;color:#888;font-family:sans-serif;margin-top:2px;">Figures</div>
-                            </div>
-                            <div style="flex:1;background:rgba(124,58,237,0.12);border-radius:8px;padding:10px;text-align:center;">
-                                <div style="font-size:22px;font-weight:700;color:#A78BFA;">4</div>
-                                <div style="font-size:10px;color:#888;font-family:sans-serif;margin-top:2px;">Tables</div>
-                            </div>
-                            <div style="flex:1;background:rgba(124,58,237,0.12);border-radius:8px;padding:10px;text-align:center;">
-                                <div style="font-size:22px;font-weight:700;color:#A78BFA;">12</div>
-                                <div style="font-size:10px;color:#888;font-family:sans-serif;margin-top:2px;">Equations</div>
-                            </div>
-                        </div>
-                        <div style="display:flex;flex-direction:column;gap:8px;">
+                        <div style="font-size:12px;color:#A78BFA;margin-bottom:12px;font-family:sans-serif;font-weight:700;">✅ Extracted from paper.pdf</div>
+                        <div style="display:flex;flex-direction:column;gap:10px;">
                             <div style="background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:8px;padding:10px 12px;">
-                                <div style="font-size:10px;color:#A78BFA;font-family:sans-serif;margin-bottom:3px;font-weight:600;">FIGURE 3</div>
+                                <div style="font-size:10px;color:#A78BFA;font-family:sans-serif;margin-bottom:4px;">FIGURE 3</div>
                                 <div style="font-size:11px;color:#ccc;font-family:sans-serif;">Scatter plot: RSVP speed vs. comprehension score (n=84)</div>
                             </div>
                             <div style="background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:8px;padding:10px 12px;">
-                                <div style="font-size:10px;color:#A78BFA;font-family:sans-serif;margin-bottom:3px;font-weight:600;">EQUATION 1</div>
-                                <div style="font-size:14px;color:#e2e8f0;font-family:monospace;letter-spacing:0.5px;">β = Σ(xᵢ − x̄)(yᵢ − ȳ) / Σ(xᵢ − x̄)²</div>
-                            </div>
-                            <div style="background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:8px;padding:10px 12px;">
-                                <div style="font-size:10px;color:#A78BFA;font-family:sans-serif;margin-bottom:3px;font-weight:600;">TABLE 2</div>
+                                <div style="font-size:10px;color:#A78BFA;font-family:sans-serif;margin-bottom:4px;">TABLE 2</div>
                                 <div style="font-size:11px;color:#ccc;font-family:sans-serif;">Descriptive statistics by condition (M ± SD)</div>
                             </div>
+                            <div style="background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:8px;padding:10px 12px;">
+                                <div style="font-size:10px;color:#A78BFA;font-family:sans-serif;margin-bottom:4px;">EQUATION 1</div>
+                                <div style="font-size:13px;color:#e2e8f0;letter-spacing:0.5px;">d' = z(H) − z(FA)</div>
+                            </div>
+                            <div style="background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:8px;padding:10px 12px;">
+                                <div style="font-size:10px;color:#A78BFA;font-family:sans-serif;margin-bottom:4px;">EQUATION 4</div>
+                                <div style="font-size:13px;color:#e2e8f0;letter-spacing:0.5px;">β = Σ(xᵢ − x̄)(yᵢ − ȳ) / Σ(xᵢ − x̄)²</div>
+                            </div>
                         </div>
+                        <div style="margin-top:12px;font-size:11px;color:#666;font-family:sans-serif;text-align:center;">6 figures · 4 tables · 12 equations detected</div>
                     </div>
                 </div>
             </div>
@@ -3358,16 +3350,6 @@
 
         resetAutoplay();
     })();
-    </script>
-
-    <script>
-    // FAQ accordion — must be global so onclick="toggleFaq(this)" can reach it
-    function toggleFaq(el) {
-        const item = el.closest('.faq-item');
-        const isOpen = item.classList.contains('open');
-        document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
-        if (!isOpen) item.classList.add('open');
-    }
     </script>
 
 

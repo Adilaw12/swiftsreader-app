@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── User ─────────────────────────────────────────────────────────────────────
@@ -88,8 +89,9 @@ model Summary {
   sectionIndex Int
   sectionTitle String?
   content      String   @db.Text
-  model        String   @default("claude-sonnet-4-6")
+  model        String   @default("claude-haiku-4-5")
   tokensUsed   Int      @default(0)
+  contentHash  String?                    // sha256 of section text — enables cross-user cache
   createdAt    DateTime @default(now())
 
   paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
@@ -98,6 +100,7 @@ model Summary {
   @@unique([paperId, sectionIndex])
   @@index([paperId])
   @@index([userId])
+  @@index([contentHash])                 // fast global cache lookup
   @@map("summaries")
 }
 

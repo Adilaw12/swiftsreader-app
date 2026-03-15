@@ -15,7 +15,7 @@ const MATHPIX_BASE    = 'https://api.mathpix.com/v3'
 
 // Poll interval and max wait
 const POLL_INTERVAL_MS = 2000
-const MAX_WAIT_MS      = 50_000  // 50s max (Vercel free tier = 60s limit)
+const MAX_WAIT_MS      = 100_000 // 100s max (well within Vercel Pro 120s limit)
 
 async function mathpixHeaders() {
   return {
@@ -50,7 +50,8 @@ async function uploadPDF(pdfBuffer: Buffer, filename: string): Promise<string> {
   }
 
   const data = await resp.json()
-  if (!data.pdf_id) throw new Error('Mathpix did not return a pdf_id')
+  console.log('[Mathpix] Upload response:', JSON.stringify(data).slice(0, 300))
+  if (!data.pdf_id) throw new Error(`Mathpix did not return a pdf_id. Response: ${JSON.stringify(data).slice(0, 200)}`)
   return data.pdf_id
 }
 

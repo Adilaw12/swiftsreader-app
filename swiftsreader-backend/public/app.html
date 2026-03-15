@@ -2569,7 +2569,7 @@
 
             // Wire logout button
             document.getElementById('logoutBtn')?.addEventListener('click', () => {
-                if (clerkInstance?.user) {
+                if (currentUser?.id) {
                     if (confirm('Sign out of SwiftsReader?')) logout();
                 } else {
                     showSignInModal();
@@ -2584,14 +2584,17 @@
                 // Refresh user data — Stripe webhook may take a moment, retry a few times
                 let attempts = 0;
                 const pollUpgrade = () => {
-                    fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${getAuthToken()}` } })
-                        .then(r => r.json())
+                    fetch('/api/auth/me', { credentials: 'include' })
+                        .then(r => r.ok ? r.json() : null)
                         .then(u => {
+                            if (!u) return;
                             currentUser = u;
+                            localStorage.setItem('sr_user', JSON.stringify(u));
                             updateUserUI();
                             updateSummariesUI();
                             // Retry up to 5 times if still on free (webhook may be in-flight)
                             if (u.tier === 'free' && attempts++ < 5) setTimeout(pollUpgrade, 2000);
+                            else if (u.tier !== 'free') showNotification('✅ ' + (u.tier === 'pro' ? 'Pro' : 'Student') + ' plan activated!', 'success');
                         }).catch(() => {});
                 };
                 pollUpgrade();
@@ -2827,16 +2830,9 @@
         function setupEventListeners() {
             // Add paper button
             addPaperBtn.addEventListener('click', async () => {
-                if (!clerkInstance?.user) {
-                    // Try to init Clerk first
-                    if (!clerkInstance) await initClerk();
-                    // If still no user after init, show sign-in
-                    if (!clerkInstance?.user) {
-                        showSignInModal(() => {
-                            if (canAddPaper()) showAddPaperModal();
-                        });
-                        return;
-                    }
+                if (!currentUser?.id) {
+                    showSignInModal();
+                    return;
                 }
                 if (!canAddPaper()) return;
                 showAddPaperModal();
@@ -3630,9 +3626,8 @@
         // ── PDF extraction: Mathpix (Pro) or pdf.js (Free/Student) ──────────
         async function loadPDFText(file) {
             const isBackend = (location.protocol !== 'file:' && !/^(localhost|127\.|192\.168\.)/.test(location.hostname));
-            const isPro = currentUser && (currentUser.tier === 'pro' || currentUser.tier === 'beta');
-            // Allow attempt on backend even for non-Pro — server decides via MATHPIX_TEST_BYPASS
-            const tryMathpix = isBackend && (isPro || isBackend);
+            // Always try Mathpix on backend — server enforces tier via MATHPIX_TEST_BYPASS
+            const tryMathpix = isBackend;
 
             if (tryMathpix) {
                 try {
@@ -3640,8 +3635,8 @@
                     const result = await loadPDFTextMathpix(file);
                     if (result) return result;
                 } catch(e) {
-                    console.warn('[PDF] Mathpix failed, falling back to pdf.js:', e.message);
-                    showNotification('⚠️ Mathpix unavailable — using standard extraction', 'warning');
+                    console.error('[PDF] Mathpix error:', e.message);
+                    showNotification('⚠️ Mathpix: ' + e.message.slice(0, 80) + ' — using standard extraction', 'warning');
                 }
             }
             return loadPDFTextPdfJs(file);
@@ -3661,8 +3656,11 @@
                 throw new Error(data.error || 'Mathpix requires Pro plan');
             }
             if (!resp.ok) {
-                const err = await resp.json().catch(() => ({}));
-                throw new Error(err.error || `Mathpix error ${resp.status}`);
+                const body = await resp.text().catch(() => '');
+                console.error('[Mathpix] Server error', resp.status, ':', body.slice(0, 300));
+                let err = {};
+                try { err = JSON.parse(body); } catch {}
+                throw new Error(err.error || `Mathpix server error ${resp.status}: ${body.slice(0, 100)}`);
             }
             const data = await resp.json();
             console.log('[Mathpix] Received:', data.text?.length, 'chars,',
@@ -3722,9 +3720,10 @@
                         const words = line.trim().split(/\s+/);
                         if (words.length < 1 || words.length > 6) return line;
                         const clean = line.replace(/^\d+\.?\s*/, '').trim();
+                        if (!clean) return line; // skip empty lines
                         const lower = clean.toLowerCase();
                         const isAllCaps = clean === clean.toUpperCase() && clean.length > 2;
-                        const isTitleCase = clean[0] === clean[0].toUpperCase();
+                        const isTitleCase = clean.length > 0 && clean[0] === clean[0].toUpperCase() && clean[0] !== clean[0].toLowerCase();
                         const firstWord = lower.split(/\s+/)[0];
                         if ((isAllCaps || isTitleCase) && HEADING_WORDS.has(firstWord)) {
                             return '\n\u00a7HEADING\u00a7' + clean + '\u00a7END\u00a7\n';
@@ -3902,12 +3901,11 @@
         }
 
         async function logout() {
-            if (clerkInstance?.user) {
-                await clerkInstance.signOut();
-            }
             localStorage.removeItem('sr_token');
             localStorage.removeItem('sr_user');
-            window.location.href = '/login';
+            currentUser = null;
+            // Redirect to Clerk sign-out then back to landing page
+            window.location.href = '/sign-in';
         }
 
         // Load and verify auth on startup
@@ -3915,38 +3913,10 @@
         let clerkInstance = null;
 
         async function initClerk() {
-            try {
-                const publishableKey = window.__CLERK_PUBLISHABLE_KEY__ || await getClerkKey();
-                if (!publishableKey) {
-                    console.warn('[Clerk] No publishable key');
-                    return null;
-                }
-                console.log('[Clerk] Key found:', publishableKey.slice(0, 24) + '...');
-
-                // Load Clerk JS — set the key via data attribute before load
-                if (!window.__clerkLoaded) {
-                    await new Promise((resolve, reject) => {
-                        const s = document.createElement('script');
-                        s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
-                        s.setAttribute('data-clerk-publishable-key', publishableKey);
-                        s.onload = () => { window.__clerkLoaded = true; resolve(); };
-                        s.onerror = reject;
-                        document.head.appendChild(s);
-                    });
-                }
-
-                const clerk = window.Clerk;
-                if (!clerk) throw new Error('window.Clerk unavailable');
-                if (!clerk.loaded) await clerk.load();
-                clerkInstance = clerk;
-                console.log('[Clerk] Ready. User:', clerk.user?.id || 'guest');
-                return clerk;
-            } catch(e) {
-                console.warn('[Clerk] Init failed:', e.message);
-                // Mark as failed so we use direct URL fallback
-                window.__clerkFailed = true;
-                return null;
-            }
+            // Clerk JS is no longer loaded in app.html.
+            // Authentication is handled by the Next.js /sign-in page.
+            // We still check session via /api/auth/me (server-side Clerk).
+            return null;
         }
 
         async function getClerkKey() {
@@ -3961,49 +3931,13 @@
             return null;
         }
 
-        async function showSignInModal(onSuccess) {
-            // If Clerk hasn't initialised yet, do it now
-            if (!clerkInstance) {
-                showNotification('⏳ Loading sign-in…');
-                await initClerk();
-            }
-            const overlay = document.getElementById('clerkSignInOverlay');
-            const mountPoint = document.getElementById('clerkMountPoint');
-            if (!overlay || !mountPoint || !clerkInstance) {
-                // Clerk unavailable — just open the modal anyway so user sees something
-                showNotification('⚠️ Sign-in unavailable. Try refreshing the page.', 'warning');
-                return;
-            }
-            // Store callback for after sign-in redirect returns
+        function showSignInModal(onSuccess) {
+            // Store callback — will run when user returns after sign-in
             if (typeof onSuccess === 'function') {
                 window._clerkSignInCallback = onSuccess;
             }
-            console.log('[Clerk] Navigating to sign-in');
-            const returnUrl = encodeURIComponent(window.location.href);
-
-            // Try Clerk instance method first
-            if (clerkInstance && !window.__clerkFailed) {
-                try {
-                    const url = clerkInstance.buildSignInUrl({ fallbackRedirectUrl: window.location.href });
-                    if (url) { window.location.href = url; return; }
-                } catch(e) { console.warn('[Clerk] buildSignInUrl failed:', e.message); }
-            }
-
-            // Direct URL construction from publishable key — always works
-            // Clerk publishable keys encode the frontend API domain in base64
-            // pk_test_[base64] or pk_live_[base64]
-            const key = window.__CLERK_PUBLISHABLE_KEY__ || await getClerkKey() || '';
-            if (key) {
-                try {
-                    const encoded = key.split('_')[2]; // get the base64 part
-                    const domain = atob(encoded).replace(/\$/, '');
-                    const signInUrl = `https://${domain}/sign-in#/?redirect_url=${returnUrl}`;
-                    console.log('[Clerk] Sign-in URL:', signInUrl);
-                    window.location.href = signInUrl;
-                    return;
-                } catch(e) { console.warn('[Clerk] URL decode failed:', e.message); }
-            }
-            showNotification('⚠️ Could not open sign-in. Please refresh the page.', 'warning');
+            console.log('[Auth] Redirecting to /sign-in');
+            window.location.href = '/sign-in';
         }
 
         function hideSignInModal() {
@@ -4025,31 +3959,37 @@
         }
 
         async function initAuth() {
-            // Init Clerk
-            await initClerk();
-
-            // Try to sync profile if Clerk session exists
-            if (clerkInstance?.user) {
-                await syncUserProfile();
-                // If we stored a callback before redirecting to sign-in, run it now
-                if (typeof window._clerkSignInCallback === 'function') {
-                    const cb = window._clerkSignInCallback;
-                    window._clerkSignInCallback = null;
-                    setTimeout(cb, 300);
+            // Try to get user profile from backend (uses server-side Clerk session cookie)
+            try {
+                const r = await fetch('/api/auth/me', { credentials: 'include' });
+                if (r.ok) {
+                    const ct = r.headers.get('content-type') || '';
+                    if (ct.includes('application/json')) {
+                        const data = await r.json();
+                        if (data.id) {
+                            currentUser = data;
+                            localStorage.setItem('sr_user', JSON.stringify(data));
+                            updateUserUI();
+                            console.log('[Auth] Signed in:', data.email, '| Tier:', data.tier);
+                        }
+                    }
                 }
-            } else {
-                // Load from cache — app works as guest
+            } catch(e) {
+                // Network error — load from cache
+            }
+
+            // Always fall back to cache so app works offline/as guest
+            if (!currentUser) {
                 const cached = localStorage.getItem('sr_user');
                 if (cached) { try { currentUser = JSON.parse(cached); updateUserUI(); } catch {} }
             }
 
-            // Update sign-out button
+            // Update sign-in/out button
             const logoutBtn = document.getElementById('logoutBtn');
             if (logoutBtn) {
-                logoutBtn.textContent = clerkInstance?.user ? 'Sign out' : 'Sign in';
+                logoutBtn.textContent = currentUser?.id ? 'Sign out' : 'Sign in';
             }
 
-            // Always return true — reader works without auth
             return true;
         }
 
@@ -4107,8 +4047,8 @@
                                     <li>✅ Unlimited papers</li>
                                     <li>✅ Unlimited AI summaries</li>
                                     <li>✅ HD Voice — unlimited</li>
+                                    <li>✅ Full PDF extraction — figures, tables &amp; equations</li>
                                     <li>✅ Priority support</li>
-                                    <li>✅ Early access to new features</li>
                                 </ul>
                                 <button id="checkoutPro" class="button button-primary" style="width:100%;">Subscribe to Pro</button>
                             </div>
@@ -4126,9 +4066,15 @@
                 const btn = overlay.querySelector(`#checkout${plan.charAt(0).toUpperCase() + plan.slice(1)}`);
                 btn.textContent = 'Redirecting…'; btn.disabled = true;
                 try {
-                    const r = await fetch('/api/stripe/checkout', {
+                    // Check user is signed in first
+                    if (!currentUser?.id) {
+                        showSignInModal();
+                        return;
+                    }
+                    const r = await fetch('/api/checkout', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ plan })
                     });
                     const data = await r.json();

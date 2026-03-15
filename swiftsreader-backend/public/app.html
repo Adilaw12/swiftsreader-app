@@ -3904,8 +3904,8 @@
             localStorage.removeItem('sr_token');
             localStorage.removeItem('sr_user');
             currentUser = null;
-            // Redirect to Clerk sign-out then back to landing page
-            window.location.href = '/sign-in';
+            // /sign-out page calls Clerk signOut() which clears the session cookie
+            window.location.href = '/sign-out';
         }
 
         // Load and verify auth on startup

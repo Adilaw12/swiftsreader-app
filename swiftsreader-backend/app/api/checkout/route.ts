@@ -4,9 +4,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { prisma } from '@/lib/prisma'
-import { getAuthUserId, apiError } from '@/lib/auth'
+import { apiError } from '@/lib/auth'
 
-export const dynamic = 'force-dynamic'
+const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY || 'placeholder')
 
 const PRICE_IDS: Record<string, string | undefined> = {
   student: process.env.STRIPE_PRICE_STUDENT,
@@ -14,10 +14,21 @@ const PRICE_IDS: Record<string, string | undefined> = {
 }
 
 export async function POST(req: NextRequest) {
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-  const result = await getAuthUserId()
-  if (result instanceof NextResponse) return result
-  const userId = result
+  // Try Clerk auth() directly first
+  let userId: string | null = null
+  try {
+    const { auth } = await import('@clerk/nextjs/server')
+    const session = await auth()
+    userId = session?.userId ?? null
+    console.log('[Checkout] Clerk userId:', userId)
+  } catch (e) {
+    console.error('[Checkout] auth() failed:', e)
+  }
+
+  if (!userId) {
+    console.error('[Checkout] No userId — unauthorised')
+    return NextResponse.json({ error: 'Unauthorised — please sign in' }, { status: 401 })
+  }
 
   try {
     const { plan } = await req.json()
@@ -29,16 +40,29 @@ export async function POST(req: NextRequest) {
     const priceId = PRICE_IDS[plan]
     if (!priceId) return apiError(`Stripe price ID for "${plan}" not configured`, 500)
 
-    const user = await prisma.user.findUnique({
+    // Find or create user — in case Clerk webhook hasn't fired yet
+    let user = await prisma.user.findUnique({
       where:  { id: userId },
       select: { email: true, stripeCustomerId: true },
     })
-    if (!user) return apiError('User not found', 404)
+    if (!user) {
+      // Get email from Clerk session
+      const { currentUser } = await import('@clerk/nextjs/server')
+      const clerkUser = await currentUser()
+      const email = clerkUser?.emailAddresses?.[0]?.emailAddress || ''
+      user = await prisma.user.upsert({
+        where:  { id: userId },
+        create: { id: userId, email, tier: 'FREE', summariesUsed: 0, summariesLimit: 10, ttsCharsUsed: 0, ttsCharsLimit: 0 },
+        update: {},
+        select: { email: true, stripeCustomerId: true },
+      })
+      console.log(`[Checkout] Auto-created user ${userId}`)
+    }
 
     // Reuse or create Stripe customer
     let customerId = user.stripeCustomerId
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      const customer = await getStripe().customers.create({
         email:    user.email,
         metadata: { userId },
       })
@@ -48,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://swiftsreader.com'
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       customer:   customerId,
       mode:       'subscription',
       line_items: [{ price: priceId, quantity: 1 }],

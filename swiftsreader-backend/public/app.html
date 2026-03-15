@@ -890,7 +890,9 @@
             min-height: 60vh;
             box-shadow: var(--shadow-md);
             position: relative;
-            overflow: hidden;
+            overflow: visible;
+            display: flex;
+            flex-direction: column;
         }
 
         .reader-area::before {
@@ -5225,7 +5227,8 @@
             let para = [];
             contentItems.forEach((item, idx) => {
                 if (item.type === 'text' || item.type === 'TEXT') {
-                    para.push(`<span class="para-word${idx === currentIndex ? ' current-word' : ''}" data-idx="${idx}">${item.word || item.content || ''}</span>`);
+                    const w = cleanTextForDisplay(item.word || item.content || '');
+                    if (w) para.push(`<span class="para-word${idx === currentIndex ? ' current-word' : ''}" data-idx="${idx}">${w}</span>`);
                 } else if (para.length > 0) {
                     html += `<p style="margin-bottom:${isDyslexic ? '1.6em' : '1.2em'};">${para.join(' ')}</p>`;
                     para = [];
@@ -6387,9 +6390,24 @@
             audioSpeech.speak(utter);
         }
 
+        // Clean text for display — strips symbols, LaTeX, URLs, citations
+        function cleanTextForDisplay(word) {
+            if (!word) return '';
+            // Skip pure symbol/LaTeX tokens
+            if (/^[\$\\\{\}\[\]\^_=<>|~`]+$/.test(word)) return '';
+            // Skip citations like [1] [12,13] [1-3]
+            if (/^\[\d[\d,\s\-]*\]$/.test(word)) return '';
+            // Skip DOIs and URLs
+            if (/^https?:\/\//i.test(word) || /^doi:/i.test(word)) return '';
+            // Strip inline LaTeX markers
+            word = word.replace(/\$[^$]*\$/g, '').replace(/\\[a-zA-Z]+/g, '').trim();
+            return word;
+        }
+
         // Clean academic text so TTS pronounces it naturally
         function cleanTextForTTS(text) {
             return text
+                // Academic abbreviations
                 .replace(/\bet\s+al\./gi,        'et al')
                 .replace(/\bi\.e\./gi,            'that is')
                 .replace(/\be\.g\./gi,            'for example')
@@ -6399,10 +6417,21 @@
                 .replace(/\bEq\.\s*(\d+)/gi,      'Equation $1')
                 .replace(/\bSec\.\s*(\d+)/gi,     'Section $1')
                 .replace(/\bTab\.\s*(\d+)/gi,     'Table $1')
-                .replace(/https?:\/\/\S+/g,       'link')
+                // Remove URLs and DOIs
+                .replace(/https?:\/\/\S+/g,       '')
                 .replace(/\bdoi:\S+/gi,           '')
-                .replace(/\barXiv:\S+/gi,         'arXiv paper')
+                .replace(/\barXiv:\S+/gi,         '')
+                // Remove citation brackets [1], [1,2], [1-3]
                 .replace(/\[\d[\d,\s\-]*\]/g,     '')
+                // Remove LaTeX commands
+                .replace(/\\[a-zA-Z]+\{[^}]*\}/g, '')
+                .replace(/\\[a-zA-Z]+/g,          '')
+                .replace(/\$[^$]*\$/g,             '')
+                // Remove standalone symbols
+                .replace(/\s+[\*\#\^\~\|\\]+\s+/g, ' ')
+                // Remove lines that are just symbols/numbers (table rows, figure refs)
+                .replace(/^[\d\.\s\(\)\-\+\=\*\/,;:]+$/gm, '')
+                // Clean up Author initials (A. Smith → A Smith)
                 .replace(/\b([A-Z])\.\s+([A-Z][a-z])/g, '$1 $2')
                 .replace(/\s{2,}/g, ' ')
                 .trim();
@@ -6413,7 +6442,7 @@
             audioSpeech.cancel();
             clearInterval(audioKeepAliveTimer);
 
-            const slice = cleanTextForTTS(audioFullText.slice(charOffset));
+            const slice = audioFullText.slice(charOffset).replace(/\s{2,}/g, ' ').trim();
             if (!slice.trim()) { stopAudio(); showNotification('✅ Finished reading', 'success'); return; }
 
             // Build sentence queue from current offset
@@ -6505,15 +6534,17 @@
                 console.log('[Audio] sections:', documentSections.map(s => s.title));
 
                 const audioItems = contentItems.slice(introStart, refStop);
-                audioFullText = audioItems
-                    .filter(i => i.type === ContentType.TEXT)
-                    .map(i => i.content || '')
-                    .join(' ')
-                    .trim();
+                audioFullText = cleanTextForTTS(
+                    audioItems
+                        .filter(i => i.type === ContentType.TEXT)
+                        .map(i => i.content || '')
+                        .join(' ')
+                        .trim()
+                );
 
-                // Fallback: no Introduction section detected — read full text
+                // Fallback: no Introduction section detected — use full text but still clean it
                 if (!audioFullText || introStart === 0) {
-                    audioFullText = extractTextForAudio();
+                    audioFullText = cleanTextForTTS(extractTextForAudio());
                     console.log('[Audio] Fallback: no Introduction detected, reading full text');
                 }
                 audioCharOffset = 0;
@@ -7177,10 +7208,8 @@
     .tour-complete-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,188,212,0.45); }
     </style>
 
-    <!-- Hidden YouTube player -->
-    <div id="ytPlayerContainer" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;bottom:0;left:0;" aria-hidden="true">
-        <div id="ytPlayer"></div>
-    </div>
+    <!-- Focus audio uses Web Audio API — no YouTube dependency -->
+    <div id="ytPlayerContainer" style="display:none;" aria-hidden="true"></div>
 
     <!-- Floating widget -->
     <div class="hz-player" id="hzPlayer" title="Focus music — click to toggle" onclick="toggleMusic()" role="button" aria-label="Toggle focus music">
@@ -7200,22 +7229,42 @@
         </div>
     </div>
 
+    <!-- Hidden YouTube player — must be visible (even 1px) for audio to work -->
+    <div style="position:fixed;width:1px;height:1px;opacity:0.01;pointer-events:none;overflow:hidden;bottom:0;left:0;" aria-hidden="true">
+        <div id="ytPlayer"></div>
+    </div>
+
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
-        let ytPlayer   = null;
-        let ytReady    = false;
-        let isMuted    = true;
+        let ytPlayer    = null;
+        let ytReady     = false;
+        let isMuted     = true;
         let pendingPlay = false;
 
         function onYouTubeIframeAPIReady() {
             ytPlayer = new YT.Player('ytPlayer', {
-                videoId: '3q8thydY9bI',
-                playerVars: { autoplay:0, controls:0, disablekb:1, fs:0, iv_load_policy:3, loop:1, playlist:'3q8thydY9bI', modestbranding:1, rel:0 },
+                height: '1',
+                width:  '1',
+                videoId: 'JnHhjCB18sw',
+                playerVars: {
+                    autoplay: 0, controls: 0, disablekb: 1,
+                    fs: 0, iv_load_policy: 3, loop: 1,
+                    playlist: 'JnHhjCB18sw', modestbranding: 1, rel: 0,
+                    mute: 0
+                },
                 events: {
                     onReady: function(e) {
                         ytReady = true;
-                        e.target.setVolume(60);
-                        if (pendingPlay) { e.target.playVideo(); pendingPlay = false; }
+                        e.target.unMute();
+                        e.target.setVolume(70);
+                        if (pendingPlay) {
+                            e.target.playVideo();
+                            pendingPlay = false;
+                        }
+                    },
+                    onStateChange: function(e) {
+                        // YT.PlayerState.ENDED = 0 — restart
+                        if (e.data === 0) e.target.playVideo();
                     }
                 }
             });
@@ -7227,7 +7276,13 @@
             const hzIcon   = document.getElementById('hzIcon');
             isMuted = !isMuted;
             if (!isMuted) {
-                if (ytReady) ytPlayer.playVideo(); else pendingPlay = true;
+                if (ytReady) {
+                    ytPlayer.unMute();
+                    ytPlayer.setVolume(70);
+                    ytPlayer.playVideo();
+                } else {
+                    pendingPlay = true;
+                }
             } else {
                 if (ytReady) ytPlayer.pauseVideo();
                 pendingPlay = false;

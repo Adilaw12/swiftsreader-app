@@ -6309,12 +6309,22 @@
             speakSentence(0);
 
             // Chrome silently auto-pauses speechSynthesis after ~15s.
-            // Calling resume() every 5s (WITHOUT pause first) re-activates it
-            // silently — no audible blip, no interruption.
+            // Check every 2s and resume if paused — no audible blip.
+            // Also detect if Chrome has stopped speaking entirely (speaking=false
+            // but we still have sentences left) and restart from current position.
             audioKeepAliveTimer = setInterval(() => {
                 if (!isAudioPlaying) { clearInterval(audioKeepAliveTimer); return; }
-                if (audioSpeech.paused) audioSpeech.resume();
-            }, 5000);
+                if (audioSpeech.paused) {
+                    audioSpeech.resume();
+                    return;
+                }
+                // Detect Chrome stall: not paused, not speaking, but we have more to say
+                if (!audioSpeech.speaking && !audioSpeech.paused &&
+                    audioSentenceIndex < audioSentences.length) {
+                    console.log('[Audio] Chrome stall detected — restarting from current position');
+                    speakSentence(audioSentenceIndex);
+                }
+            }, 2000);
         }
 
         function syncReaderToAudio(charOffset) {
@@ -6333,7 +6343,11 @@
                     if (wordsSeen === targetWord) {
                         if (typeof currentIndex !== 'undefined') {
                             currentIndex = idx;
-                            if (typeof updateDisplay === 'function') updateDisplay();
+                            if (typeof readingMode !== 'undefined' && readingMode === 'paragraph') {
+                                if (typeof _updateParagraphHighlight === 'function') _updateParagraphHighlight();
+                            } else {
+                                if (typeof updateDisplay === 'function') updateDisplay();
+                            }
                             if (typeof updateStats === 'function') updateStats();
                         }
                         break;
@@ -6357,6 +6371,12 @@
             if (isAudioPlaying) return;
             // Stop HD Voice if running
             if (typeof window._hdStop === 'function') window._hdStop();
+
+            // Don't wait for voices — use whatever is available now
+            // This eliminates the 12-second startup delay
+            if (!selectedVoice && availableVoices.length > 0) {
+                selectedVoice = getBestVoice('en');
+            }
 
             if (!audioFullText) {
                 // Use detected sections to find Introduction start and References stop

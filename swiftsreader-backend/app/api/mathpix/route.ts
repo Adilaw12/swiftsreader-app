@@ -29,13 +29,13 @@ async function uploadPDF(pdfBuffer: Buffer, filename: string): Promise<string> {
   const blob = new Blob([new Uint8Array(pdfBuffer)], { type: 'application/pdf' })
   formData.append('file', blob, filename)
 
-  // Request structured output: MMD (Mathpix Markdown) + JSON lines
+  // Upload with processing options — conversion happens after processing
   formData.append('options_json', JSON.stringify({
-    conversion_formats: { 'mmd': true, 'lines.json': true },
     math_inline_delimiters:  ['$', '$'],
     math_display_delimiters: ['$$', '$$'],
     rm_spaces: true,
     enable_tables_fallback: true,
+    include_page_info: false,
   }))
 
   const resp = await fetch(`${MATHPIX_BASE}/pdf`, {
@@ -73,11 +73,31 @@ async function pollUntilComplete(pdfId: string): Promise<void> {
 }
 
 async function fetchMMD(pdfId: string): Promise<string> {
+  // First convert to MMD format
+  const convertResp = await fetch(`${MATHPIX_BASE}/converter/${pdfId}`, {
+    method: 'POST',
+    headers: { ...await mathpixHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ format: 'mmd' }),
+  })
+  if (!convertResp.ok) {
+    console.warn('[Mathpix] Convert request failed, trying direct MMD fetch')
+  }
+
+  // Fetch the MMD result
   const resp = await fetch(`${MATHPIX_BASE}/pdf/${pdfId}.mmd`, {
     headers: await mathpixHeaders(),
   })
-  if (!resp.ok) throw new Error(`Mathpix MMD fetch failed: ${resp.status}`)
-  return resp.text()
+  if (!resp.ok) {
+    // Try alternative endpoint
+    const resp2 = await fetch(`${MATHPIX_BASE}/pdf/${pdfId}?format=mmd`, {
+      headers: await mathpixHeaders(),
+    })
+    if (!resp2.ok) throw new Error(`Mathpix MMD fetch failed: ${resp.status}`)
+    const data = await resp2.json()
+    return data.mmd || data.text || ''
+  }
+  const text = await resp.text()
+  return text
 }
 
 async function fetchLinesJSON(pdfId: string): Promise<any[]> {

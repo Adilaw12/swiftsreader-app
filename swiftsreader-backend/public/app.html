@@ -465,11 +465,39 @@
             background: var(--border-strong);
         }
 
+        /* Collapsible panels */
+        .control-panel.collapsed .control-group,
+        .control-panel.collapsed .button-group,
+        .control-panel.collapsed .library-search,
+        .control-panel.collapsed .library-list {
+            display: none !important;
+        }
+        .panel-title {
+            cursor: pointer;
+            user-select: none;
+        }
+        .panel-title::after {
+            content: '▾';
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-left: auto;
+            transition: transform 0.2s;
+        }
+        .control-panel.collapsed .panel-title::after {
+            transform: rotate(-90deg);
+        }
+        /* Library panel always shows its list */
+        .control-panel:first-child.collapsed .library-search,
+        .control-panel:first-child.collapsed .library-list {
+            display: block !important;
+        }
+
         .control-panel {
-            background: var(--bg-surface);
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius-lg);
-            padding: var(--space-lg);
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border-light);
+            border-radius: 0;
+            padding: var(--space-sm) var(--space-md);
             box-shadow: var(--shadow-sm);
             position: relative;
             flex-shrink: 0; /* prevent panels from being squashed */
@@ -945,9 +973,13 @@
             align-items: center;
             justify-content: center;
             gap: var(--space-md);
-            margin-top: var(--space-xl);
-            padding-top: var(--space-xl);
+            padding: var(--space-md) var(--space-xl);
             border-top: 1px solid var(--border-light);
+            position: sticky;
+            bottom: 0;
+            background: var(--bg-primary);
+            z-index: 10;
+            margin-top: auto;
         }
 
         .control-button {
@@ -2035,6 +2067,20 @@
             background: #f5f0e8 !important;
             color: #2c1810 !important;
         }
+        /* Summaries respect dyslexia mode */
+        .dyslexia-mode .summaries-list,
+        .dyslexia-mode .section-summary-content,
+        .dyslexia-mode .notes-area {
+            font-family: 'OpenDyslexic', sans-serif !important;
+            letter-spacing: 0.10em !important;
+            word-spacing: 0.20em !important;
+            line-height: 2.0 !important;
+            background: #f5f0e8 !important;
+            color: #2c1810 !important;
+        }
+        .dyslexia-mode .tab-content {
+            background: #f5f0e8 !important;
+        }
 
         /* ── Clerk Sign-in Modal ───────────────────────────────────────────────── */
         #clerkSignInOverlay {
@@ -2093,6 +2139,36 @@
             <!-- Library Panel -->
             <aside class="library-panel">
               <div class="library-panel-inner">
+                <!-- Account & Stats widget — top of sidebar -->
+                <div style="padding:10px 14px 10px;border-bottom:1px solid var(--border-light);background:var(--bg-secondary);">
+                    <!-- Stats row -->
+                    <div style="display:flex;gap:0;background:var(--bg-primary);border-radius:10px;overflow:hidden;border:1px solid var(--border-light);margin-bottom:10px;">
+                        <div style="flex:1;padding:8px 6px;text-align:center;border-right:1px solid var(--border-light);">
+                            <div id="headerWpmDisplay" style="font-size:15px;font-weight:800;color:var(--primary);">300</div>
+                            <div style="font-size:9px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.4px;">WPM</div>
+                        </div>
+                        <div style="flex:1;padding:8px 6px;text-align:center;border-right:1px solid var(--border-light);">
+                            <div id="headerProgressDisplay" style="font-size:15px;font-weight:800;color:var(--primary);">0%</div>
+                            <div style="font-size:9px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.4px;">Done</div>
+                        </div>
+                        <div style="flex:1;padding:8px 6px;text-align:center;">
+                            <div id="headerPapersDisplay" style="font-size:15px;font-weight:800;color:var(--primary);">0</div>
+                            <div style="font-size:9px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.4px;">Papers</div>
+                        </div>
+                    </div>
+                    <!-- Streak -->
+                    <div id="streakDisplay" style="display:none;text-align:center;font-size:12px;font-weight:600;color:var(--primary);margin-bottom:8px;">
+                        🔥 <span id="streakCount">0</span> day streak
+                    </div>
+                    <!-- User account -->
+                    <div id="userInfoBar" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span id="userTierBadge" style="padding:2px 8px;border-radius:20px;font-weight:700;font-size:10px;background:var(--primary-pale);color:var(--primary-dark);">FREE</span>
+                        <span id="userEmailDisplay" style="font-size:11px;color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;"></span>
+                        <button id="upgradeBtn" onclick="openUpgradeModal()" style="display:none;padding:3px 8px;background:var(--primary);color:white;border:none;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;">Upgrade</button>
+                        <button id="logoutBtn" title="Sign out" style="background:none;border:1px solid var(--border-light);border-radius:5px;padding:2px 7px;font-size:10px;cursor:pointer;color:var(--text-secondary);">Sign out</button>
+                        <button onclick="openContactModal()" style="background:none;border:1px solid var(--border-light);border-radius:5px;padding:2px 7px;font-size:10px;cursor:pointer;color:var(--text-secondary);">Contact</button>
+                    </div>
+                </div>
                 <!-- Library -->
                 <div class="control-panel">
                     <div class="panel-title">
@@ -2223,36 +2299,7 @@
                         </button>
                     </div>
                 </div>
-                <!-- Account & Stats widget (moved from header) -->
-                <div style="padding:12px 16px 16px;border-top:1px solid var(--border-light);margin-top:auto;">
-                    <!-- Stats row -->
-                    <div style="display:flex;gap:0;background:var(--bg-primary);border-radius:10px;overflow:hidden;border:1px solid var(--border-light);margin-bottom:10px;">
-                        <div style="flex:1;padding:8px 6px;text-align:center;border-right:1px solid var(--border-light);">
-                            <div id="headerWpmDisplay" style="font-size:15px;font-weight:800;color:var(--primary);">300</div>
-                            <div style="font-size:9px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.4px;">WPM</div>
-                        </div>
-                        <div style="flex:1;padding:8px 6px;text-align:center;border-right:1px solid var(--border-light);">
-                            <div id="headerProgressDisplay" style="font-size:15px;font-weight:800;color:var(--primary);">0%</div>
-                            <div style="font-size:9px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.4px;">Done</div>
-                        </div>
-                        <div style="flex:1;padding:8px 6px;text-align:center;">
-                            <div id="headerPapersDisplay" style="font-size:15px;font-weight:800;color:var(--primary);">0</div>
-                            <div style="font-size:9px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.4px;">Papers</div>
-                        </div>
-                    </div>
-                    <!-- Streak -->
-                    <div id="streakDisplay" style="display:none;text-align:center;font-size:12px;font-weight:600;color:var(--primary);margin-bottom:8px;">
-                        🔥 <span id="streakCount">0</span> day streak
-                    </div>
-                    <!-- User account -->
-                    <div id="userInfoBar" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                        <span id="userTierBadge" style="padding:2px 8px;border-radius:20px;font-weight:700;font-size:10px;background:var(--primary-pale);color:var(--primary-dark);">FREE</span>
-                        <span id="userEmailDisplay" style="font-size:11px;color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;"></span>
-                        <button id="upgradeBtn" onclick="openUpgradeModal()" style="display:none;padding:3px 8px;background:var(--primary);color:white;border:none;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;">Upgrade</button>
-                        <button id="logoutBtn" title="Sign out" style="background:none;border:1px solid var(--border-light);border-radius:5px;padding:2px 7px;font-size:10px;cursor:pointer;color:var(--text-secondary);">Sign out</button>
-                        <button onclick="openContactModal()" style="background:none;border:1px solid var(--border-light);border-radius:5px;padding:2px 7px;font-size:10px;cursor:pointer;color:var(--text-secondary);">Contact</button>
-                    </div>
-                </div>
+                
               </div><!-- /.library-panel-inner -->
             </aside>
 
@@ -2345,9 +2392,17 @@
                                 <label class="notes-label">Questions / Follow-up</label>
                                 <textarea id="notesQuestions" placeholder="What questions remain? What should you read next?"></textarea>
                             </div>
-                            <button class="button button-primary" id="saveNotesBtn" style="width: 100%;">
-                                <span>💾 Save Notes</span>
-                            </button>
+                            <div style="display:flex;gap:8px;">
+                                <button class="button button-primary" id="saveNotesBtn" style="flex:1;">
+                                    <span>💾 Save Notes</span>
+                                </button>
+                                <button class="button button-secondary" id="exportNotesBtn" title="Export notes as text file" style="padding:0 14px;">
+                                    <span>⬇ Export</span>
+                                </button>
+                                <button class="button button-secondary" id="printNotesBtn" title="Print notes" style="padding:0 14px;">
+                                    <span>🖨 Print</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2609,6 +2664,69 @@
             setupEventListeners();
             if (typeof updateLibraryUI === 'function') updateLibraryUI();
             updateHeaderStats();
+
+            // ── Collapsible sidebar panels ─────────────────────────────────
+            document.querySelectorAll('.control-panel .panel-title').forEach(title => {
+                title.addEventListener('click', () => {
+                    const panel = title.closest('.control-panel');
+                    // Library panel (first): only collapse the settings, not the list
+                    panel.classList.toggle('collapsed');
+                });
+            });
+            // Start Reading Settings and Quick Actions collapsed by default
+            document.querySelectorAll('.control-panel').forEach((panel, i) => {
+                const title = panel.querySelector('.panel-title');
+                if (title) {
+                    const t = title.textContent.trim();
+                    if (t.includes('Reading Settings') || t.includes('Quick Actions')) {
+                        panel.classList.add('collapsed');
+                    }
+                }
+            });
+
+            // ── Notes export / print ───────────────────────────────────────
+            document.getElementById('exportNotesBtn')?.addEventListener('click', () => {
+                const paper = library.find(p => p.id === currentPaperId);
+                const title = paper?.title || 'Notes';
+                const fields = [
+                    ['Key Findings', document.getElementById('notesKeyFindings')?.value],
+                    ['Summary', document.getElementById('notesSummary')?.value],
+                    ['Relevance', document.getElementById('notesRelevance')?.value],
+                    ['Questions', document.getElementById('notesQuestions')?.value],
+                ];
+                const text = `SwiftsReader Notes\n${'='.repeat(50)}\n${title}\n${'='.repeat(50)}\n\n` +
+                    fields.filter(([,v]) => v?.trim())
+                          .map(([k,v]) => `${k}:\n${v}\n`).join('\n');
+                const blob = new Blob([text], { type: 'text/plain' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = title.slice(0,40).replace(/[^a-z0-9]/gi,'_') + '_notes.txt';
+                a.click();
+            });
+
+            document.getElementById('printNotesBtn')?.addEventListener('click', () => {
+                const paper = library.find(p => p.id === currentPaperId);
+                const title = paper?.title || 'Notes';
+                const fields = [
+                    ['Key Findings', document.getElementById('notesKeyFindings')?.value],
+                    ['Summary', document.getElementById('notesSummary')?.value],
+                    ['Relevance', document.getElementById('notesRelevance')?.value],
+                    ['Questions', document.getElementById('notesQuestions')?.value],
+                ];
+                const html = `<html><head><title>${title} — Notes</title>
+                    <style>body{font-family:Georgia,serif;max-width:700px;margin:40px auto;line-height:1.7}
+                    h1{font-size:18px;border-bottom:2px solid #000;padding-bottom:8px}
+                    h2{font-size:14px;margin-top:24px;color:#333}
+                    p{white-space:pre-wrap}</style></head><body>
+                    <h1>SwiftsReader Notes — ${title}</h1>
+                    ${fields.filter(([,v]) => v?.trim())
+                            .map(([k,v]) => `<h2>${k}</h2><p>${v}</p>`).join('')}
+                    </body></html>`;
+                const w = window.open('','_blank');
+                w.document.write(html);
+                w.document.close();
+                w.print();
+            });
         });
 
         // Load settings
@@ -6039,7 +6157,7 @@
 
         let audioSpeech = 'speechSynthesis' in window ? window.speechSynthesis : null;
         let audioSpeed = 1.0;
-        let audioSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+        let audioSpeeds = [0.75, 1.0, 1.25];
         let currentSpeedIndex = 2;
         let isAudioPlaying = false;
         let audioFullText = '';
@@ -6805,7 +6923,7 @@
         .hz-player {
             position: fixed;
             bottom: 24px;
-            left: 24px;
+            right: 24px;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -6911,7 +7029,7 @@
     .profile-btn-desc { font-size: 11px; color: #9E9E9E; display: block; margin-top: 2px; line-height: 1.4; }
     .welcome-actions { display: flex; flex-direction: column; gap: 10px; }
     .btn-start-tour {
-        width: 100%; padding: 14px;
+        flex: 1; padding: 14px;
         background: linear-gradient(135deg, #00BCD4, #0097A7);
         color: #fff; border: none; border-radius: 12px;
         font-size: 15px; font-weight: 700; cursor: pointer;
@@ -6921,11 +7039,16 @@
     }
     .btn-start-tour:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,188,212,0.45); }
     .btn-skip-tour {
-        background: none; border: none; color: #9E9E9E;
-        font-size: 13px; cursor: pointer; font-family: inherit;
-        padding: 6px; transition: color 0.15s;
+        flex: 1; padding: 14px;
+        background: transparent;
+        border: 2px solid #E0E0E0;
+        border-radius: 12px;
+        color: #616161;
+        font-size: 15px; font-weight: 700; cursor: pointer;
+        font-family: inherit;
+        transition: border-color 0.15s, color 0.15s;
     }
-    .btn-skip-tour:hover { color: #212121; }
+    .btn-skip-tour:hover { border-color: #9E9E9E; color: #212121; }
 
     /* ══════════════════════════════════════════
        FEATURE TOUR
@@ -7144,17 +7267,17 @@
                     <span class="profile-btn-desc">Full accessibility mode</span>
                 </button>
                 <button class="profile-btn" data-profile="none" onclick="selectProfile(this)">
-                    <span class="profile-btn-icon">📖</span>
-                    <span class="profile-btn-label">Just exploring</span>
-                    <span class="profile-btn-desc">Default settings</span>
+                    <span class="profile-btn-icon">🔬</span>
+                    <span class="profile-btn-label">Researcher / Academic</span>
+                    <span class="profile-btn-desc">Speed & comprehension focused</span>
                 </button>
             </div>
-            <div class="welcome-actions">
+            <div class="welcome-actions" style="display:flex;gap:10px;">
                 <button class="btn-start-tour" id="startTourBtn" onclick="dismissWelcome(true)">
-                    🚀 Get Started — Take the Tour
+                    🚀 Take the Tour
                 </button>
                 <button class="btn-skip-tour" onclick="dismissWelcome(false)">
-                    Skip tour and go straight to the app
+                    ⚡ Skip — Go to App
                 </button>
             </div>
         </div>

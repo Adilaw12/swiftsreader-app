@@ -3338,6 +3338,16 @@
             timer = setInterval(() => goTo(current + 1), 5500);
         }
 
+
+        function toggleFaq(el) {
+            const item = el.closest('.faq-item');
+            const isOpen = item.classList.contains('open');
+            // Close all
+            document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+            // Open this one if it wasn't already open
+            if (!isOpen) item.classList.add('open');
+        }
+
         document.getElementById('hsPrev').onclick = () => goTo(current - 1);
         document.getElementById('hsNext').onclick = () => goTo(current + 1);
         dots.forEach(d => d.addEventListener('click', () => goTo(parseInt(d.dataset.idx))));
